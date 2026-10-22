@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 풋살팀 통합 시스템 v1.0</title>
+    <title>TenFC 풋살팀 통합 시스템 v1.01</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
@@ -15,7 +15,7 @@
     <div id="login-container" class="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
         <div class="text-center mb-6">
             <h1 class="text-3xl font-bold text-emerald-400">⚽ TenFC 풋살팀</h1>
-            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v1.0</span></p>
+            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v1.01</span></p>
         </div>
         <form id="login-form" class="space-y-4">
             <div>
@@ -330,7 +330,7 @@
                     </label>
                 </div>
                 <div>
-                    <label class="block text-xs text-slate-400 mb-1">프로필 사진 첨부</label>
+                    <label class="block text-xs text-slate-400 mb-1">프로필 사진 첨부 (PC 파일 선택)</label>
                     <input type="file" id="edit-photo-file" accept="image/*" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-slate-300 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500">
                 </div>
                 <div>
@@ -674,7 +674,7 @@
                 rowHtml += `
                     <td class="p-3 font-bold text-white flex items-center gap-2">
                         <div class="w-7 h-7 rounded-full overflow-hidden bg-slate-700 flex-shrink-0 flex items-center justify-center text-xs">
-                            ${m.photo ? `<img src="${m.photo}" class="w-full h-full object-cover">` : '⚽'}
+                            ${m.photo && m.photo.trim() !== "" ? `<img src="${m.photo}" class="w-full h-full object-cover">` : '⚽'}
                         </div>
                         <span>${m.name} ${roleBadge}</span>
                     </td>
@@ -949,7 +949,9 @@
                 m.history.push({ date: "최신", score: scoreMap[m.rating] || 6.0 });
 
                 function finalizeSave(photoUrl) {
-                    if (photoUrl !== undefined) m.photo = photoUrl;
+                    if (photoUrl !== undefined) {
+                        m.photo = photoUrl;
+                    }
                     saveMembersToStorage();
                     alert('정보가 성공적으로 업데이트되었습니다!');
                     closeAdminModal();

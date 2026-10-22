@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 풋살팀 통합 시스템 v1.9</title>
+    <title>TenFC 풋살팀 통합 시스템 v2.0</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
@@ -17,7 +17,7 @@
     <div id="login-container" class="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
         <div class="text-center mb-6">
             <h1 class="text-3xl font-bold text-emerald-400">⚽ TenFC 풋살팀</h1>
-            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v1.9</span></p>
+            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v2.0</span></p>
         </div>
         <form id="login-form" class="space-y-4">
             <div>
@@ -81,7 +81,17 @@
         <!-- 핵심 요약 카드 -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-700 text-center relative">
-                <p class="text-xs text-slate-400">현재 평점</p>
+                <div class="flex items-center justify-center gap-1.5">
+                    <p class="text-xs text-slate-400">현재 평점</p>
+                    <!-- i 안내 툴팁 아이콘 부활 -->
+                    <div class="relative group cursor-pointer inline-flex items-center">
+                        <span class="w-4 h-4 rounded-full bg-slate-700 text-slate-300 text-[10px] font-bold flex items-center justify-center hover:bg-emerald-600 hover:text-white transition">i</span>
+                        <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 p-2.5 bg-slate-900 text-slate-200 text-[11px] rounded-lg shadow-2xl border border-slate-700 opacity-0 group-hover:opacity-100 transition pointer-events-none z-30 text-left">
+                            <p class="font-bold text-emerald-400 mb-1 border-b border-slate-800 pb-1">⚽ 평점 산정 기준</p>
+                            <p class="text-slate-300 leading-tight">팀 감코진이 평가하는 멤버 실력 및 기여도 지표입니다. (A+ ~ F-)</p>
+                        </div>
+                    </div>
+                </div>
                 <p id="stat-rating" class="text-3xl font-extrabold text-emerald-400 mt-1">-</p>
             </div>
             <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-700 text-center">
@@ -544,7 +554,7 @@
 
             if (currentUser.role === 'admin' || currentUser.role === 'sub_admin') {
                 document.getElementById('admin-switch-bar').classList.remove('hidden');
-                document.getElementById('admin-badge-text').innerText = currentUser.role === 'admin' ? '🛡️ 주관리자 권한 보유 계정' : '👁️ 부관리자 권한 보유 계정';
+                document.getElementById('admin-badge-text').innerText = currentUser.role === 'admin' ? '🛡️ 주관리자 주도 계정' : '👁️ 부관리자 권한 보유 계정';
             } else {
                 document.getElementById('admin-switch-bar').classList.add('hidden');
             }
@@ -559,7 +569,7 @@
             const percentile = Math.round((rank / sortedMembers.length) * 100);
             document.getElementById('stat-percentile').innerHTML = `공동 ${rank}위<br><span class="text-xs text-slate-400 font-normal">(상위 ${percentile}%)</span>`;
 
-            // 라이벌 그룹 및 위아래 등급 계산
+            // 라이벌 그룹 및 위아래 등급 계산 (혼자일 경우 외 0명 생략 적용 완료)
             const sameGroup = sortedMembers.filter(m => (scoreMap[m.rating] || 0) === myScore && m.name !== user.name);
             const aboveGroup = sortedMembers.filter(m => (scoreMap[m.rating] || 0) > myScore);
             const belowGroup = sortedMembers.filter(m => (scoreMap[m.rating] || 0) < myScore);
@@ -579,7 +589,7 @@
             
             // 내 등급 그룹
             if (sameGroup.length > 0) {
-                document.getElementById('rank-same').innerText = `${sameGroup[0].name} 외 ${sameGroup.length}명 (${user.rating} 동급)`;
+                document.getElementById('rank-same').innerText = `${sameGroup[0].name} 외 ${sameGroup.length - 1}명 (${user.rating} 동급)`;
             } else {
                 document.getElementById('rank-same').innerText = `단독 ${user.rating} 등급`;
             }

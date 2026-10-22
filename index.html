@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 풋살팀 통합 시스템 v2.9</title>
+    <title>TenFC 풋살팀 통합 시스템 v3.0</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Chart.js DataLabels Plugin CDN (막대 위 숫자 표시용) -->
+    <!-- Chart.js DataLabels Plugin CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     <!-- Supabase JS SDK CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -19,7 +19,7 @@
     <div id="login-container" class="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
         <div class="text-center mb-6">
             <h1 class="text-3xl font-bold text-emerald-400">⚽ TenFC 풋살팀</h1>
-            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v2.9</span></p>
+            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v3.0</span></p>
         </div>
         <form id="login-form" class="space-y-4">
             <div>
@@ -447,7 +447,6 @@
 
                     let maxAtt = Math.max(...membersData.map(m => m.attendedMatches));
                     teamTotalMatches = maxAtt > 0 ? maxAtt : 0;
-                    // 운영진(admin, sub_admin) + 정회원(member)만 정회원 총원으로 취급
                     activeRegularMemberCount = membersData.filter(m => !m.isWithdrawn && (m.role === 'member' || m.role === 'admin' || m.role === 'sub_admin')).length;
 
                     return true;
@@ -585,10 +584,8 @@
                 document.getElementById('admin-switch-bar').classList.add('hidden');
             }
 
-            // 운영진 포함 정회원 풀 (순위 및 출석 비교용)
             const regularPool = membersData.filter(m => !m.isWithdrawn && (m.role === 'member' || m.role === 'admin' || m.role === 'sub_admin'));
 
-            // D- 이하 등급 블라인드 처리 로직
             const isBlind = blindRatings.includes(user.rating);
             const blindNoticeBox = document.getElementById('blind-notice-box');
             const chartCardContainer = document.getElementById('chart-card-container');
@@ -616,7 +613,6 @@
                 renderChart(user.history || []);
             }
 
-            // 팀 내 출석 비교 계산 로직 (정회원 풀 기준)
             const myAtt = user.attendedMatches;
 
             const sameAttGroup = regularPool.filter(m => m.attendedMatches === myAtt && m.name !== user.name);
@@ -652,7 +648,6 @@
                 document.getElementById('rank-below').innerText = "하위 출석 그룹 없음";
             }
 
-            // 평점 등급별 회원 수 막대그래프 렌더링 (정회원 풀 기준)
             renderGradeCountChart(regularPool);
         }
 
@@ -1066,12 +1061,10 @@
             const ctx = document.getElementById('gradeCountChart').getContext('2d');
             if (gradeCountChartInstance) gradeCountChartInstance.destroy();
 
-            // 정회원 풀 기준 등급별 인원 카운팅
             const counts = ratingHierarchy.map(grade => {
                 return regularPool.filter(m => m.rating === grade).length;
             });
 
-            // 총 정회원 수 표기 업데이트
             document.getElementById('grade-chart-total-label').innerText = `총 정회원: ${regularPool.length}명`;
 
             gradeCountChartInstance = new Chart(ctx, {
@@ -1081,13 +1074,18 @@
                     datasets: [{
                         label: '회원 수',
                         data: counts,
-                        backgroundColor: '#38bdf8', // 하늘색 계열
+                        backgroundColor: '#38bdf8',
                         borderRadius: 4,
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            top: 20 // 상단 여백을 주어 가장 높은 막대의 숫자가 잘리지 않도록 함
+                        }
+                    },
                     scales: {
                         y: {
                             beginAtZero: true,

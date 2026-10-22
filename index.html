@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 풋살팀 통합 시스템 v1.3</title>
+    <title>TenFC 풋살팀 통합 시스템 v1.4</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
@@ -17,16 +17,16 @@
     <div id="login-container" class="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
         <div class="text-center mb-6">
             <h1 class="text-3xl font-bold text-emerald-400">⚽ TenFC 풋살팀</h1>
-            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v1.3</span></p>
+            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v1.4</span></p>
         </div>
         <form id="login-form" class="space-y-4">
             <div>
                 <label class="block text-sm font-medium text-slate-300 mb-1">성명</label>
-                <input type="text" id="name-input" required placeholder="예: 오한결 또는 테스트" class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-500 text-white">
+                <input type="text" id="name-input" required placeholder="예: 성명 또는 테스트" class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-500 text-white">
             </div>
             <div>
-                <label class="block text-sm font-medium text-slate-300 mb-1">비밀번호 (초기값: 핸드폰 뒷 4자리 또는 0000)</label>
-                <input type="password" id="phone-input" required placeholder="예: 0005 또는 0000" class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-500 text-white">
+                <label class="block text-sm font-medium text-slate-300 mb-1">비밀번호 (초기값: 핸드폰 뒷 4자리 로그인 후 변경 가능)</label>
+                <input type="password" id="phone-input" required placeholder="예: 테스트 계정 비번은 0000" class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-500 text-white">
             </div>
             <button type="submit" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition duration-200 shadow-lg shadow-emerald-900/40">로그인</button>
         </form>
@@ -53,7 +53,7 @@
         <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <div>
                 <h2 id="user-welcome" class="text-2xl font-bold text-white"></h2>
-                <p class="text-xs text-slate-400 mt-1">팀 총 진행 매치: <span id="team-total-matches-display" class="font-bold text-amber-400">20회</span> | 시스템 버전: <span class="text-emerald-400 font-bold">v1.3</span></p>
+                <p class="text-xs text-slate-400 mt-1">팀 총 진행 매치: <span id="team-total-matches-display" class="font-bold text-amber-400">20회</span> | 시스템 버전: <span class="text-emerald-400 font-bold">v1.4</span></p>
             </div>
             <div class="flex gap-2">
                 <button onclick="openPwModal()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">비밀번호 변경</button>
@@ -71,7 +71,7 @@
                 <div><span class="text-slate-500">생년월일(만나이):</span> <span id="prof-birth" class="font-medium text-white">-</span></div>
                 <div><span class="text-slate-500">포지션:</span> <span id="prof-position" class="font-medium text-emerald-400">-</span></div>
                 <div><span class="text-slate-500">연락처:</span> <span id="prof-phone" class="font-medium text-white">-</span></div>
-                <div><span class="text-slate-500">카카오톡 ID:</span> <span id="prof-kakao" class="font-medium text-amber-300">-</span></div>
+                <div><span class="text-slate-500">카카오톡 닉네임:</span> <span id="prof-kakao" class="font-medium text-amber-300">-</span></div>
                 <div><span class="text-slate-500">가입일:</span> <span id="prof-joindate" class="font-medium text-white">-</span></div>
                 <div><span class="text-slate-500">회원구분:</span> <span id="prof-role" class="font-medium text-sky-400">정회원</span></div>
                 <div class="col-span-2"><span class="text-slate-500">주소지:</span> <span id="prof-address" class="font-medium text-white">-</span></div>
@@ -137,7 +137,7 @@
         <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <div>
                 <h2 id="admin-title" class="text-2xl font-bold text-emerald-400">🛡️ 관리자 대시보드</h2>
-                <p class="text-xs text-slate-400 mt-1">팀 전체 총 매치: <span id="admin-team-matches" class="font-bold text-amber-400">20회</span> | 시스템 버전: <span class="text-emerald-400 font-bold">v1.3</span></p>
+                <p class="text-xs text-slate-400 mt-1">팀 전체 총 매치: <span id="admin-team-matches" class="font-bold text-amber-400">20회</span> | 시스템 버전: <span class="text-emerald-400 font-bold">v1.4</span></p>
             </div>
             <div class="flex gap-2">
                 <button onclick="switchToMyPage()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">내 마이페이지 보기</button>
@@ -172,7 +172,7 @@
                         <th class="p-3">포지션</th>
                         <th class="p-3 cursor-pointer hover:text-emerald-400 transition" onclick="changeSort('rating')">현재 평점 <span id="sort-icon-rating" class="text-slate-500">↕</span></th>
                         <th class="p-3 cursor-pointer hover:text-emerald-400 transition" onclick="changeSort('attendance')">출석 횟수 / 참석률 <span id="sort-icon-attendance" class="text-slate-500">↕</span></th>
-                        <th class="p-3">연락처 / 카톡ID</th>
+                        <th class="p-3">연락처 / 카톡 닉네임</th>
                         <th id="th-action" class="p-3 text-center">관리</th>
                     </tr>
                 </thead>
@@ -410,6 +410,11 @@
                         history: m.history ? (typeof m.history === 'string' ? JSON.parse(m.history) : m.history) : [],
                         feedback: m.feedback || ""
                     }));
+
+                    let maxAtt = Math.max(...membersData.map(m => m.attendedMatches));
+                    if (maxAtt > teamTotalMatches) {
+                        teamTotalMatches = maxAtt;
+                    }
                 }
             } catch (err) { console.error("데이터 로딩 실패:", err); }
         }
@@ -549,7 +554,13 @@
             const belowGroup = sortedMembers.filter(m => (scoreMap[m.rating] || 0) < myScore);
 
             document.getElementById('rank-above').innerText = aboveGroup.length > 0 ? `${aboveGroup[aboveGroup.length-1].name} (${aboveGroup[aboveGroup.length-1].rating})` : "최상위 등급입니다 🏆";
-            document.getElementById('rank-same').innerText = sameGroup.length > 0 ? `${sameGroup.map(s => s.name).join(', ')} (${user.rating} 동급)` : `단독 ${user.rating} 등급`;
+            
+            if (sameGroup.length > 0) {
+                document.getElementById('rank-same').innerText = `${sameGroup[0].name} 외 ${sameGroup.length - 1}명 (${user.rating} 동급)`;
+            } else {
+                document.getElementById('rank-same').innerText = `단독 ${user.rating} 등급`;
+            }
+
             document.getElementById('rank-below').innerText = belowGroup.length > 0 ? `${belowGroup[0].name} (${belowGroup[0].rating})` : "하위 그룹 없음";
 
             renderChart(user.history || []);
@@ -565,6 +576,13 @@
             document.getElementById('admin-container').classList.add('hidden');
             document.getElementById('dashboard-container').classList.remove('hidden');
             loadMemberDashboard(currentUser);
+        }
+
+        function getMemberGroupRank(m) {
+            if (m.isWithdrawn) return 4;
+            if (m.role === 'guest') return 2;
+            if (m.role === 'acquaintance') return 3;
+            return 1; // 정회원 및 운영진
         }
 
         function loadAdminDashboard() {
@@ -587,13 +605,20 @@
 
             let displayList = [...membersData];
             displayList.sort((a, b) => {
+                let groupA = getMemberGroupRank(a);
+                let groupB = getMemberGroupRank(b);
+                if (groupA !== groupB) return groupA - groupB;
+
                 let valA, valB;
                 if (currentSortField === 'name') {
                     valA = a.name; valB = b.name;
                     return currentSortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
                 } else if (currentSortField === 'birth') {
-                    valA = a.birth || ""; valB = b.birth || "";
-                    return currentSortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                    let bA = a.birth ? a.birth.trim() : "9999";
+                    let bB = b.birth ? b.birth.trim() : "9999";
+                    if (bA === "") bA = "9999";
+                    if (bB === "") bB = "9999";
+                    return currentSortOrder === 'asc' ? bA.localeCompare(bB) : bB.localeCompare(bA);
                 } else if (currentSortField === 'rating') {
                     valA = scoreMap[a.rating] || 0; valB = scoreMap[b.rating] || 0;
                     return currentSortOrder === 'asc' ? valB - valA : valA - valB;
@@ -611,7 +636,7 @@
                 const attRate = teamTotalMatches > 0 ? Math.round((m.attendedMatches / teamTotalMatches) * 100) : 0;
                 let roleBadge = '';
                 if (m.isWithdrawn) roleBadge = '<span class="text-rose-400 text-[10px] ml-1 font-bold">(탈퇴)</span>';
-                else if (m.role === 'admin' || m.role === 'sub_admin') roleBadge = '<span class="text-emerald-400 text-[10px] ml-1">(운영진*)</span>';
+                else if (m.role === 'admin' || m.role === 'sub_admin') roleBadge = '<span class="text-emerald-400 text-[10px] ml-1">(운영진)</span>';
                 else if (m.role === 'guest') roleBadge = '<span class="text-amber-400 text-[10px] ml-1">(용병)</span>';
                 else if (m.role === 'acquaintance') roleBadge = '<span class="text-purple-400 text-[10px] ml-1">(지인)</span>';
 
@@ -629,7 +654,7 @@
                         <div class="w-7 h-7 rounded-full overflow-hidden bg-slate-700 flex-shrink-0 flex items-center justify-center text-xs">
                             ${m.photo && m.photo.trim() !== "" ? `<img src="${m.photo}" class="w-full h-full object-cover">` : '⚽'}
                         </div>
-                        <span>${m.name}${m.role === 'admin' || m.role === 'sub_admin' ? '*' : ''} ${roleBadge}</span>
+                        <span>${m.name} ${roleBadge}</span>
                     </td>
                     <td class="p-3 text-slate-300">${calculateInternationalAge(m.birth)}</td>
                     <td class="p-3 text-slate-300">${m.position}</td>
@@ -715,28 +740,47 @@
             const month = now.getMonth() + 1;
             const date = now.getDate();
 
-            let coreList = membersData.filter(m => !m.isWithdrawn && m.role !== 'guest' && m.role !== 'acquaintance')
-                                      .sort((a, b) => (a.birth || "").localeCompare(b.birth || ""));
-            let etcList = membersData.filter(m => m.isWithdrawn || m.role === 'guest' || m.role === 'acquaintance')
-                                     .sort((a, b) => (a.birth || "").localeCompare(b.birth || ""));
+            let sortFn = (a, b) => {
+                let bA = a.birth ? a.birth.trim() : "9999";
+                let bB = b.birth ? b.birth.trim() : "9999";
+                if (bA === "") bA = "9999";
+                if (bB === "") bB = "9999";
+                return bA.localeCompare(bB);
+            };
+
+            let coreList = membersData.filter(m => !m.isWithdrawn && m.role !== 'guest' && m.role !== 'acquaintance').sort(sortFn);
+            let guestList = membersData.filter(m => !m.isWithdrawn && m.role === 'guest').sort(sortFn);
+            let acquList = membersData.filter(m => !m.isWithdrawn && m.role === 'acquaintance').sort(sortFn);
+            let withdrawnList = membersData.filter(m => m.isWithdrawn).sort(sortFn);
 
             let textOutput = `=== TenFC 풋살팀 멤버 명단 (${month}월 ${date}일 업데이트) ===\n`;
             
             coreList.forEach(m => {
-                let nameMark = (m.role === 'admin' || m.role === 'sub_admin') ? `${m.name}*` : m.name;
                 const numericScore = scoreMap[m.rating] !== undefined ? scoreMap[m.rating].toFixed(1) : '-';
-                textOutput += `${nameMark} / ${m.birth || '-'} / ${m.rating} (${numericScore}점)\n`;
+                textOutput += `${m.name} / ${m.birth || '-'} / ${m.rating} (${numericScore}점)\n`;
             });
 
-            if (etcList.length > 0) {
-                textOutput += "-----\n[용병 / 지인 / 탈퇴 멤버]\n";
-                etcList.forEach(m => {
-                    let roleStr = "용병";
-                    if (m.role === 'acquaintance') roleStr = "지인";
-                    if (m.isWithdrawn) roleStr = "탈퇴";
-                    let nameMark = (m.role === 'admin' || m.role === 'sub_admin') ? `${m.name}*` : m.name;
+            if (guestList.length > 0) {
+                textOutput += "-----\n[용병]\n";
+                guestList.forEach(m => {
                     const numericScore = scoreMap[m.rating] !== undefined ? scoreMap[m.rating].toFixed(1) : '-';
-                    textOutput += `${nameMark}(${roleStr}) / ${m.birth || '-'} / ${m.rating} (${numericScore}점)\n`;
+                    textOutput += `${m.name}(용병) / ${m.birth || '-'} / ${m.rating} (${numericScore}점)\n`;
+                });
+            }
+
+            if (acquList.length > 0) {
+                textOutput += "-----\n[지인]\n";
+                acquList.forEach(m => {
+                    const numericScore = scoreMap[m.rating] !== undefined ? scoreMap[m.rating].toFixed(1) : '-';
+                    textOutput += `${m.name}(지인) / ${m.birth || '-'} / ${m.rating} (${numericScore}점)\n`;
+                });
+            }
+
+            if (withdrawnList.length > 0) {
+                textOutput += "-----\n[탈퇴 멤버]\n";
+                withdrawnList.forEach(m => {
+                    const numericScore = scoreMap[m.rating] !== undefined ? scoreMap[m.rating].toFixed(1) : '-';
+                    textOutput += `${m.name}(탈퇴) / ${m.birth || '-'} / ${m.rating} (${numericScore}점)\n`;
                 });
             }
 

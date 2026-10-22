@@ -460,7 +460,7 @@
             return false;
         }
 
-        // 앱 초기화 및 세션(로그인) 안전 복원
+        // 앱 초기화 및 세션 복원
         async function initApp() {
             const success = await fetchMembers();
             if (!success) return;

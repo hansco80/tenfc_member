@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 풋살팀 통합 시스템 v2.3</title>
+    <title>TenFC 풋살팀 통합 시스템 v2.6</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
@@ -17,7 +17,7 @@
     <div id="login-container" class="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
         <div class="text-center mb-6">
             <h1 class="text-3xl font-bold text-emerald-400">⚽ TenFC 풋살팀</h1>
-            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v2.3</span></p>
+            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v2.6</span></p>
         </div>
         <form id="login-form" class="space-y-4">
             <div>
@@ -137,11 +137,14 @@
             </div>
         </div>
 
-        <!-- 평점 변동 그래프 -->
-        <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700">
+        <!-- 평점 변동 이력 카드 -->
+        <div id="chart-card-container" class="bg-slate-900/40 p-4 rounded-xl border border-slate-700">
             <h3 class="text-xs font-semibold text-slate-300 mb-3 uppercase tracking-wider">📈 평점 변동 이력</h3>
-            <div class="relative h-48">
+            <div id="chart-wrapper" class="relative h-48">
                 <canvas id="ratingChart"></canvas>
+            </div>
+            <div id="chart-blind-msg" class="hidden h-48 flex flex-col items-center justify-center text-center bg-slate-900/60 rounded-lg border border-slate-800 p-4">
+                <p class="text-sm text-rose-300 font-semibold">⚠️ 아직 평점 데이터가 충분하지 않아 조회할 수 없습니다.</p>
             </div>
         </div>
     </div>
@@ -394,7 +397,6 @@
             "F": 1.0,   "F-": 0.5 
         };
 
-        // D- 이하 등급 체크용 배열 (D- 이하인 경우 블라인드 처리)
         const blindRatings = ["D-", "E+", "E", "E-", "F", "F-"];
 
         let teamTotalMatches = 0;
@@ -431,7 +433,6 @@
 
                     let maxAtt = Math.max(...membersData.map(m => m.attendedMatches));
                     teamTotalMatches = maxAtt > 0 ? maxAtt : 0;
-
                     activeRegularMemberCount = membersData.filter(m => !m.isWithdrawn && (m.role === 'member' || m.role === 'admin' || m.role === 'sub_admin')).length;
 
                     return true;
@@ -445,7 +446,10 @@
 
         async function initApp() {
             const success = await fetchMembersFromSupabase();
-            if (!success) return;
+            if (!success) {
+                alert('멤버 데이터를 불러오지 못했습니다. 네트워크 상태나 Supabase 연결을 확인해주세요.');
+                return;
+            }
 
             const savedUserName = localStorage.getItem('tenfc_logged_user');
             if (savedUserName) {
@@ -509,6 +513,7 @@
                 currentUser = user;
                 localStorage.setItem('tenfc_logged_user', user.name); 
                 document.getElementById('login-container').classList.add('hidden');
+                document.getElementById('login-error').classList.add('hidden');
                 
                 if (user.role === 'admin' || user.role === 'sub_admin') {
                     document.getElementById('admin-container').classList.remove('hidden');
@@ -518,7 +523,7 @@
                     loadMemberDashboard(user);
                 }
             } else {
-                document.getElementById('login-error').classList.add('hidden');
+                document.getElementById('login-error').classList.remove('hidden');
             }
         });
 
@@ -565,22 +570,21 @@
                 document.getElementById('admin-switch-bar').classList.add('hidden');
             }
 
-            // ==========================================
-            // [D- 이하 등급 블라인드 처리 로직]
-            // ==========================================
+            // D- 이하 등급 블라인드 처리 로직 (상단 카드 및 평점 변동 이력 카드 전체 숨김/안내 처리)
             const isBlind = blindRatings.includes(user.rating);
             const blindNoticeBox = document.getElementById('blind-notice-box');
+            const chartCardContainer = document.getElementById('chart-card-container');
 
             if (isBlind) {
-                // 평점 및 순위 ? 처리
                 document.getElementById('stat-rating').innerText = "?";
                 document.getElementById('stat-percentile').innerHTML = `? 등급<br><span class="text-xs text-slate-400 font-normal">(조회 불가)</span>`;
-                // 안내 문구 박스 표시
                 blindNoticeBox.classList.remove('hidden');
+                
+                // 평점 변동 이력 카드 자체를 숨김 처리
+                chartCardContainer.classList.add('hidden');
             } else {
                 document.getElementById('stat-rating').innerText = user.rating;
                 
-                // 정상 등급일 경우 평점 기준 순위 계산
                 const myScore = scoreMap[user.rating] || 6.0;
                 const sortedMembersForRating = [...membersData].filter(m => !m.isWithdrawn).sort((a, b) => (scoreMap[b.rating] || 0) - (scoreMap[a.rating] || 0));
 
@@ -591,17 +595,17 @@
                 const percentile = Math.round((rank / sortedMembersForRating.length) * 100);
                 document.getElementById('stat-percentile').innerHTML = `공동 ${rank}위<br><span class="text-xs text-slate-400 font-normal">(상위 ${percentile}%)</span>`;
                 
-                // 안내 문구 박스 숨김
                 blindNoticeBox.classList.add('hidden');
+                
+                // 평점 변동 이력 카드 표시 및 그래프 렌더링
+                chartCardContainer.classList.remove('hidden');
+                renderChart(user.history || []);
             }
 
-            // ==========================================
-            // [팀 내 출석 비교 계산 로직]
-            // ==========================================
+            // 팀 내 출석 비교 계산 로직
             const activeMembers = [...membersData].filter(m => !m.isWithdrawn);
             const myAtt = user.attendedMatches;
 
-            // 1. 나와 출석 수가 같은 회원
             const sameAttGroup = activeMembers.filter(m => m.attendedMatches === myAtt && m.name !== user.name);
             if (sameAttGroup.length > 0) {
                 document.getElementById('rank-same').innerText = `${sameAttGroup[0].name} 외 ${sameAttGroup.length - 1}명 (${myAtt}회 동급)`;
@@ -609,7 +613,6 @@
                 document.getElementById('rank-same').innerText = `단독 ${myAtt}회 출석`;
             }
 
-            // 2. 나보다 출석 수가 많은 회원
             const aboveAttList = activeMembers.filter(m => m.attendedMatches > myAtt).sort((a, b) => a.attendedMatches - b.attendedMatches);
             if (aboveAttList.length > 0) {
                 const targetAtt = aboveAttList[0].attendedMatches;
@@ -623,7 +626,6 @@
                 document.getElementById('rank-above').innerText = "팀 내 최다 출석입니다 🏆";
             }
 
-            // 3. 나보다 출석 수가 적은 회원
             const belowAttList = activeMembers.filter(m => m.attendedMatches < myAtt).sort((a, b) => b.attendedMatches - a.attendedMatches);
             if (belowAttList.length > 0) {
                 const targetAtt = belowAttList[0].attendedMatches;
@@ -636,8 +638,6 @@
             } else {
                 document.getElementById('rank-below').innerText = "하위 출석 그룹 없음";
             }
-
-            renderChart(user.history || []);
         }
 
         function switchToAdmin() {
@@ -656,7 +656,7 @@
             if (m.isWithdrawn) return 4;
             if (m.role === 'guest') return 2;
             if (m.role === 'acquaintance') return 3;
-            return 1; // 정회원 및 운영진
+            return 1;
         }
 
         function loadAdminDashboard() {

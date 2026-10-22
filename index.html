@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 풋살팀 통합 시스템 v3.0</title>
+    <title>TenFC 풋살팀 통합 시스템 v3.1</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
@@ -19,7 +19,7 @@
     <div id="login-container" class="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
         <div class="text-center mb-6">
             <h1 class="text-3xl font-bold text-emerald-400">⚽ TenFC 풋살팀</h1>
-            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v3.0</span></p>
+            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v3.1</span></p>
         </div>
         <form id="login-form" class="space-y-4">
             <div>
@@ -182,6 +182,7 @@
                 <button onclick="toggleAllCheckboxes(false)" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded transition">선택 해제</button>
                 <button onclick="openAddMemberModal()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded shadow transition">+ 신규 멤버 등록</button>
                 <button onclick="openSubAdminManageModal()" id="sub-admin-manage-btn" class="px-3 py-1.5 bg-sky-700 hover:bg-sky-600 text-white font-bold text-xs rounded shadow transition">🛡️ 부관리자 관리</button>
+                <button onclick="openLineupModal()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded shadow transition">📋 당일 라인업 자동 출석</button>
                 <button onclick="exportMemberTextData()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded shadow transition">전체 멤버 텍스트 복사</button>
             </div>
             <div id="admin-action-buttons" class="flex gap-2 w-full md:w-auto justify-end flex-wrap">
@@ -208,6 +209,22 @@
                 </thead>
                 <tbody id="admin-member-list" class="divide-y divide-slate-700/50"></tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- [신규 추가] 당일 라인업 자동 출석 모달 -->
+    <div id="lineup-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-slate-800 w-full max-w-lg p-6 rounded-2xl border border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <h3 class="text-lg font-bold text-indigo-400 mb-2">📋 당일 라인업 텍스트 자동 출석체크</h3>
+            <p class="text-xs text-slate-300 mb-3 leading-relaxed">
+                운동 당일 작성된 팀별 라인업 텍스트를 아래에 그대로 붙여넣으세요.<br>
+                <span class="text-emerald-400">💡 출생년도 `(80)`, 팀장 표시 `*` 등은 자동 제거되며, `용병-`, `지인-`은 출석 대상에서 자동으로 제외됩니다.</span>
+            </p>
+            <textarea id="lineup-textarea" rows="8" class="w-full p-3 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white font-mono focus:outline-none focus:border-indigo-500 mb-4" placeholder="⚽ 1팀 [레드]&#10;오한결(80)* / 박성복(81) / ..."></textarea>
+            <div class="flex gap-2">
+                <button type="button" onclick="closeLineupModal()" class="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold rounded">취소</button>
+                <button type="button" onclick="processLineupAttendance()" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded shadow">출석 일괄 반영하기</button>
+            </div>
         </div>
     </div>
 
@@ -760,6 +777,68 @@
             });
         }
 
+        // 라인업 모달 관련 함수
+        function openLineupModal() { document.getElementById('lineup-textarea').value = ''; document.getElementById('lineup-modal').classList.remove('hidden'); }
+        function closeLineupModal() { document.getElementById('lineup-modal').classList.add('hidden'); }
+
+        async function processLineupAttendance() {
+            const rawText = document.getElementById('lineup-textarea').value;
+            if (!rawText.trim()) { alert('라인업 텍스트를 입력해주세요.'); return; }
+
+            let tokens = rawText.split(/[\n,\/]+/);
+            let matchedNames = [];
+            let skippedSummary = [];
+
+            tokens.forEach(token => {
+                let clean = token.trim();
+                if (!clean || clean.startsWith('⚽') || clean.includes('팀') || clean.includes('레드') || clean.includes('블랙') || clean.includes('그린')) return;
+
+                // 용병 또는 지인 체크
+                if (clean.includes('용병') || clean.includes('지인') || clean.startsWith('용병-') || clean.startsWith('지인-')) {
+                    skippedSummary.push(clean + ' (용병/지인 제외)');
+                    return;
+                }
+
+                // 출생년도 괄호 및 특수문자(*, -, 공백) 제거
+                let namePart = clean.replace(/\([^)]*\)/g, '').replace(/\（[^）]*\）/g, '').replace(/[\*\-\s]/g, '');
+                if (!namePart) return;
+
+                let found = membersData.find(m => m.name === namePart && !m.isWithdrawn);
+                if (found) {
+                    if (!matchedNames.includes(found.name)) {
+                        matchedNames.push(found.name);
+                    }
+                } else {
+                    skippedSummary.push(clean + ' (등록되지 않음)');
+                }
+            });
+
+            if (matchedNames.length === 0) {
+                alert('인식된 정회원 이름이 없습니다. 텍스트 형식을 확인해주세요.');
+                return;
+            }
+
+            let confirmMsg = `[당일 라인업 자동 출석 확인]\n\n총 출석 반영될 정회원 (${matchedNames.length명}):\n${matchedNames.join(', ')}\n\n`;
+            if (skippedSummary.length > 0) {
+                confirmMsg += `제외/미인식 (${skippedSummary.length}건):\n${skippedSummary.join(', ')}\n\n`;
+            }
+            confirmMsg += `이 멤버들에게 출석(+1)을 반영하시겠습니까?`;
+
+            if (!confirm(confirmMsg)) return;
+
+            for (let name of matchedNames) {
+                let m = membersData.find(item => item.name === name);
+                if (m) {
+                    await supabaseClient.from('members').update({ attended_matches: m.attendedMatches + 1 }).eq('name', m.name);
+                }
+            }
+
+            await fetchMembersFromSupabase();
+            closeLineupModal();
+            alert(`총 ${matchedNames.length명}의 정회원 출석이 성공적으로 반영되었습니다!`);
+            loadAdminDashboard();
+        }
+
         function openAddMemberModal() { document.getElementById('add-member-form').reset(); document.getElementById('add-member-modal').classList.remove('hidden'); }
         function closeAddMemberModal() { document.getElementById('add-member-modal').classList.add('hidden'); }
 
@@ -1083,7 +1162,7 @@
                     maintainAspectRatio: false,
                     layout: {
                         padding: {
-                            top: 20 // 상단 여백을 주어 가장 높은 막대의 숫자가 잘리지 않도록 함
+                            top: 20
                         }
                     },
                     scales: {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 풋살팀 통합 시스템 v1.8</title>
+    <title>TenFC 풋살팀 통합 시스템 v1.9</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
@@ -17,7 +17,7 @@
     <div id="login-container" class="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
         <div class="text-center mb-6">
             <h1 class="text-3xl font-bold text-emerald-400">⚽ TenFC 풋살팀</h1>
-            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v1.8</span></p>
+            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v1.9</span></p>
         </div>
         <form id="login-form" class="space-y-4">
             <div>
@@ -559,12 +559,12 @@
             const percentile = Math.round((rank / sortedMembers.length) * 100);
             document.getElementById('stat-percentile').innerHTML = `공동 ${rank}위<br><span class="text-xs text-slate-400 font-normal">(상위 ${percentile}%)</span>`;
 
-            // 라이벌 그룹 계산
+            // 라이벌 그룹 및 위아래 등급 계산
             const sameGroup = sortedMembers.filter(m => (scoreMap[m.rating] || 0) === myScore && m.name !== user.name);
             const aboveGroup = sortedMembers.filter(m => (scoreMap[m.rating] || 0) > myScore);
             const belowGroup = sortedMembers.filter(m => (scoreMap[m.rating] || 0) < myScore);
 
-            // 한 단계 위 등급 계산 (내 점수보다 높은 점수 중 가장 낮은 점수를 가진 그룹)
+            // 한 단계 위 등급
             if (aboveGroup.length > 0) {
                 const highestAboveScore = scoreMap[aboveGroup[aboveGroup.length - 1].rating];
                 const aboveTierGroup = aboveGroup.filter(m => scoreMap[m.rating] === highestAboveScore);
@@ -577,13 +577,14 @@
                 document.getElementById('rank-above').innerText = "최상위 등급입니다 🏆";
             }
             
+            // 내 등급 그룹
             if (sameGroup.length > 0) {
-                document.getElementById('rank-same').innerText = `${sameGroup[0].name} 외 ${sameGroup.length - 1}명 (${user.rating} 동급)`;
+                document.getElementById('rank-same').innerText = `${sameGroup[0].name} 외 ${sameGroup.length}명 (${user.rating} 동급)`;
             } else {
                 document.getElementById('rank-same').innerText = `단독 ${user.rating} 등급`;
             }
 
-            // 한 단계 아래 등급 계산 (내 점수보다 낮은 점수 중 가장 높은 점수를 가진 그룹)
+            // 한 단계 아래 등급
             if (belowGroup.length > 0) {
                 const lowestBelowScore = scoreMap[belowGroup[0].rating];
                 const belowTierGroup = belowGroup.filter(m => scoreMap[m.rating] === lowestBelowScore);

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 풋살팀 통합 시스템 v3.2</title>
+    <title>TenFC 풋살팀 통합 시스템 v3.3</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
@@ -19,7 +19,7 @@
     <div id="login-container" class="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
         <div class="text-center mb-6">
             <h1 class="text-3xl font-bold text-emerald-400">⚽ TenFC 풋살팀</h1>
-            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v3.2</span></p>
+            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v3.3</span></p>
         </div>
         <form id="login-form" class="space-y-4">
             <div>
@@ -419,12 +419,12 @@
 
         const ratingHierarchy = ["F-", "F", "E-", "E", "E+", "D-", "D", "D+", "C-", "C", "C+", "B-", "B", "B+", "A-", "A", "A+"];
         const scoreMap = { 
-            "A+": 10, "A": 9.5, "A-": 9.0, 
+            "A+": 10.5, "A": 10.0, "A-": 9.5, 
             "B+": 8.5,  "B": 8.0,  "B-": 7.5, 
             "C+": 6.5,  "C": 6.0,  "C-": 5.5, 
-            "D+": 5.0,  "D": 4.5,  "D-": 4.0, 
-            "E+": 3.5,  "E": 3.0,  "E-": 2.5, 
-            "F+": 2.0,"F": 1.5,   "F-": 1.0 
+            "D+": 5.5,  "D": 4.0,  "D-": 3.5, 
+            "E+": 2.5,  "E": 2.0,  "E-": 1.5, 
+            "F": 1.0,   "F-": 0.5 
         };
 
         const blindRatings = ["D-", "E+", "E", "E-", "F", "F-"];
@@ -437,6 +437,21 @@
         let gradeCountChartInstance = null;
         let currentSortField = 'birth';
         let currentSortOrder = 'asc';
+
+        // 날짜별 히스토리 업데이트 헬퍼 함수 (당일 수정 시 덮어쓰기, 날짜 변경 시 신규 추가)
+        function getUpdatedHistory(history, newScore) {
+            let historyArr = Array.isArray(history) ? [...history] : [];
+            const now = new Date();
+            const todayStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
+            
+            const existingIdx = historyArr.findIndex(h => h.date === todayStr);
+            if (existingIdx !== -1) {
+                historyArr[existingIdx].score = newScore;
+            } else {
+                historyArr.push({ date: todayStr, score: newScore });
+            }
+            return historyArr;
+        }
 
         async function fetchMembersFromSupabase() {
             try {
@@ -792,14 +807,11 @@
 
             tokens.forEach(token => {
                 let clean = token.trim();
-                // 팀 헤더 행 제외
                 if (!clean || clean.startsWith('⚽') || clean.includes('팀') || clean.includes('레드') || clean.includes('블랙') || clean.includes('그린')) return;
 
-                // 괄호, 별표, 공백 제거하여 순수 추출명 생성
                 let pureName = clean.replace(/\([^)]*\)/g, '').replace(/\（[^）]*\）/g, '').replace(/[\*\-\s]/g, '');
                 if (!pureName) return;
 
-                // DB 검색: 1) 원본 텍스트 매칭 2) '용병-'/'지인-' 접두사 제거 매칭 3) pureName 매칭
                 let found = membersData.find(m => !m.isWithdrawn && (
                     m.name === clean || 
                     m.name === pureName || 
@@ -870,6 +882,9 @@
             const rating = document.getElementById('add-rating').value.trim().toUpperCase() || "C";
             const initialScore = scoreMap[rating] !== undefined ? scoreMap[rating] : 6.0;
 
+            const now = new Date();
+            const todayStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
+
             const newMember = {
                 name: document.getElementById('add-name').value.trim(),
                 password: document.getElementById('add-pw').value.trim(),
@@ -884,7 +899,7 @@
                 role: document.getElementById('add-role').value,
                 is_withdrawn: false,
                 attended_matches: 0,
-                history: [{ date: "등록", score: initialScore }],
+                history: [{ date: todayStr, score: initialScore }],
                 feedback: document.getElementById('add-feedback').value.trim() || "신규 등록된 멤버입니다."
             };
 
@@ -1003,16 +1018,11 @@
             if (!confirm(`[평점 일괄 조정 확인]\n\n${previewText}\n선택한 멤버들의 평점을 변경하시겠습니까?`)) return;
 
             for (let u of updates) {
-                let historyArr = Array.isArray(u.member.history) ? [...u.member.history] : [];
-                if (historyArr.length > 0 && historyArr[historyArr.length - 1].date === "최신") {
-                    historyArr[historyArr.length - 1].score = u.newScore;
-                } else {
-                    historyArr.push({ date: "최신", score: u.newScore });
-                }
+                let updatedHistory = getUpdatedHistory(u.member.history, u.newScore);
 
                 await supabaseClient.from('members').update({ 
                     rating: u.newRating,
-                    history: historyArr 
+                    history: updatedHistory 
                 }).eq('name', u.member.name);
             }
 
@@ -1070,12 +1080,7 @@
             const newRating = document.getElementById('edit-rating').value.trim().toUpperCase();
             const newScore = scoreMap[newRating] !== undefined ? scoreMap[newRating] : 6.0;
 
-            let historyArr = m && Array.isArray(m.history) ? [...m.history] : [];
-            if (historyArr.length > 0 && historyArr[historyArr.length - 1].date === "최신") {
-                historyArr[historyArr.length - 1].score = newScore;
-            } else {
-                historyArr.push({ date: "최신", score: newScore });
-            }
+            let updatedHistory = getUpdatedHistory(m.history, newScore);
 
             const updatedFields = {
                 rating: newRating,
@@ -1089,7 +1094,7 @@
                 full_phone: document.getElementById('edit-phone').value.trim(),
                 kakao_id: document.getElementById('edit-kakao').value.trim(),
                 feedback: document.getElementById('edit-feedback').value.trim(),
-                history: historyArr
+                history: updatedHistory
             };
 
             async function saveToSupabase(photoUrl) {

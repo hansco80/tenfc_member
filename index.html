@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 풋살팀 통합 시스템 v1.0</title>
+    <title>TenFC 풋살팀 통합 시스템 v1.2</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
@@ -17,7 +17,7 @@
     <div id="login-container" class="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
         <div class="text-center mb-6">
             <h1 class="text-3xl font-bold text-emerald-400">⚽ TenFC 풋살팀</h1>
-            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v1.0</span></p>
+            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v1.2</span></p>
         </div>
         <form id="login-form" class="space-y-4">
             <div>
@@ -53,7 +53,7 @@
         <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <div>
                 <h2 id="user-welcome" class="text-2xl font-bold text-white"></h2>
-                <p class="text-xs text-slate-400 mt-1">팀 총 진행 매치: <span id="team-total-matches-display" class="font-bold text-amber-400">20회</span> | 시스템 버전: <span class="text-emerald-400 font-bold">v1.0</span></p>
+                <p class="text-xs text-slate-400 mt-1">팀 총 진행 매치: <span id="team-total-matches-display" class="font-bold text-amber-400">20회</span> | 시스템 버전: <span class="text-emerald-400 font-bold">v1.2</span></p>
             </div>
             <div class="flex gap-2">
                 <button onclick="openPwModal()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">비밀번호 변경</button>
@@ -137,7 +137,7 @@
         <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <div>
                 <h2 id="admin-title" class="text-2xl font-bold text-emerald-400">🛡️ 관리자 대시보드</h2>
-                <p class="text-xs text-slate-400 mt-1">팀 전체 총 매치: <span id="admin-team-matches" class="font-bold text-amber-400">20회</span> | 시스템 버전: <span class="text-emerald-400 font-bold">v1.0</span></p>
+                <p class="text-xs text-slate-400 mt-1">팀 전체 총 매치: <span id="admin-team-matches" class="font-bold text-amber-400">20회</span> | 시스템 버전: <span class="text-emerald-400 font-bold">v1.2</span></p>
             </div>
             <div class="flex gap-2">
                 <button onclick="switchToMyPage()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">내 마이페이지 보기</button>
@@ -720,9 +720,12 @@
 
         async function batchAdjustRating(direction) {
             const checkedBoxes = document.querySelectorAll('.member-checkbox:checked');
-            if (checkedBoxes.length === 0) { alert('멤버를 체크해주세요.'); return; }
+            if (checkedBoxes.length === 0) { alert('평점을 조정할 멤버를 체크해주세요.'); return; }
             
-            for (let cb of checkedBoxes) {
+            let previewText = "";
+            let updates = [];
+
+            checkedBoxes.forEach(cb => {
                 const m = membersData.find(item => item.name === cb.value);
                 if (m) {
                     let idx = ratingHierarchy.indexOf(m.rating);
@@ -731,25 +734,39 @@
                     else if (direction === 'down' && idx > 0) idx--;
                     const newRating = ratingHierarchy[idx];
                     const newScore = scoreMap[newRating] || 6.0;
-                    
-                    let historyArr = Array.isArray(m.history) ? [...m.history] : [];
-                    historyArr.push({ date: "최신", score: newScore });
 
-                    await supabaseClient.from('members').update({ 
-                        rating: newRating,
-                        history: historyArr 
-                    }).eq('name', m.name);
+                    updates.push({ member: m, newRating: newRating, newScore: newScore });
+                    previewText += `• ${m.name}: [${m.rating}] ➡️ [${newRating}]\n`;
                 }
+            });
+
+            if (!confirm(`[평점 일괄 조정 확인]\n\n${previewText}\n선택한 멤버들의 평점을 변경하시겠습니까?`)) return;
+
+            for (let u of updates) {
+                let historyArr = Array.isArray(u.member.history) ? [...u.member.history] : [];
+                if (historyArr.length > 0 && historyArr[historyArr.length - 1].date === "최신") {
+                    historyArr[historyArr.length - 1].score = u.newScore;
+                } else {
+                    historyArr.push({ date: "최신", score: u.newScore });
+                }
+
+                await supabaseClient.from('members').update({ 
+                    rating: newRating = u.newRating,
+                    history: historyArr 
+                }).eq('name', u.member.name);
             }
+
             await fetchMembersFromSupabase();
-            alert('일괄 조정 완료!');
+            alert('일괄 조정이 완료되었습니다!');
             loadAdminDashboard();
         }
 
         async function applyBatchAttendance() {
             const checkedBoxes = document.querySelectorAll('.member-checkbox:checked');
-            if (checkedBoxes.length === 0) { alert('멤버를 체크해주세요.'); return; }
+            if (checkedBoxes.length === 0) { alert('출석을 반영할 멤버를 체크해주세요.'); return; }
             
+            if (!confirm(`선택한 멤버들에게 출석을 반영하시겠습니까?`)) return;
+
             for (let cb of checkedBoxes) {
                 const m = membersData.find(item => item.name === cb.value);
                 if (m) {
@@ -758,7 +775,7 @@
             }
             teamTotalMatches += 1;
             await fetchMembersFromSupabase();
-            alert('출석 반영 완료!');
+            alert('출석이 반영되었습니다!');
             loadAdminDashboard();
         }
 
@@ -795,7 +812,11 @@
             const newScore = scoreMap[newRating] !== undefined ? scoreMap[newRating] : 6.0;
 
             let historyArr = m && Array.isArray(m.history) ? [...m.history] : [];
-            historyArr.push({ date: "최신", score: newScore });
+            if (historyArr.length > 0 && historyArr[historyArr.length - 1].date === "최신") {
+                historyArr[historyArr.length - 1].score = newScore;
+            } else {
+                historyArr.push({ date: "최신", score: newScore });
+            }
 
             const updatedFields = {
                 rating: newRating,

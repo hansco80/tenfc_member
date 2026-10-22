@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 풋살팀 통합 시스템 v3.3</title>
+    <title>TenFC 풋살팀 통합 시스템 v2.0</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
@@ -19,7 +19,7 @@
     <div id="login-container" class="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
         <div class="text-center mb-6">
             <h1 class="text-3xl font-bold text-emerald-400">⚽ TenFC 풋살팀</h1>
-            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v3.3</span></p>
+            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v2.0</span></p>
         </div>
         <form id="login-form" class="space-y-4">
             <div>
@@ -417,14 +417,14 @@
         const SUPABASE_KEY = 'sb_publishable_mXkGsaxwwfnnAR3lpE8T1A_n0kiPdZj';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        const ratingHierarchy = ["F-", "F", "E-", "E", "E+", "D-", "D", "D+", "C-", "C", "C+", "B-", "B", "B+", "A-", "A", "A+"];
+        const ratingHierarchy = ["F-", "F", "F+", "E-", "E", "E+", "D-", "D", "D+", "C-", "C", "C+", "B-", "B", "B+", "A-", "A", "A+"];
         const scoreMap = { 
             "A+": 10.5, "A": 10.0, "A-": 9.5, 
             "B+": 8.5,  "B": 8.0,  "B-": 7.5, 
             "C+": 6.5,  "C": 6.0,  "C-": 5.5, 
             "D+": 5.5,  "D": 4.0,  "D-": 3.5, 
             "E+": 2.5,  "E": 2.0,  "E-": 1.5, 
-            "F": 1.0,   "F-": 0.5 
+            "F+": 1.2,  "F": 1.0,   "F-": 0.5 
         };
 
         const blindRatings = ["D-", "E+", "E", "E-", "F", "F-"];
@@ -438,11 +438,11 @@
         let currentSortField = 'birth';
         let currentSortOrder = 'asc';
 
-        // 날짜별 히스토리 업데이트 헬퍼 함수 (당일 수정 시 덮어쓰기, 날짜 변경 시 신규 추가)
+        // 날짜별 히스토리 업데이트 헬퍼 함수 (MM.DD 형식 적용)
         function getUpdatedHistory(history, newScore) {
             let historyArr = Array.isArray(history) ? [...history] : [];
             const now = new Date();
-            const todayStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
+            const todayStr = `${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
             
             const existingIdx = historyArr.findIndex(h => h.date === todayStr);
             if (existingIdx !== -1) {
@@ -495,6 +495,20 @@
             if (!success) {
                 alert('멤버 데이터를 불러오지 못했습니다. 네트워크 상태나 Supabase 연결을 확인해주세요.');
                 return;
+            }
+
+            // 새 창(탭)으로 마이페이지를 열 때 ?view=이름 파라미터 처리
+            const urlParams = new URLSearchParams(window.location.search);
+            const viewUserName = urlParams.get('view');
+            if (viewUserName) {
+                const foundUser = membersData.find(m => m.name === viewUserName);
+                if (foundUser) {
+                    currentUser = foundUser;
+                    document.getElementById('login-container').classList.add('hidden');
+                    document.getElementById('dashboard-container').classList.remove('hidden');
+                    loadMemberDashboard(currentUser);
+                    return;
+                }
             }
 
             const savedUserName = localStorage.getItem('tenfc_logged_user');
@@ -695,6 +709,13 @@
             loadMemberDashboard(currentUser);
         }
 
+        // 관리자 대시보드에서 멤버 이름 클릭 시 새 창에서 마이페이지 열기
+        function openMemberPageInNewTab(name) {
+            const currentUrl = window.location.href.split('?')[0];
+            const targetUrl = `${currentUrl}?view=${encodeURIComponent(name)}`;
+            window.open(targetUrl, '_blank');
+        }
+
         function getMemberGroupRank(m) {
             if (m.isWithdrawn) return 4;
             if (m.role === 'guest') return 2;
@@ -774,7 +795,7 @@
                         <div class="w-7 h-7 rounded-full overflow-hidden bg-slate-700 flex-shrink-0 flex items-center justify-center text-xs">
                             ${m.photo && m.photo.trim() !== "" ? `<img src="${m.photo}" class="w-full h-full object-cover">` : '⚽'}
                         </div>
-                        <span>${m.name} ${roleBadge}</span>
+                        <span onclick="openMemberPageInNewTab('${m.name}')" class="cursor-pointer hover:underline text-emerald-400 font-bold" title="새 창에서 마이페이지 보기">${m.name}</span> ${roleBadge}
                     </td>
                     <td class="p-3 text-slate-300">${calculateInternationalAge(m.birth)}</td>
                     <td class="p-3 text-slate-300">${m.position}</td>
@@ -883,7 +904,7 @@
             const initialScore = scoreMap[rating] !== undefined ? scoreMap[rating] : 6.0;
 
             const now = new Date();
-            const todayStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
+            const todayStr = `${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
 
             const newMember = {
                 name: document.getElementById('add-name').value.trim(),

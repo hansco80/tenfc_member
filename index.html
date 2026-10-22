@@ -291,4 +291,715 @@
                 </div>
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">주소지</label>
-                    <input type="text" id="edit-address" class="
+                    <input type="text" id="edit-address" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">개인 출석 횟수</label>
+                        <input type="number" id="edit-attended" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">회원구분</label>
+                        <select id="edit-role-type" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
+                            <option value="member">정회원</option>
+                            <option value="sub_admin">부관리자</option>
+                            <option value="admin">주관리자</option>
+                            <option value="guest">용병</option>
+                            <option value="acquaintance">지인</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">탈퇴 여부 처리</label>
+                    <label class="flex items-center gap-2 cursor-pointer bg-slate-900 p-2.5 rounded border border-slate-700">
+                        <input type="checkbox" id="edit-withdrawn" class="w-4 h-4 text-rose-600 rounded">
+                        <span class="text-xs text-rose-400 font-semibold">탈퇴 멤버로 처리 (로그인 제한)</span>
+                    </label>
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">프로필 사진 첨부</label>
+                    <input type="file" id="edit-photo-file" accept="image/*" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-slate-300 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">연락처</label>
+                    <input type="text" id="edit-phone" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">카카오톡 닉네임</label>
+                    <input type="text" id="edit-kakao" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">감코진 피드백 코멘트</label>
+                    <textarea id="edit-feedback" rows="3" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white"></textarea>
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closeAdminModal()" class="flex-1 py-2 bg-slate-700 text-slate-300 text-xs rounded">취소</button>
+                    <button type="submit" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded">저장하기</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 비밀번호 변경 모달 -->
+    <div id="pw-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-slate-800 w-full max-w-sm p-6 rounded-2xl border border-slate-700 shadow-2xl">
+            <h3 class="text-lg font-bold text-white mb-4">비밀번호 변경</h3>
+            <form id="pw-form" class="space-y-3">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">현재 비밀번호</label>
+                    <input type="password" id="current-pw" required class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">새 비밀번호</label>
+                    <input type="password" id="new-pw" required class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">새 비밀번호 확인</label>
+                    <input type="password" id="new-pw-confirm" required class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closePwModal()" class="flex-1 py-2 bg-slate-700 text-slate-300 text-xs rounded">취소</button>
+                    <button type="submit" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded">변경 완료</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://bxuiwomkpgqsbyaagmlp.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_mXkGsaxwwfnnAR3lpE8T1A_n0kiPdZj';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const ratingHierarchy = ["F-", "F", "E-", "E", "E+", "D-", "D", "D+", "C-", "C", "C+", "B-", "B", "B+", "A-", "A", "A+"];
+        const scoreMap = { 
+            "A+": 10.5, "A": 10.0, "A-": 9.5, 
+            "B+": 8.5,  "B": 8.0,  "B-": 7.5, 
+            "C+": 6.5,  "C": 6.0,  "C-": 5.5, 
+            "D+": 5.5,  "D": 4.0,  "D-": 3.5, 
+            "E+": 2.5,  "E": 2.0,  "E-": 1.5, 
+            "F": 1.0,   "F-": 0.5 
+        };
+
+        let teamTotalMatches = 0;
+        let membersData = [];
+        let currentUser = null;
+        let myChart = null;
+        let currentSortField = 'birth';
+        let currentSortOrder = 'asc';
+
+        async function fetchMembersFromSupabase() {
+            try {
+                const { data, error } = await supabaseClient.from('members').select('*');
+                if (error) { console.error("Supabase 조회 에러:", error); return; }
+                if (data && data.length > 0) {
+                    membersData = data.map(m => ({
+                        id: m.id,
+                        name: m.name,
+                        password: m.password,
+                        fullPhone: m.full_phone || "",
+                        kakaoId: m.kakao_id || "",
+                        photo: m.photo || "",
+                        birth: m.birth || "",
+                        address: m.address || "",
+                        position: m.position || "",
+                        rating: m.rating || "C",
+                        joinDate: m.join_date || "",
+                        role: m.role || "member",
+                        isWithdrawn: m.is_withdrawn || false,
+                        attendedMatches: m.attended_matches || 0,
+                        history: m.history ? (typeof m.history === 'string' ? JSON.parse(m.history) : m.history) : [],
+                        feedback: m.feedback || ""
+                    }));
+
+                    // DB에 저장된 멤버들의 출석 횟수 중 최댓값을 팀 총 진행 매치 수(teamTotalMatches)로 자동 설정 (단, 최소 0)
+                    let maxAtt = Math.max(...membersData.map(m => m.attendedMatches));
+                    teamTotalMatches = maxAtt > 0 ? maxAtt : 0;
+                } else {
+                    teamTotalMatches = 0;
+                }
+            } catch (err) { console.error("데이터 로딩 실패:", err); }
+        }
+
+        async function initApp() {
+            await fetchMembersFromSupabase();
+            const savedUserName = localStorage.getItem('tenfc_logged_user');
+            if (savedUserName) {
+                const foundUser = membersData.find(m => m.name === savedUserName);
+                if (foundUser && !foundUser.isWithdrawn) {
+                    currentUser = foundUser;
+                    document.getElementById('login-container').classList.add('hidden');
+                    if (currentUser.role === 'admin' || currentUser.role === 'sub_admin') {
+                        document.getElementById('admin-container').classList.remove('hidden');
+                        loadAdminDashboard();
+                    } else {
+                        document.getElementById('dashboard-container').classList.remove('hidden');
+                        loadMemberDashboard(currentUser);
+                    }
+                } else {
+                    localStorage.removeItem('tenfc_logged_user');
+                }
+            }
+        }
+
+        initApp();
+
+        function changeSort(field) {
+            if (currentSortField === field) {
+                currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortField = field;
+                currentSortOrder = 'asc';
+            }
+            loadAdminDashboard();
+        }
+
+        function calculateInternationalAge(birthStr) {
+            if (!birthStr) return "-";
+            const parts = birthStr.split('.');
+            if (parts.length < 3) return birthStr;
+            const bYear = parseInt(parts[0], 10);
+            const bMonth = parseInt(parts[1], 10);
+            const bDay = parseInt(parts[2], 10);
+            const today = new Date();
+            let age = today.getFullYear() - bYear;
+            const m = (today.getMonth() + 1) - bMonth;
+            if (m < 0 || (m === 0 && today.getDate() < bDay)) age--;
+            return `${birthStr} (만 ${age}세)`;
+        }
+
+        document.getElementById('login-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const inputName = document.getElementById('name-input').value.trim();
+            const inputPw = document.getElementById('phone-input').value.trim();
+
+            const user = membersData.find(m => m.name === inputName && m.password === inputPw);
+
+            if (user) {
+                if (user.isWithdrawn) {
+                    document.getElementById('withdrawn-msg').innerText = `${user.name} 님은 현재 탈퇴 처리된 멤버입니다.`;
+                    document.getElementById('withdrawn-modal').classList.remove('hidden');
+                    return;
+                }
+
+                currentUser = user;
+                localStorage.setItem('tenfc_logged_user', user.name); 
+                document.getElementById('login-container').classList.add('hidden');
+                
+                if (user.role === 'admin' || user.role === 'sub_admin') {
+                    document.getElementById('admin-container').classList.remove('hidden');
+                    loadAdminDashboard();
+                } else {
+                    document.getElementById('dashboard-container').classList.remove('hidden');
+                    loadMemberDashboard(user);
+                }
+            } else {
+                document.getElementById('login-error').classList.remove('hidden');
+            }
+        });
+
+        function closeWithdrawnModal() { document.getElementById('withdrawn-modal').classList.add('hidden'); }
+
+        function loadMemberDashboard(user) {
+            document.getElementById('user-welcome').innerText = `${user.name} 님`;
+            document.getElementById('stat-rating').innerText = user.rating;
+            document.getElementById('team-total-matches-display').innerText = `${teamTotalMatches}회`;
+            
+            const photoImg = document.getElementById('user-photo');
+            const photoFallback = document.getElementById('user-photo-fallback');
+            if (user.photo && user.photo.trim() !== "") {
+                photoImg.src = user.photo;
+                photoImg.classList.remove('hidden');
+                photoFallback.classList.add('hidden');
+            } else {
+                photoImg.classList.add('hidden');
+                photoFallback.classList.remove('hidden');
+            }
+
+            document.getElementById('prof-birth').innerText = calculateInternationalAge(user.birth);
+            document.getElementById('prof-position').innerText = user.position;
+            document.getElementById('prof-phone').innerText = user.fullPhone;
+            document.getElementById('prof-kakao').innerText = user.kakaoId || "-";
+            document.getElementById('prof-joindate').innerText = user.joinDate || "-";
+            document.getElementById('prof-address').innerText = user.address || "-";
+            
+            let roleText = '정회원';
+            if (user.role === 'admin' || user.role === 'sub_admin') roleText = '운영진';
+            else if (user.role === 'guest') roleText = '용병';
+            else if (user.role === 'acquaintance') roleText = '지인';
+            document.getElementById('prof-role').innerText = roleText;
+
+            const attRate = teamTotalMatches > 0 ? Math.round((user.attendedMatches / teamTotalMatches) * 100) : 0;
+            document.getElementById('stat-attendance').innerText = `${user.attendedMatches}회 / ${teamTotalMatches}회`;
+            document.getElementById('stat-att-rate').innerText = `${attRate}%`;
+            document.getElementById('user-feedback').innerText = user.feedback ? `"${user.feedback}"` : "등록된 피드백이 없습니다.";
+
+            if (currentUser.role === 'admin' || currentUser.role === 'sub_admin') {
+                document.getElementById('admin-switch-bar').classList.remove('hidden');
+                document.getElementById('admin-badge-text').innerText = currentUser.role === 'admin' ? '🛡️ 주관리자 권한 보유 계정' : '👁️ 부관리자 권한 보유 계정';
+            } else {
+                document.getElementById('admin-switch-bar').classList.add('hidden');
+            }
+
+            const myScore = scoreMap[user.rating] || 6.0;
+            const sortedMembers = [...membersData].filter(m => !m.isWithdrawn).sort((a, b) => (scoreMap[b.rating] || 0) - (scoreMap[a.rating] || 0));
+
+            let rank = 1;
+            for (let i = 0; i < sortedMembers.length; i++) {
+                if ((scoreMap[sortedMembers[i].rating] || 0) > myScore) rank++;
+            }
+            const percentile = Math.round((rank / sortedMembers.length) * 100);
+            document.getElementById('stat-percentile').innerHTML = `공동 ${rank}위<br><span class="text-xs text-slate-400 font-normal">(상위 ${percentile}%)</span>`;
+
+            const sameGroup = sortedMembers.filter(m => (scoreMap[m.rating] || 0) === myScore && m.name !== user.name);
+            const aboveGroup = sortedMembers.filter(m => (scoreMap[m.rating] || 0) > myScore);
+            const belowGroup = sortedMembers.filter(m => (scoreMap[m.rating] || 0) < myScore);
+
+            document.getElementById('rank-above').innerText = aboveGroup.length > 0 ? `${aboveGroup[aboveGroup.length-1].name} (${aboveGroup[aboveGroup.length-1].rating})` : "최상위 등급입니다 🏆";
+            
+            if (sameGroup.length > 0) {
+                document.getElementById('rank-same').innerText = `${sameGroup[0].name} 외 ${sameGroup.length - 1}명 (${user.rating} 동급)`;
+            } else {
+                document.getElementById('rank-same').innerText = `단독 ${user.rating} 등급`;
+            }
+
+            document.getElementById('rank-below').innerText = belowGroup.length > 0 ? `${belowGroup[0].name} (${belowGroup[0].rating})` : "하위 그룹 없음";
+
+            renderChart(user.history || []);
+        }
+
+        function switchToAdmin() {
+            document.getElementById('dashboard-container').classList.add('hidden');
+            document.getElementById('admin-container').classList.remove('hidden');
+            loadAdminDashboard();
+        }
+
+        function switchToMyPage() {
+            document.getElementById('admin-container').classList.add('hidden');
+            document.getElementById('dashboard-container').classList.remove('hidden');
+            loadMemberDashboard(currentUser);
+        }
+
+        function getMemberGroupRank(m) {
+            if (m.isWithdrawn) return 4;
+            if (m.role === 'guest') return 2;
+            if (m.role === 'acquaintance') return 3;
+            return 1; // 정회원 및 운영진
+        }
+
+        function loadAdminDashboard() {
+            document.getElementById('admin-team-matches').innerText = `${teamTotalMatches}회`;
+            const isAdmin = currentUser.role === 'admin';
+            document.getElementById('admin-title').innerText = isAdmin ? '🛡️ 주관리자 대시보드' : '👁️ 부관리자 대시보드 (조회 전용)';
+            
+            const subAdminBtn = document.getElementById('sub-admin-manage-btn');
+            if (subAdminBtn) subAdminBtn.style.display = isAdmin ? 'inline-block' : 'none';
+
+            if (isAdmin) {
+                document.getElementById('admin-action-bar').classList.remove('hidden');
+                document.getElementById('th-checkbox').classList.remove('hidden');
+                document.getElementById('th-action').classList.remove('hidden');
+            } else {
+                document.getElementById('admin-action-bar').classList.add('hidden');
+                document.getElementById('th-checkbox').classList.add('hidden');
+                document.getElementById('th-action').classList.add('hidden');
+            }
+
+            let displayList = [...membersData];
+            displayList.sort((a, b) => {
+                let groupA = getMemberGroupRank(a);
+                let groupB = getMemberGroupRank(b);
+                if (groupA !== groupB) return groupA - groupB;
+
+                let valA, valB;
+                if (currentSortField === 'name') {
+                    valA = a.name; valB = b.name;
+                    return currentSortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                } else if (currentSortField === 'birth') {
+                    let bA = a.birth ? a.birth.trim() : "";
+                    let bB = b.birth ? b.birth.trim() : "";
+                    if (bA === "" && bB !== "") return 1;
+                    if (bA !== "" && bB === "") return -1;
+                    if (bA === "" && bB === "") return 0;
+                    return currentSortOrder === 'asc' ? bA.localeCompare(bB) : bB.localeCompare(bA);
+                } else if (currentSortField === 'rating') {
+                    valA = scoreMap[a.rating] || 0; valB = scoreMap[b.rating] || 0;
+                    return currentSortOrder === 'asc' ? valB - valA : valA - valB;
+                } else if (currentSortField === 'attendance') {
+                    valA = teamTotalMatches > 0 ? (a.attendedMatches / teamTotalMatches) : 0;
+                    valB = teamTotalMatches > 0 ? (b.attendedMatches / teamTotalMatches) : 0;
+                    return currentSortOrder === 'asc' ? valA - valB : valB - valA;
+                }
+            });
+
+            const tbody = document.getElementById('admin-member-list');
+            tbody.innerHTML = '';
+
+            displayList.forEach(m => {
+                const attRate = teamTotalMatches > 0 ? Math.round((m.attendedMatches / teamTotalMatches) * 100) : 0;
+                let roleBadge = '';
+                if (m.isWithdrawn) roleBadge = '<span class="text-rose-400 text-[10px] ml-1 font-bold">(탈퇴)</span>';
+                else if (m.role === 'admin' || m.role === 'sub_admin') roleBadge = '<span class="text-emerald-400 text-[10px] ml-1">(운영진)</span>';
+                else if (m.role === 'guest') roleBadge = '<span class="text-amber-400 text-[10px] ml-1">(용병)</span>';
+                else if (m.role === 'acquaintance') roleBadge = '<span class="text-purple-400 text-[10px] ml-1">(지인)</span>';
+
+                const numericScore = scoreMap[m.rating] !== undefined ? scoreMap[m.rating].toFixed(1) : '-';
+                const ratingDisplay = `${m.rating} (${numericScore}점)`;
+
+                const tr = document.createElement('tr');
+                tr.className = `hover:bg-slate-700/35 transition ${m.isWithdrawn ? 'opacity-60 bg-rose-950/10' : ''}`;
+                
+                let rowHtml = '';
+                if (isAdmin) rowHtml += `<td class="p-3 text-center"><input type="checkbox" class="member-checkbox" value="${m.name}"></td>`;
+                
+                rowHtml += `
+                    <td class="p-3 font-bold text-white flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-full overflow-hidden bg-slate-700 flex-shrink-0 flex items-center justify-center text-xs">
+                            ${m.photo && m.photo.trim() !== "" ? `<img src="${m.photo}" class="w-full h-full object-cover">` : '⚽'}
+                        </div>
+                        <span>${m.name} ${roleBadge}</span>
+                    </td>
+                    <td class="p-3 text-slate-300">${calculateInternationalAge(m.birth)}</td>
+                    <td class="p-3 text-slate-300">${m.position}</td>
+                    <td class="p-3 font-extrabold text-emerald-400">${ratingDisplay}</td>
+                    <td class="p-3 text-slate-300">${m.attendedMatches}회 / ${teamTotalMatches}회 <span class="text-indigo-400 font-bold">(${attRate}%)</span></td>
+                    <td class="p-3 text-slate-300">${m.fullPhone}<br><span class="text-amber-300">${m.kakaoId || '-'}</span></td>
+                `;
+
+                if (isAdmin) {
+                    rowHtml += `<td class="p-3 text-center"><button onclick="openAdminEdit('${m.name}')" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold">수정</button></td>`;
+                }
+
+                tr.innerHTML = rowHtml;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function openAddMemberModal() { document.getElementById('add-member-form').reset(); document.getElementById('add-member-modal').classList.remove('hidden'); }
+        function closeAddMemberModal() { document.getElementById('add-member-modal').classList.add('hidden'); }
+
+        document.getElementById('add-member-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const rating = document.getElementById('add-rating').value.trim().toUpperCase() || "C";
+            const initialScore = scoreMap[rating] !== undefined ? scoreMap[rating] : 6.0;
+
+            const newMember = {
+                name: document.getElementById('add-name').value.trim(),
+                password: document.getElementById('add-pw').value.trim(),
+                full_phone: document.getElementById('add-phone').value.trim() || "010-XXXX-XXXX",
+                kakao_id: document.getElementById('add-kakao').value.trim(),
+                photo: "",
+                birth: document.getElementById('add-birth').value.trim(),
+                address: document.getElementById('add-address').value.trim(),
+                position: document.getElementById('add-position').value.trim() || "멀티",
+                rating: rating,
+                join_date: document.getElementById('add-joindate').value.trim(),
+                role: document.getElementById('add-role').value,
+                is_withdrawn: false,
+                attended_matches: 0,
+                history: [{ date: "등록", score: initialScore }],
+                feedback: document.getElementById('add-feedback').value.trim() || "신규 등록된 멤버입니다."
+            };
+
+            const { error } = await supabaseClient.from('members').insert([newMember]);
+            if (error) { alert('등록 실패: ' + error.message); return; }
+
+            alert(`[${newMember.name}] 님 등록 완료!`);
+            closeAddMemberModal();
+            await fetchMembersFromSupabase();
+            loadAdminDashboard();
+        });
+
+        function openSubAdminManageModal() {
+            const container = document.getElementById('sub-admin-list-container');
+            container.innerHTML = '';
+            membersData.filter(m => m.role !== 'admin').forEach(m => {
+                const isSub = m.role === 'sub_admin';
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center bg-slate-900/60 p-2.5 rounded-lg border border-slate-700 text-xs";
+                div.innerHTML = `
+                    <div><span class="font-bold text-white">${m.name}</span> <span class="text-slate-400">(${m.position})</span></div>
+                    <button onclick="toggleSubAdminRole('${m.name}', ${!isSub})" class="px-2.5 py-1 ${isSub ? 'bg-rose-800' : 'bg-emerald-600'} text-white font-semibold rounded">${isSub ? '해제' : '임명'}</button>
+                `;
+                container.appendChild(div);
+            });
+            document.getElementById('sub-admin-modal').classList.remove('hidden');
+        }
+        function closeSubAdminModal() { document.getElementById('sub-admin-modal').classList.add('hidden'); loadAdminDashboard(); }
+
+        async function toggleSubAdminRole(name, makeSub) {
+            const newRole = makeSub ? 'sub_admin' : 'member';
+            const { error } = await supabaseClient.from('members').update({ role: newRole }).eq('name', name);
+            if (error) { alert('권한 변경 실패'); return; }
+            await fetchMembersFromSupabase();
+            openSubAdminManageModal();
+        }
+
+        function toggleSelectAll(master) { document.querySelectorAll('.member-checkbox').forEach(cb => cb.checked = master.checked); }
+        function toggleAllCheckboxes(status) { document.querySelectorAll('.member-checkbox').forEach(cb => cb.checked = status); }
+
+        function exportMemberTextData() {
+            const now = new Date();
+            const month = now.getMonth() + 1;
+            const date = now.getDate();
+
+            let sortFn = (a, b) => {
+                let bA = a.birth ? a.birth.trim() : "";
+                let bB = b.birth ? b.birth.trim() : "";
+                if (bA === "" && bB !== "") return 1;
+                if (bA !== "" && bB === "") return -1;
+                if (bA === "" && bB === "") return 0;
+                return bA.localeCompare(bB);
+            };
+
+            let coreList = membersData.filter(m => !m.isWithdrawn && m.role !== 'guest' && m.role !== 'acquaintance').sort(sortFn);
+            let guestList = membersData.filter(m => !m.isWithdrawn && m.role === 'guest').sort(sortFn);
+            let acquList = membersData.filter(m => !m.isWithdrawn && m.role === 'acquaintance').sort(sortFn);
+            let withdrawnList = membersData.filter(m => m.isWithdrawn).sort(sortFn);
+
+            let textOutput = `=== TenFC 풋살팀 멤버 명단 (${month}월 ${date}일 업데이트) ===\n`;
+            
+            coreList.forEach(m => {
+                const numericScore = scoreMap[m.rating] !== undefined ? scoreMap[m.rating].toFixed(1) : '-';
+                textOutput += `${m.name} / ${m.birth || '-'} / ${m.rating} (${numericScore}점)\n`;
+            });
+
+            if (guestList.length > 0) {
+                textOutput += "-----\n[용병]\n";
+                guestList.forEach(m => {
+                    const numericScore = scoreMap[m.rating] !== undefined ? scoreMap[m.rating].toFixed(1) : '-';
+                    textOutput += `${m.name}(용병) / ${m.birth || '-'} / ${m.rating} (${numericScore}점)\n`;
+                });
+            }
+
+            if (acquList.length > 0) {
+                textOutput += "-----\n[지인]\n";
+                acquList.forEach(m => {
+                    const numericScore = scoreMap[m.rating] !== undefined ? scoreMap[m.rating].toFixed(1) : '-';
+                    textOutput += `${m.name}(지인) / ${m.birth || '-'} / ${m.rating} (${numericScore}점)\n`;
+                });
+            }
+
+            if (withdrawnList.length > 0) {
+                textOutput += "-----\n[탈퇴 멤버]\n";
+                withdrawnList.forEach(m => {
+                    const numericScore = scoreMap[m.rating] !== undefined ? scoreMap[m.rating].toFixed(1) : '-';
+                    textOutput += `${m.name}(탈퇴) / ${m.birth || '-'} / ${m.rating} (${numericScore}점)\n`;
+                });
+            }
+
+            navigator.clipboard.writeText(textOutput).then(() => alert(`전체 멤버 명단(${month}월 ${date}일 기준)이 클립보드에 복사되었습니다!`));
+        }
+
+        async function batchAdjustRating(direction) {
+            const checkedBoxes = document.querySelectorAll('.member-checkbox:checked');
+            if (checkedBoxes.length === 0) { alert('평점을 조정할 멤버를 체크해주세요.'); return; }
+            
+            let previewText = "";
+            let updates = [];
+
+            checkedBoxes.forEach(cb => {
+                const m = membersData.find(item => item.name === cb.value);
+                if (m) {
+                    let idx = ratingHierarchy.indexOf(m.rating);
+                    if (idx === -1) idx = 9;
+                    if (direction === 'up' && idx < ratingHierarchy.length - 1) idx++;
+                    else if (direction === 'down' && idx > 0) idx--;
+                    const newRating = ratingHierarchy[idx];
+                    const newScore = scoreMap[newRating] || 6.0;
+
+                    updates.push({ member: m, newRating: newRating, newScore: newScore });
+                    previewText += `• ${m.name}: [${m.rating}] ➡️ [${newRating}]\n`;
+                }
+            });
+
+            if (!confirm(`[평점 일괄 조정 확인]\n\n${previewText}\n선택한 멤버들의 평점을 변경하시겠습니까?`)) return;
+
+            for (let u of updates) {
+                let historyArr = Array.isArray(u.member.history) ? [...u.member.history] : [];
+                if (historyArr.length > 0 && historyArr[historyArr.length - 1].date === "최신") {
+                    historyArr[historyArr.length - 1].score = u.newScore;
+                } else {
+                    historyArr.push({ date: "최신", score: u.newScore });
+                }
+
+                await supabaseClient.from('members').update({ 
+                    rating: u.newRating,
+                    history: historyArr 
+                }).eq('name', u.member.name);
+            }
+
+            await fetchMembersFromSupabase();
+            alert('일괄 조정이 완료되었습니다!');
+            loadAdminDashboard();
+        }
+
+        async function applyBatchAttendance() {
+            const checkedBoxes = document.querySelectorAll('.member-checkbox:checked');
+            if (checkedBoxes.length === 0) { alert('출석을 반영할 멤버를 체크해주세요.'); return; }
+            
+            if (!confirm(`선택한 멤버들에게 출석(+1)을 반영하시겠습니까?`)) return;
+
+            for (let cb of checkedBoxes) {
+                const m = membersData.find(item => item.name === cb.value);
+                if (m) {
+                    await supabaseClient.from('members').update({ attended_matches: m.attendedMatches + 1 }).eq('name', m.name);
+                }
+            }
+            await fetchMembersFromSupabase();
+            alert('출석이 반영되었습니다!');
+            loadAdminDashboard();
+        }
+
+        function openAdminEdit(name) {
+            const m = membersData.find(item => item.name === name);
+            if (!m) return;
+            document.getElementById('edit-member-name').value = m.name;
+            document.getElementById('edit-name').value = m.name;
+            document.getElementById('edit-modal-title').innerText = `${m.name} 정보 수정`;
+            document.getElementById('edit-rating').value = m.rating;
+            document.getElementById('edit-position').value = m.position;
+            document.getElementById('edit-birth').value = m.birth || '';
+            document.getElementById('edit-joindate').value = m.joinDate || '';
+            document.getElementById('edit-address').value = m.address || '';
+            document.getElementById('edit-attended').value = m.attendedMatches;
+            document.getElementById('edit-role-type').value = m.role || 'member';
+            document.getElementById('edit-withdrawn').checked = m.isWithdrawn || false;
+            document.getElementById('edit-photo-file').value = "";
+            document.getElementById('edit-phone').value = m.fullPhone;
+            document.getElementById('edit-kakao').value = m.kakaoId || '';
+            document.getElementById('edit-feedback').value = m.feedback || '';
+            document.getElementById('admin-edit-modal').classList.remove('hidden');
+        }
+
+        function closeAdminModal() { document.getElementById('admin-edit-modal').classList.add('hidden'); }
+
+        document.getElementById('admin-edit-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const name = document.getElementById('edit-member-name').value;
+            const m = membersData.find(item => item.name === name);
+            const fileInput = document.getElementById('edit-photo-file');
+
+            const newRating = document.getElementById('edit-rating').value.trim().toUpperCase();
+            const newScore = scoreMap[newRating] !== undefined ? scoreMap[newRating] : 6.0;
+
+            let historyArr = m && Array.isArray(m.history) ? [...m.history] : [];
+            if (historyArr.length > 0 && historyArr[historyArr.length - 1].date === "최신") {
+                historyArr[historyArr.length - 1].score = newScore;
+            } else {
+                historyArr.push({ date: "최신", score: newScore });
+            }
+
+            const updatedFields = {
+                rating: newRating,
+                position: document.getElementById('edit-position').value.trim(),
+                birth: document.getElementById('edit-birth').value.trim(),
+                join_date: document.getElementById('edit-joindate').value.trim(),
+                address: document.getElementById('edit-address').value.trim(),
+                attended_matches: parseInt(document.getElementById('edit-attended').value) || 0,
+                role: document.getElementById('edit-role-type').value,
+                is_withdrawn: document.getElementById('edit-withdrawn').checked,
+                full_phone: document.getElementById('edit-phone').value.trim(),
+                kakao_id: document.getElementById('edit-kakao').value.trim(),
+                feedback: document.getElementById('edit-feedback').value.trim(),
+                history: historyArr
+            };
+
+            async function saveToSupabase(photoUrl) {
+                if (photoUrl !== undefined) updatedFields.photo = photoUrl;
+                const { error } = await supabaseClient.from('members').update(updatedFields).eq('name', name);
+                if (error) { alert('수정 실패: ' + error.message); return; }
+                alert('업데이트 완료!');
+                closeAdminModal();
+                await fetchMembersFromSupabase();
+                loadAdminDashboard();
+            }
+
+            if (fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(event) { saveToSupabase(event.target.result); };
+                reader.readAsDataURL(fileInput.files[0]);
+            } else {
+                saveToSupabase();
+            }
+        });
+
+        function renderChart(history) {
+            const ctx = document.getElementById('ratingChart').getContext('2d');
+            if (myChart) myChart.destroy();
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: history.map(h => h.date),
+                    datasets: [{
+                        label: '평점 추이',
+                        data: history.map(h => h.score),
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#10b981'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { 
+                            min: 0, 
+                            max: 11, 
+                            ticks: { 
+                                color: '#94a3b8',
+                                stepSize: 1,
+                                callback: function(value) {
+                                    const labels = {
+                                        10.5: "A+", 10: "A", 9.5: "A-",
+                                        8.5: "B+", 8: "B", 7.5: "B-",
+                                        6.5: "C+", 6: "C", 5.5: "C-/D+",
+                                        4: "D", 3.5: "D-", 2: "E", 1: "F"
+                                    };
+                                    return labels[value] || (value + '점');
+                                }
+                            }, 
+                            grid: { color: '#334155' } 
+                        },
+                        x: { ticks: { color: '#94a3b8' }, grid: { display: false } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function openPwModal() { document.getElementById('pw-modal').classList.remove('hidden'); }
+        function closePwModal() { document.getElementById('pw-modal').classList.add('hidden'); document.getElementById('pw-form').reset(); }
+
+        document.getElementById('pw-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const currentPw = document.getElementById('current-pw').value.trim();
+            const newPw = document.getElementById('new-pw').value.trim();
+            const newPwConfirm = document.getElementById('new-pw-confirm').value.trim();
+
+            if (currentPw !== currentUser.password) { alert('현재 비밀번호가 일치하지 않습니다.'); return; }
+            if (newPw !== newPwConfirm) { alert('새 비밀번호가 서로 일치하지 않습니다.'); return; }
+
+            const { error } = await supabaseClient.from('members').update({ password: newPw }).eq('name', currentUser.name);
+            if (error) { alert('변경 실패'); return; }
+
+            currentUser.password = newPw;
+            alert('비밀번호 변경 완료!');
+            closePwModal();
+        });
+
+        function logout() {
+            currentUser = null;
+            localStorage.removeItem('tenfc_logged_user');
+            document.getElementById('dashboard-container').classList.add('hidden');
+            document.getElementById('admin-container').classList.add('hidden');
+            document.getElementById('login-container').classList.remove('hidden');
+            document.getElementById('login-form').reset();
+            document.getElementById('login-error').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>

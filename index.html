@@ -235,7 +235,7 @@
                     <input type="text" id="add-phone" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white" placeholder="010-XXXX-XXXX">
                 </div>
                 <div>
-                    <label class="block text-xs text-slate-400 mb-1">카카오톡 ID</label>
+                    <label class="block text-xs text-slate-400 mb-1">카카오톡 닉네임</label>
                     <input type="text" id="add-kakao" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
                 </div>
                 <div>
@@ -325,7 +325,7 @@
                     <input type="text" id="edit-phone" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
                 </div>
                 <div>
-                    <label class="block text-xs text-slate-400 mb-1">카카오톡 ID</label>
+                    <label class="block text-xs text-slate-400 mb-1">카카오톡 닉네임</label>
                     <input type="text" id="edit-kakao" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
                 </div>
                 <div>
@@ -635,7 +635,7 @@
                     <td class="p-3 text-slate-300">${m.position}</td>
                     <td class="p-3 font-extrabold text-emerald-400">${ratingDisplay}</td>
                     <td class="p-3 text-slate-300">${m.attendedMatches}회 / ${teamTotalMatches}회 <span class="text-indigo-400 font-bold">(${attRate}%)</span></td>
-                    <td class="p-3 text-slate-300">${m.fullPhone}<br><span class="text-amber-300">@${m.kakaoId || '-'}</span></td>
+                    <td class="p-3 text-slate-300">${m.fullPhone}<br><span class="text-amber-300">${m.kakaoId || '-'}</span></td>
                 `;
 
                 if (isAdmin) {

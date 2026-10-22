@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 풋살팀 통합 시스템 v1.01</title>
+    <title>TenFC 풋살팀 통합 시스템 v1.0</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Supabase JS SDK CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-center p-4">
 
@@ -15,7 +17,7 @@
     <div id="login-container" class="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
         <div class="text-center mb-6">
             <h1 class="text-3xl font-bold text-emerald-400">⚽ TenFC 풋살팀</h1>
-            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v1.01</span></p>
+            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v1.0</span></p>
         </div>
         <form id="login-form" class="space-y-4">
             <div>
@@ -41,10 +43,8 @@
         </div>
     </div>
 
-    <!-- 대시보드 화면 (일반 멤버 & 관리자 공용 마이페이지) -->
+    <!-- 대시보드 화면 -->
     <div id="dashboard-container" class="w-full max-w-2xl bg-slate-800 p-6 md:p-8 rounded-2xl shadow-xl border border-slate-700 hidden">
-        
-        <!-- 관리자 전용 상단 네비게이션 탭 -->
         <div id="admin-switch-bar" class="hidden mb-4 p-2 bg-slate-900/80 rounded-lg border border-emerald-500/40 flex justify-between items-center">
             <span id="admin-badge-text" class="text-xs text-emerald-400 font-semibold px-2">🛡️ 관리자 권한 보유 계정</span>
             <button onclick="switchToAdmin()" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded transition">관리자 대시보드로 이동하기 ➡️</button>
@@ -81,9 +81,7 @@
         <!-- 핵심 요약 카드 -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-700 text-center relative">
-                <div class="flex items-center justify-center gap-1">
-                    <p class="text-xs text-slate-400">현재 평점</p>
-                </div>
+                <p class="text-xs text-slate-400">현재 평점</p>
                 <p id="stat-rating" class="text-3xl font-extrabold text-emerald-400 mt-1">-</p>
             </div>
             <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-700 text-center">
@@ -169,26 +167,16 @@
                 <thead class="bg-slate-800 text-slate-400 uppercase select-none">
                     <tr>
                         <th id="th-checkbox" class="p-3 w-10 text-center"><input type="checkbox" id="select-all-main" onclick="toggleSelectAll(this)"></th>
-                        <th class="p-3 cursor-pointer hover:text-emerald-400 transition" onclick="changeSort('name')">
-                            성명 <span id="sort-icon-name" class="text-slate-500">↕</span>
-                        </th>
-                        <th class="p-3 cursor-pointer hover:text-emerald-400 transition" onclick="changeSort('birth')">
-                            출생년도 <span id="sort-icon-birth" class="text-emerald-400">▼</span>
-                        </th>
+                        <th class="p-3 cursor-pointer hover:text-emerald-400 transition" onclick="changeSort('name')">성명 <span id="sort-icon-name" class="text-slate-500">↕</span></th>
+                        <th class="p-3 cursor-pointer hover:text-emerald-400 transition" onclick="changeSort('birth')">출생년도 <span id="sort-icon-birth" class="text-emerald-400">▼</span></th>
                         <th class="p-3">포지션</th>
-                        <th class="p-3 cursor-pointer hover:text-emerald-400 transition" onclick="changeSort('rating')">
-                            현재 평점 <span id="sort-icon-rating" class="text-slate-500">↕</span>
-                        </th>
-                        <th class="p-3 cursor-pointer hover:text-emerald-400 transition" onclick="changeSort('attendance')">
-                            출석 횟수 / 참석률 <span id="sort-icon-attendance" class="text-slate-500">↕</span>
-                        </th>
+                        <th class="p-3 cursor-pointer hover:text-emerald-400 transition" onclick="changeSort('rating')">현재 평점 <span id="sort-icon-rating" class="text-slate-500">↕</span></th>
+                        <th class="p-3 cursor-pointer hover:text-emerald-400 transition" onclick="changeSort('attendance')">출석 횟수 / 참석률 <span id="sort-icon-attendance" class="text-slate-500">↕</span></th>
                         <th class="p-3">연락처 / 카톡ID</th>
                         <th id="th-action" class="p-3 text-center">관리</th>
                     </tr>
                 </thead>
-                <tbody id="admin-member-list" class="divide-y divide-slate-700/50">
-                    <!-- 자바스크립트로 동적 생성 -->
-                </tbody>
+                <tbody id="admin-member-list" class="divide-y divide-slate-700/50"></tbody>
             </table>
         </div>
     </div>
@@ -229,7 +217,7 @@
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-xs text-slate-400 mb-1">초기 평점</label>
-                        <input type="text" id="add-rating" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white uppercase" value="C" placeholder="예: C, B">
+                        <input type="text" id="add-rating" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white uppercase" value="C">
                     </div>
                     <div>
                         <label class="block text-xs text-slate-400 mb-1">회원구분</label>
@@ -252,7 +240,7 @@
                 </div>
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">감코진 피드백 코멘트</label>
-                    <textarea id="add-feedback" rows="2" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white" placeholder="신규 등록 선수 코멘트"></textarea>
+                    <textarea id="add-feedback" rows="2" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white"></textarea>
                 </div>
                 <div class="flex gap-2 pt-2">
                     <button type="button" onclick="closeAddMemberModal()" class="flex-1 py-2 bg-slate-700 text-slate-300 text-xs rounded">취소</button>
@@ -266,7 +254,6 @@
     <div id="sub-admin-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-slate-800 w-full max-w-md p-6 rounded-2xl border border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
             <h3 class="text-lg font-bold text-emerald-400 mb-2">🛡️ 부관리자 임명 및 해제</h3>
-            <p class="text-xs text-slate-400 mb-4">정회원 중 운영을 도울 부관리자를 지정하거나 해제할 수 있습니다.</p>
             <div id="sub-admin-list-container" class="space-y-2 mb-4 max-h-60 overflow-y-auto pr-1"></div>
             <button onclick="closeSubAdminModal()" class="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded">닫기</button>
         </div>
@@ -330,7 +317,7 @@
                     </label>
                 </div>
                 <div>
-                    <label class="block text-xs text-slate-400 mb-1">프로필 사진 첨부 (PC 파일 선택)</label>
+                    <label class="block text-xs text-slate-400 mb-1">프로필 사진 첨부</label>
                     <input type="file" id="edit-photo-file" accept="image/*" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-slate-300 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500">
                 </div>
                 <div>
@@ -379,10 +366,11 @@
     </div>
 
     <script>
-        const ratingHierarchy = [
-            "F-", "F", "E-", "E", "E+", "D-", "D", "D+", "C-", "C", "C+", "B-", "B", "B+", "A-", "A", "A+"
-        ];
+        const SUPABASE_URL = 'https://bxuiwomkpgqsbyaagmlp.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_mXkGsaxwwfnnAR3lpE8T1A_n0kiPdZj';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        const ratingHierarchy = ["F-", "F", "E-", "E", "E+", "D-", "D", "D+", "C-", "C", "C+", "B-", "B", "B+", "A-", "A", "A+"];
         const scoreMap = { 
             "A+": 10.5, "A": 10.0, "A-": 9.5, 
             "B+": 8.5,  "B": 8.0,  "B-": 7.5, 
@@ -393,28 +381,46 @@
         };
 
         let teamTotalMatches = 20;
-
-        let membersData = JSON.parse(localStorage.getItem('tenfc_members_data')) || [
-            { name: "오한결", password: "0005", fullPhone: "010-9675-0005", kakaoId: "hans_coach", photo: "", birth: "1980.10.03", address: "경기도 용인시 수지구", position: "공격", rating: "B+", joinDate: "2022년", role: "admin", isWithdrawn: false, attendedMatches: 19, history: [ {date: "06월", score: 7.5}, {date: "07월", score: 8.0}, {date: "08월", score: 8.0}, {date: "09월", score: 8.5} ], feedback: "주관리자 (감독) 계정. 전술 이해도가 높고 팀 리더십이 훌륭함." },
-            { name: "최윤석", password: "9840", fullPhone: "010-9820-9840", kakaoId: "yunseok75", photo: "", birth: "1975.08.12", address: "경기도 성남시 분당구", position: "공격", rating: "F", joinDate: "2022년", role: "admin", isWithdrawn: false, attendedMatches: 15, history: [ {date: "06월", score: 2.0}, {date: "07월", score: 1.5}, {date: "08월", score: 1.0}, {date: "09월", score: 1.0} ], feedback: "주관리자 (회장) 계정. 투지 넘치는 플레이와 헌신적인 활동량." },
-            { name: "장현호", password: "9790", fullPhone: "010-8012-9790", kakaoId: "hyunho_coach", photo: "", birth: "1993.06.04", address: "서울시 강남구", position: "수비", rating: "B", joinDate: "2023년", role: "sub_admin", isWithdrawn: false, attendedMatches: 17, history: [ {date: "06월", score: 7.0}, {date: "07월", score: 7.5}, {date: "08월", score: 8.0}, {date: "09월", score: 8.0} ], feedback: "부관리자 (코치진). 대인 방어 능력이 뛰어나고 빌드업 기점이 됨." },
-            { name: "테스트", password: "0000", fullPhone: "010-0000-0000", kakaoId: "test_user", photo: "", birth: "1990.05.15", address: "서울특별시 서초구 반포동", position: "멀티플레이어", rating: "A-", joinDate: "2024년", role: "member", isWithdrawn: false, attendedMatches: 18, history: [ {date: "03월", score: 6.5}, {date: "04월", score: 7.0}, {date: "05월", score: 7.5}, {date: "06월", score: 8.0}, {date: "07월", score: 8.5}, {date: "08월", score: 9.0}, {date: "09월", score: 9.5} ], feedback: "왕성한 활동량과 정확한 킥력을 겸비한 핵심 자원. 최근 폼이 매우 좋음." },
-            { name: "손병철", password: "6722", fullPhone: "010-6722-XXXX", kakaoId: "byeongcheol97", photo: "", birth: "1997.06.22", address: "인천시 연수구 송도동", position: "미들", rating: "A", joinDate: "2023년", role: "member", isWithdrawn: false, attendedMatches: 18, history: [ {date: "07월", score: 9.0}, {date: "08월", score: 9.5}, {date: "09월", score: 10.0} ], feedback: "넓은 시야와 정교한 패스로 중원을 지배하는 에이스." },
-            { name: "장재혁", password: "1818", fullPhone: "010-1818-XXXX", kakaoId: "jaehyuk99", photo: "", birth: "1999.02.18", address: "경기도 수원시 영통구", position: "멀티", rating: "A+", joinDate: "2024년", role: "member", isWithdrawn: false, attendedMatches: 16, history: [ {date: "07월", score: 9.5}, {date: "08월", score: 10.0}, {date: "09월", score: 10.5} ], feedback: "압도적인 스피드와 골 결정력을 보유한 팀 내 최상위 플레이어." },
-            { name: "송창호", password: "2466", fullPhone: "010-2466-XXXX", kakaoId: "changho78", photo: "", birth: "1978.07.20", address: "경기도 용인시 기흥구", position: "멀티", rating: "B", joinDate: "2026년", role: "member", isWithdrawn: false, attendedMatches: 12, history: [ {date: "07월", score: 7.0}, {date: "08월", score: 7.5}, {date: "09월", score: 8.0} ], feedback: "노련한 경기 조율과 안정감 있는 수비 리딩." }
-        ];
-
+        let membersData = [];
         let currentUser = null;
         let myChart = null;
+        let currentSortField = 'birth';
+        let currentSortOrder = 'asc';
 
-        let currentSortField = 'birth'; 
-        let currentSortOrder = 'asc';  
-
-        function saveMembersToStorage() {
-            localStorage.setItem('tenfc_members_data', JSON.stringify(membersData));
+        async function fetchMembersFromSupabase() {
+            try {
+                const { data, error } = await supabaseClient.from('members').select('*');
+                if (error) {
+                    console.error("Supabase 조회 에러:", error);
+                    return;
+                }
+                if (data && data.length > 0) {
+                    membersData = data.map(m => ({
+                        id: m.id,
+                        name: m.name,
+                        password: m.password,
+                        fullPhone: m.full_phone || "",
+                        kakaoId: m.kakao_id || "",
+                        photo: m.photo || "",
+                        birth: m.birth || "",
+                        address: m.address || "",
+                        position: m.position || "",
+                        rating: m.rating || "C",
+                        joinDate: m.join_date || "",
+                        role: m.role || "member",
+                        isWithdrawn: m.is_withdrawn || false,
+                        attendedMatches: m.attended_matches || 0,
+                        history: m.history ? (typeof m.history === 'string' ? JSON.parse(m.history) : m.history) : [],
+                        feedback: m.feedback || ""
+                    }));
+                }
+            } catch (err) {
+                console.error("데이터 로딩 실패:", err);
+            }
         }
 
-        function initApp() {
+        async function initApp() {
+            await fetchMembersFromSupabase();
             const savedUserName = localStorage.getItem('tenfc_logged_user');
             if (savedUserName) {
                 const foundUser = membersData.find(m => m.name === savedUserName);
@@ -450,18 +456,13 @@
             if (!birthStr) return "-";
             const parts = birthStr.split('.');
             if (parts.length < 3) return birthStr;
-            
             const bYear = parseInt(parts[0], 10);
             const bMonth = parseInt(parts[1], 10);
             const bDay = parseInt(parts[2], 10);
-
             const today = new Date();
             let age = today.getFullYear() - bYear;
             const m = (today.getMonth() + 1) - bMonth;
-            
-            if (m < 0 || (m === 0 && today.getDate() < bDay)) {
-                age--;
-            }
+            if (m < 0 || (m === 0 && today.getDate() < bDay)) age--;
             return `${birthStr} (만 ${age}세)`;
         }
 
@@ -495,9 +496,7 @@
             }
         });
 
-        function closeWithdrawnModal() {
-            document.getElementById('withdrawn-modal').classList.add('hidden');
-        }
+        function closeWithdrawnModal() { document.getElementById('withdrawn-modal').classList.add('hidden'); }
 
         function loadMemberDashboard(user) {
             document.getElementById('user-welcome').innerText = `${user.name} 님`;
@@ -531,12 +530,11 @@
             const attRate = teamTotalMatches > 0 ? Math.round((user.attendedMatches / teamTotalMatches) * 100) : 0;
             document.getElementById('stat-attendance').innerText = `${user.attendedMatches}회 / ${teamTotalMatches}회`;
             document.getElementById('stat-att-rate').innerText = `${attRate}%`;
-
             document.getElementById('user-feedback').innerText = user.feedback ? `"${user.feedback}"` : "등록된 피드백이 없습니다.";
 
             if (currentUser.role === 'admin' || currentUser.role === 'sub_admin') {
                 document.getElementById('admin-switch-bar').classList.remove('hidden');
-                document.getElementById('admin-badge-text').innerText = currentUser.role === 'admin' ? '🛡️ 주관리자 권한 보유 계정' : '👁️ 부관리자 (조회 전용) 권한 보유 계정';
+                document.getElementById('admin-badge-text').innerText = currentUser.role === 'admin' ? '🛡️ 주관리자 권한 보유 계정' : '👁️ 부관리자 권한 보유 계정';
             } else {
                 document.getElementById('admin-switch-bar').classList.add('hidden');
             }
@@ -548,41 +546,18 @@
             for (let i = 0; i < sortedMembers.length; i++) {
                 if ((scoreMap[sortedMembers[i].rating] || 0) > myScore) rank++;
             }
-            const totalCount = sortedMembers.length;
-            const percentile = Math.round((rank / totalCount) * 100);
-
+            const percentile = Math.round((rank / sortedMembers.length) * 100);
             document.getElementById('stat-percentile').innerHTML = `공동 ${rank}위<br><span class="text-xs text-slate-400 font-normal">(상위 ${percentile}%)</span>`;
 
             const sameGroup = sortedMembers.filter(m => (scoreMap[m.rating] || 0) === myScore && m.name !== user.name);
             const aboveGroup = sortedMembers.filter(m => (scoreMap[m.rating] || 0) > myScore);
             const belowGroup = sortedMembers.filter(m => (scoreMap[m.rating] || 0) < myScore);
 
-            if (aboveGroup.length > 0) {
-                const targetScore = scoreMap[aboveGroup[aboveGroup.length - 1].rating];
-                const targetUsers = aboveGroup.filter(m => scoreMap[m.rating] === targetScore);
-                const extraCount = targetUsers.length;
-                document.getElementById('rank-above').innerText = extraCount > 1 ? `${targetUsers[0].name} 외 ${extraCount - 1}명 (${aboveGroup[aboveGroup.length-1].rating})` : `${aboveGroup[aboveGroup.length-1].name} (${aboveGroup[aboveGroup.length-1].rating})`;
-            } else {
-                document.getElementById('rank-above').innerText = "최상위 등급입니다 🏆";
-            }
+            document.getElementById('rank-above').innerText = aboveGroup.length > 0 ? `${aboveGroup[aboveGroup.length-1].name} (${aboveGroup[aboveGroup.length-1].rating})` : "최상위 등급입니다 🏆";
+            document.getElementById('rank-same').innerText = sameGroup.length > 0 ? `${sameGroup.map(s => s.name).join(', ')} (${user.rating} 동급)` : `단독 ${user.rating} 등급`;
+            document.getElementById('rank-below').innerText = belowGroup.length > 0 ? `${belowGroup[0].name} (${belowGroup[0].rating})` : "하위 그룹 없음";
 
-            if (sameGroup.length > 0) {
-                const extraCount = sameGroup.length;
-                document.getElementById('rank-same').innerText = extraCount > 1 ? `${sameGroup[0].name} 외 ${extraCount - 1}명 (${user.rating} 동급)` : `${sameGroup[0].name} (${user.rating} 동급)`;
-            } else {
-                document.getElementById('rank-same').innerText = `단독 ${user.rating} 등급`;
-            }
-
-            if (belowGroup.length > 0) {
-                const targetScore = scoreMap[belowGroup[0].rating];
-                const targetUsers = belowGroup.filter(m => scoreMap[m.rating] === targetScore);
-                const extraCount = targetUsers.length;
-                document.getElementById('rank-below').innerText = extraCount > 1 ? `${targetUsers[0].name} 외 ${extraCount - 1}명 (${belowGroup[0].rating})` : `${targetUsers[0].name} (${belowGroup[0].rating})`;
-            } else {
-                document.getElementById('rank-below').innerText = "하위 그룹 없음";
-            }
-
-            renderChart(user.history);
+            renderChart(user.history || []);
         }
 
         function switchToAdmin() {
@@ -599,7 +574,6 @@
 
         function loadAdminDashboard() {
             document.getElementById('admin-team-matches').innerText = `${teamTotalMatches}회`;
-            
             const isAdmin = currentUser.role === 'admin';
             document.getElementById('admin-title').innerText = isAdmin ? '🛡️ 주관리자 대시보드' : '👁️ 부관리자 대시보드 (조회 전용)';
             
@@ -615,19 +589,6 @@
                 document.getElementById('th-checkbox').classList.add('hidden');
                 document.getElementById('th-action').classList.add('hidden');
             }
-
-            ['name', 'birth', 'rating', 'attendance'].forEach(field => {
-                const icon = document.getElementById(`sort-icon-${field}`);
-                if (icon) {
-                    if (currentSortField === field) {
-                        icon.innerText = currentSortOrder === 'asc' ? '▲' : '▼';
-                        icon.className = "text-emerald-400 font-bold";
-                    } else {
-                        icon.innerText = '↕';
-                        icon.className = "text-slate-500";
-                    }
-                }
-            });
 
             let displayList = [...membersData];
             displayList.sort((a, b) => {
@@ -653,7 +614,6 @@
 
             displayList.forEach(m => {
                 const attRate = teamTotalMatches > 0 ? Math.round((m.attendedMatches / teamTotalMatches) * 100) : 0;
-                
                 let roleBadge = '';
                 if (m.isWithdrawn) roleBadge = '<span class="text-rose-400 text-[10px] ml-1 font-bold">(탈퇴)</span>';
                 else if (m.role === 'admin' || m.role === 'sub_admin') roleBadge = '<span class="text-emerald-400 text-[10px] ml-1">(운영진)</span>';
@@ -667,9 +627,7 @@
                 tr.className = `hover:bg-slate-700/35 transition ${m.isWithdrawn ? 'opacity-60 bg-rose-950/10' : ''}`;
                 
                 let rowHtml = '';
-                if (isAdmin) {
-                    rowHtml += `<td class="p-3 text-center"><input type="checkbox" class="member-checkbox" value="${m.name}"></td>`;
-                }
+                if (isAdmin) rowHtml += `<td class="p-3 text-center"><input type="checkbox" class="member-checkbox" value="${m.name}"></td>`;
                 
                 rowHtml += `
                     <td class="p-3 font-bold text-white flex items-center gap-2">
@@ -686,223 +644,123 @@
                 `;
 
                 if (isAdmin) {
-                    rowHtml += `
-                        <td class="p-3 text-center">
-                            <button onclick="openAdminEdit('${m.name}')" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold">수정</button>
-                        </td>
-                    `;
+                    rowHtml += `<td class="p-3 text-center"><button onclick="openAdminEdit('${m.name}')" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold">수정</button></td>`;
                 }
 
                 tr.innerHTML = rowHtml;
                 tbody.appendChild(tr);
             });
-
-            const selectAll = document.getElementById('select-all-main');
-            if (selectAll) selectAll.checked = false;
         }
 
-        function openAddMemberModal() {
-            document.getElementById('add-member-form').reset();
-            document.getElementById('add-member-modal').classList.remove('hidden');
-        }
-        function closeAddMemberModal() {
-            document.getElementById('add-member-modal').classList.add('hidden');
-        }
+        function openAddMemberModal() { document.getElementById('add-member-form').reset(); document.getElementById('add-member-modal').classList.remove('hidden'); }
+        function closeAddMemberModal() { document.getElementById('add-member-modal').classList.add('hidden'); }
 
-        document.getElementById('add-member-form').addEventListener('submit', function(e) {
+        document.getElementById('add-member-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const name = document.getElementById('add-name').value.trim();
-            const pw = document.getElementById('add-pw').value.trim();
-            const position = document.getElementById('add-position').value.trim() || "멀티";
-            const birth = document.getElementById('add-birth').value.trim();
-            const joinDate = document.getElementById('add-joindate').value.trim();
-            const address = document.getElementById('add-address').value.trim();
-            const rating = document.getElementById('add-rating').value.trim().toUpperCase() || "C";
-            const role = document.getElementById('add-role').value;
-            const phone = document.getElementById('add-phone').value.trim() || "010-XXXX-XXXX";
-            const kakao = document.getElementById('add-kakao').value.trim();
-            const feedback = document.getElementById('add-feedback').value.trim();
-
-            if (membersData.some(m => m.name === name)) {
-                alert('이미 존재하는 성명입니다.');
-                return;
-            }
-
-            const initialScore = scoreMap[rating] !== undefined ? scoreMap[rating] : 6.0;
-
-            membersData.push({
+            const newMember = {
                 name: name,
-                password: pw,
-                fullPhone: phone,
-                kakaoId: kakao,
+                password: document.getElementById('add-pw').value.trim(),
+                full_phone: document.getElementById('add-phone').value.trim() || "010-XXXX-XXXX",
+                kakao_id: document.getElementById('add-kakao').value.trim(),
                 photo: "",
-                birth: birth,
-                address: address,
-                position: position,
-                rating: rating,
-                joinDate: joinDate,
-                role: role,
-                isWithdrawn: false,
-                attendedMatches: 0,
-                history: [{ date: "등록", score: initialScore }],
-                feedback: feedback || "신규 등록된 멤버입니다."
-            });
+                birth: document.getElementById('add-birth').value.trim(),
+                address: document.getElementById('add-address').value.trim(),
+                position: document.getElementById('add-position').value.trim() || "멀티",
+                rating: document.getElementById('add-rating').value.trim().toUpperCase() || "C",
+                join_date: document.getElementById('add-joindate').value.trim(),
+                role: document.getElementById('add-role').value,
+                is_withdrawn: false,
+                attended_matches: 0,
+                history: [{ date: "등록", score: 6.0 }],
+                feedback: document.getElementById('add-feedback').value.trim() || "신규 등록된 멤버입니다."
+            };
 
-            saveMembersToStorage();
-            alert(`[${name}] 님의 신규 등록이 완료되었습니다!`);
+            const { error } = await supabaseClient.from('members').insert([newMember]);
+            if (error) { alert('등록 실패: ' + error.message); return; }
+
+            alert(`[${name}] 님 등록 완료!`);
             closeAddMemberModal();
+            await fetchMembersFromSupabase();
             loadAdminDashboard();
         });
 
         function openSubAdminManageModal() {
             const container = document.getElementById('sub-admin-list-container');
             container.innerHTML = '';
-            const targetMembers = membersData.filter(m => m.role !== 'admin');
-
-            if (targetMembers.length === 0) {
-                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">지정할 수 있는 멤버가 없습니다.</p>`;
-            } else {
-                targetMembers.forEach(m => {
-                    const isSub = m.role === 'sub_admin';
-                    const div = document.createElement('div');
-                    div.className = "flex justify-between items-center bg-slate-900/60 p-2.5 rounded-lg border border-slate-700 text-xs";
-                    div.innerHTML = `
-                        <div>
-                            <span class="font-bold text-white">${m.name}</span>
-                            <span class="text-slate-400 ml-2">(${m.position} / ${isSub ? '부관리자' : m.role === 'guest' ? '용병' : '정회원'})</span>
-                        </div>
-                        <div>
-                            ${isSub 
-                                ? `<button onclick="toggleSubAdminRole('${m.name}', false)" class="px-2.5 py-1 bg-rose-800 hover:bg-rose-700 text-white font-semibold rounded">해제</button>` 
-                                : `<button onclick="toggleSubAdminRole('${m.name}', true)" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded">부관리자 임명</button>`
-                            }
-                        </div>
-                    `;
-                    container.appendChild(div);
-                });
-            }
+            membersData.filter(m => m.role !== 'admin').forEach(m => {
+                const isSub = m.role === 'sub_admin';
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center bg-slate-900/60 p-2.5 rounded-lg border border-slate-700 text-xs";
+                div.innerHTML = `
+                    <div><span class="font-bold text-white">${m.name}</span> <span class="text-slate-400">(${m.position})</span></div>
+                    <button onclick="toggleSubAdminRole('${m.name}', ${!isSub})" class="px-2.5 py-1 ${isSub ? 'bg-rose-800' : 'bg-emerald-600'} text-white font-semibold rounded">${isSub ? '해제' : '임명'}</button>
+                `;
+                container.appendChild(div);
+            });
             document.getElementById('sub-admin-modal').classList.remove('hidden');
         }
+        function closeSubAdminModal() { document.getElementById('sub-admin-modal').classList.add('hidden'); loadAdminDashboard(); }
 
-        function closeSubAdminModal() {
-            document.getElementById('sub-admin-modal').classList.add('hidden');
+        async function toggleSubAdminRole(name, makeSub) {
+            const newRole = makeSub ? 'sub_admin' : 'member';
+            const { error } = await supabaseClient.from('members').update({ role: newRole }).eq('name', name);
+            if (error) { alert('권한 변경 실패'); return; }
+            await fetchMembersFromSupabase();
+            openSubAdminManageModal();
+        }
+
+        function toggleSelectAll(master) { document.querySelectorAll('.member-checkbox').forEach(cb => cb.checked = master.checked); }
+        function toggleAllCheckboxes(status) { document.querySelectorAll('.member-checkbox').forEach(cb => cb.checked = status); }
+
+        function exportMemberTextData() {
+            let textOutput = "=== TenFC 풋살팀 멤버 명단 ===\n";
+            membersData.forEach(m => {
+                textOutput += `${m.name} / ${m.birth || '-'} / ${m.rating}\n`;
+            });
+            navigator.clipboard.writeText(textOutput).then(() => alert('클립보드에 복사되었습니다!'));
+        }
+
+        async function batchAdjustRating(direction) {
+            const checkedBoxes = document.querySelectorAll('.member-checkbox:checked');
+            if (checkedBoxes.length === 0) { alert('멤버를 체크해주세요.'); return; }
+            
+            for (let cb of checkedBoxes) {
+                const m = membersData.find(item => item.name === cb.value);
+                if (m) {
+                    let idx = ratingHierarchy.indexOf(m.rating);
+                    if (idx === -1) idx = 9;
+                    if (direction === 'up' && idx < ratingHierarchy.length - 1) idx++;
+                    else if (direction === 'down' && idx > 0) idx--;
+                    const newRating = ratingHierarchy[idx];
+                    
+                    await supabaseClient.from('members').update({ rating: newRating }).eq('name', m.name);
+                }
+            }
+            await fetchMembersFromSupabase();
+            alert('일괄 조정 완료!');
             loadAdminDashboard();
         }
 
-        function toggleSubAdminRole(name, makeSub) {
-            const m = membersData.find(item => item.name === name);
-            if (m) {
-                m.role = makeSub ? 'sub_admin' : 'member';
-                saveMembersToStorage();
-                alert(`${name} 님이 성공적으로 ${makeSub ? '부관리자로 임명' : '일반 회원으로 해제'}되었습니다!`);
-                openSubAdminManageModal();
-            }
-        }
-
-        function toggleSelectAll(master) {
-            document.querySelectorAll('.member-checkbox').forEach(cb => cb.checked = master.checked);
-        }
-
-        function toggleAllCheckboxes(status) {
-            document.querySelectorAll('.member-checkbox').forEach(cb => cb.checked = status);
-            const selectAll = document.getElementById('select-all-main');
-            if (selectAll) selectAll.checked = status;
-        }
-
-        function exportMemberTextData() {
-            let validMembers = membersData.filter(m => m.name !== "Test" && m.name !== "테스트");
-            let coreList = validMembers.filter(m => m.role === 'admin' || m.role === 'sub_admin' || m.role === 'member').sort((a, b) => (a.birth || "").localeCompare(b.birth || ""));
-            let otherList = validMembers.filter(m => m.role === 'guest' || m.role === 'acquaintance').sort((a, b) => (a.birth || "").localeCompare(b.birth || ""));
-
-            let textOutput = "=== TenFC 풋살팀 멤버 명단 ===\n";
-            coreList.forEach(m => {
-                let roleStr = "정회원";
-                if (m.role === 'admin' || m.role === 'sub_admin') roleStr = "운영진";
-                if (m.isWithdrawn) roleStr += "(탈퇴)";
-                const numericScore = scoreMap[m.rating] !== undefined ? scoreMap[m.rating].toFixed(1) : '-';
-                textOutput += `${m.name}(${roleStr}) / ${m.birth || '-'} / ${m.rating} (${numericScore}점)\n`;
-            });
-
-            if (otherList.length > 0) {
-                textOutput += "-----\n";
-                otherList.forEach(m => {
-                    let roleStr = "용병";
-                    if (m.role === 'acquaintance') roleStr = "지인";
-                    if (m.isWithdrawn) roleStr += "(탈퇴)";
-                    const numericScore = scoreMap[m.rating] !== undefined ? scoreMap[m.rating].toFixed(1) : '-';
-                    textOutput += `${m.name}(${roleStr}) / ${m.birth || '-'} / ${m.rating} (${numericScore}점)\n`;
-                });
-            }
-
-            navigator.clipboard.writeText(textOutput).then(() => alert('전체 멤버 데이터가 클립보드에 복사되었습니다!'));
-        }
-
-        function batchAdjustRating(direction) {
-            if (currentUser.role !== 'admin') return;
+        async function applyBatchAttendance() {
             const checkedBoxes = document.querySelectorAll('.member-checkbox:checked');
-            if (checkedBoxes.length === 0) {
-                alert('평점을 조정할 멤버를 체크해주세요.');
-                return;
-            }
-
-            let previewText = "";
-            let updates = [];
-
-            checkedBoxes.forEach(cb => {
-                const name = cb.value;
-                const m = membersData.find(item => item.name === name);
+            if (checkedBoxes.length === 0) { alert('멤버를 체크해주세요.'); return; }
+            
+            for (let cb of checkedBoxes) {
+                const m = membersData.find(item => item.name === cb.value);
                 if (m) {
-                    let currentIndex = ratingHierarchy.indexOf(m.rating);
-                    if (currentIndex === -1) currentIndex = 9;
-                    let newIndex = currentIndex;
-                    if (direction === 'up' && currentIndex < ratingHierarchy.length - 1) newIndex = currentIndex + 1;
-                    else if (direction === 'down' && currentIndex > 0) newIndex = currentIndex - 1;
-
-                    const newRating = ratingHierarchy[newIndex];
-                    updates.push({ member: m, newRating: newRating });
-                    previewText += `• ${m.name}: [${m.rating}] ➡️ [${newRating}]\n`;
+                    await supabaseClient.from('members').update({ attended_matches: m.attendedMatches + 1 }).eq('name', m.name);
                 }
-            });
-
-            if (confirm(`[평점 일괄 조정 확인]\n\n${previewText}\n적용하시겠습니까?`)) {
-                updates.forEach(u => {
-                    u.member.rating = u.newRating;
-                    u.member.history.push({ date: "최신", score: scoreMap[u.newRating] || 6.0 });
-                });
-                saveMembersToStorage();
-                alert('일괄 조정이 완료되었습니다!');
-                loadAdminDashboard();
             }
-        }
-
-        function applyBatchAttendance() {
-            if (currentUser.role !== 'admin') return;
-            const checkedBoxes = document.querySelectorAll('.member-checkbox:checked');
-            if (checkedBoxes.length === 0) {
-                alert('출석을 반영할 멤버를 체크해주세요.');
-                return;
-            }
-
-            if (!confirm(`선택한 멤버들에게 출석을 반영하시겠습니까?`)) return;
-
-            checkedBoxes.forEach(cb => {
-                const name = cb.value;
-                const m = membersData.find(item => item.name === name);
-                if (m) {
-                    m.attendedMatches += 1;
-                }
-            });
             teamTotalMatches += 1;
-            saveMembersToStorage();
-            alert('출석이 반영되었습니다!');
+            await fetchMembersFromSupabase();
+            alert('출석 반영 완료!');
             loadAdminDashboard();
         }
 
         function openAdminEdit(name) {
-            if (currentUser.role !== 'admin') return;
             const m = membersData.find(item => item.name === name);
             if (!m) return;
-
             document.getElementById('edit-member-name').value = m.name;
             document.getElementById('edit-name').value = m.name;
             document.getElementById('edit-modal-title').innerText = `${m.name} 정보 수정`;
@@ -918,62 +776,52 @@
             document.getElementById('edit-phone').value = m.fullPhone;
             document.getElementById('edit-kakao').value = m.kakaoId || '';
             document.getElementById('edit-feedback').value = m.feedback || '';
-
             document.getElementById('admin-edit-modal').classList.remove('hidden');
         }
 
-        function closeAdminModal() {
-            document.getElementById('admin-edit-modal').classList.add('hidden');
-        }
+        function closeAdminModal() { document.getElementById('admin-edit-modal').classList.add('hidden'); }
 
-        document.getElementById('admin-edit-form').addEventListener('submit', function(e) {
+        document.getElementById('admin-edit-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            if (currentUser.role !== 'admin') return;
-
             const name = document.getElementById('edit-member-name').value;
-            const m = membersData.find(item => item.name === name);
             const fileInput = document.getElementById('edit-photo-file');
 
-            if (m) {
-                m.rating = document.getElementById('edit-rating').value.trim().toUpperCase();
-                m.position = document.getElementById('edit-position').value.trim();
-                m.birth = document.getElementById('edit-birth').value.trim();
-                m.joinDate = document.getElementById('edit-joindate').value.trim();
-                m.address = document.getElementById('edit-address').value.trim();
-                m.attendedMatches = parseInt(document.getElementById('edit-attended').value) || 0;
-                m.role = document.getElementById('edit-role-type').value;
-                m.isWithdrawn = document.getElementById('edit-withdrawn').checked;
-                m.fullPhone = document.getElementById('edit-phone').value.trim();
-                m.kakaoId = document.getElementById('edit-kakao').value.trim();
-                m.feedback = document.getElementById('edit-feedback').value.trim();
-                m.history.push({ date: "최신", score: scoreMap[m.rating] || 6.0 });
+            const updatedFields = {
+                rating: document.getElementById('edit-rating').value.trim().toUpperCase(),
+                position: document.getElementById('edit-position').value.trim(),
+                birth: document.getElementById('edit-birth').value.trim(),
+                join_date: document.getElementById('edit-joindate').value.trim(),
+                address: document.getElementById('edit-address').value.trim(),
+                attended_matches: parseInt(document.getElementById('edit-attended').value) || 0,
+                role: document.getElementById('edit-role-type').value,
+                is_withdrawn: document.getElementById('edit-withdrawn').checked,
+                full_phone: document.getElementById('edit-phone').value.trim(),
+                kakao_id: document.getElementById('edit-kakao').value.trim(),
+                feedback: document.getElementById('edit-feedback').value.trim()
+            };
 
-                function finalizeSave(photoUrl) {
-                    if (photoUrl !== undefined) {
-                        m.photo = photoUrl;
-                    }
-                    saveMembersToStorage();
-                    alert('정보가 성공적으로 업데이트되었습니다!');
-                    closeAdminModal();
-                    loadAdminDashboard();
-                }
+            async function saveToSupabase(photoUrl) {
+                if (photoUrl !== undefined) updatedFields.photo = photoUrl;
+                const { error } = await supabaseClient.from('members').update(updatedFields).eq('name', name);
+                if (error) { alert('수정 실패: ' + error.message); return; }
+                alert('업데이트 완료!');
+                closeAdminModal();
+                await fetchMembersFromSupabase();
+                loadAdminDashboard();
+            }
 
-                if (fileInput.files && fileInput.files[0]) {
-                    const reader = new FileReader();
-                    reader.onload = function(event) {
-                        finalizeSave(event.target.result);
-                    };
-                    reader.readAsDataURL(fileInput.files[0]);
-                } else {
-                    finalizeSave();
-                }
+            if (fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(event) { saveToSupabase(event.target.result); };
+                reader.readAsDataURL(fileInput.files[0]);
+            } else {
+                saveToSupabase();
             }
         });
 
         function renderChart(history) {
             const ctx = document.getElementById('ratingChart').getContext('2d');
             if (myChart) myChart.destroy();
-
             myChart = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -994,24 +842,7 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        y: { 
-                            min: 0, 
-                            max: 11, 
-                            ticks: { 
-                                color: '#94a3b8',
-                                stepSize: 1,
-                                callback: function(value) {
-                                    const labels = {
-                                        10.5: "A+", 10: "A", 9.5: "A-",
-                                        8.5: "B+", 8: "B", 7.5: "B-",
-                                        6.5: "C+", 6: "C", 5.5: "C-/D+",
-                                        4: "D", 3.5: "D-", 2: "E", 1: "F"
-                                    };
-                                    return labels[value] || (value + '점');
-                                }
-                            }, 
-                            grid: { color: '#334155' } 
-                        },
+                        y: { min: 0, max: 11, ticks: { color: '#94a3b8', stepSize: 1 }, grid: { color: '#334155' } },
                         x: { ticks: { color: '#94a3b8' }, grid: { display: false } }
                     },
                     plugins: { legend: { display: false } }
@@ -1022,7 +853,7 @@
         function openPwModal() { document.getElementById('pw-modal').classList.remove('hidden'); }
         function closePwModal() { document.getElementById('pw-modal').classList.add('hidden'); document.getElementById('pw-form').reset(); }
 
-        document.getElementById('pw-form').addEventListener('submit', function(e) {
+        document.getElementById('pw-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const currentPw = document.getElementById('current-pw').value.trim();
             const newPw = document.getElementById('new-pw').value.trim();
@@ -1031,15 +862,17 @@
             if (currentPw !== currentUser.password) { alert('현재 비밀번호가 일치하지 않습니다.'); return; }
             if (newPw !== newPwConfirm) { alert('새 비밀번호가 서로 일치하지 않습니다.'); return; }
 
+            const { error } = await supabaseClient.from('members').update({ password: newPw }).eq('name', currentUser.name);
+            if (error) { alert('변경 실패'); return; }
+
             currentUser.password = newPw;
-            saveMembersToStorage();
-            alert('비밀번호가 성공적으로 변경되었습니다!');
+            alert('비밀번호 변경 완료!');
             closePwModal();
         });
 
         function logout() {
             currentUser = null;
-            localStorage.removeItem('tenfc_logged_user'); 
+            localStorage.removeItem('tenfc_logged_user');
             document.getElementById('dashboard-container').classList.add('hidden');
             document.getElementById('admin-container').classList.add('hidden');
             document.getElementById('login-container').classList.remove('hidden');

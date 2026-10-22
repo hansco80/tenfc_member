@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 풋살팀 통합 시스템 v4.5 (Supabase 연동)</title>
+    <title>TenFC 풋살팀 통합 시스템 v1.0 (Supabase 연동)</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
@@ -406,7 +406,7 @@
     <script>
         // Supabase 클라이언트 초기화
         const SUPABASE_URL = 'https://bxuiwomkpgqsbyaagmlp.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_mXkGsaxwwfnnAR3lpE8T1A_n0kiPdZj'; 
+        const SUPABASE_KEY = 'sb_publishable_mXkGsaxwwfnnAR3lpE8T1A_n0kiPdZjt/v1/'; 
         const { createClient } = supabase;
         const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -585,11 +585,12 @@
             const aboveGroup = sortedMembers.filter(m => (scoreMap[m.rating] || 0) > myScore);
             const belowGroup = sortedMembers.filter(m => (scoreMap[m.rating] || 0) < myScore);
 
+            // 한 단계 위 인원 표시 수정 (실제 팀원 이름 반영)
             if (aboveGroup.length > 0) {
                 const targetScore = scoreMap[aboveGroup[aboveGroup.length - 1].rating];
                 const targetUsers = aboveGroup.filter(m => scoreMap[m.rating] === targetScore);
                 const extraCount = targetUsers.length;
-                document.getElementById('rank-above').innerText = extraCount > 1 ? `AAA 외 ${extraCount - 1}명 (${aboveGroup[aboveGroup.length-1].rating})` : `AAA (${aboveGroup[aboveGroup.length-1].rating})`;
+                document.getElementById('rank-above').innerText = extraCount > 1 ? `${targetUsers[0].name} 외 ${extraCount - 1}명 (${aboveGroup[aboveGroup.length-1].rating})` : `${aboveGroup[aboveGroup.length-1].name} (${aboveGroup[aboveGroup.length-1].rating})`;
             } else {
                 document.getElementById('rank-above').innerText = "최상위 등급입니다 🏆";
             }
@@ -601,11 +602,12 @@
                 document.getElementById('rank-same').innerText = `단독 ${user.rating} 등급`;
             }
 
+            // 한 단계 아래 인원 표시 수정 (실제 팀원 이름 반영)
             if (belowGroup.length > 0) {
                 const targetScore = scoreMap[belowGroup[0].rating];
                 const targetUsers = belowGroup.filter(m => scoreMap[m.rating] === targetScore);
                 const extraCount = targetUsers.length;
-                document.getElementById('rank-below').innerText = extraCount > 1 ? `BBB 외 ${extraCount - 1}명 (${belowGroup[0].rating})` : `CCC (${belowGroup[0].rating})`;
+                document.getElementById('rank-below').innerText = extraCount > 1 ? `${targetUsers[0].name} 외 ${extraCount - 1}명 (${belowGroup[0].rating})` : `${belowGroup[0].name} (${belowGroup[0].rating})`;
             } else {
                 document.getElementById('rank-below').innerText = "하위 그룹 없음";
             }

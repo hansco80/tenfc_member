@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 풋살팀 통합 시스템 v1.01</title>
+    <title>TenFC 풋살팀 통합 시스템 v1.02</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
@@ -17,7 +17,7 @@
     <div id="login-container" class="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
         <div class="text-center mb-6">
             <h1 class="text-3xl font-bold text-emerald-400">⚽ TenFC 풋살팀</h1>
-            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v1.01</span></p>
+            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v1.02</span></p>
         </div>
         <form id="login-form" class="space-y-4">
             <div>
@@ -33,126 +33,29 @@
         <p id="login-error" class="text-rose-400 text-sm text-center mt-4 hidden">이름 또는 비밀번호가 일치하지 않습니다.</p>
     </div>
 
-    <!-- 탈퇴 멤버 경고 알림 모달 -->
-    <div id="withdrawn-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-slate-800 w-full max-w-sm p-6 rounded-2xl border border-rose-500/50 shadow-2xl text-center">
-            <div class="text-3xl mb-2">⚠️</div>
-            <h3 class="text-lg font-bold text-rose-400 mb-2">알림</h3>
-            <p id="withdrawn-msg" class="text-sm text-slate-300 mb-4">현재 탈퇴 처리된 멤버입니다.</p>
-            <button onclick="closeWithdrawnModal()" class="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded">확인</button>
-        </div>
-    </div>
-
-    <!-- 대시보드 화면 (일반 멤버 & 관리자 공용 마이페이지) -->
+    <!-- 대시보드 화면 -->
     <div id="dashboard-container" class="w-full max-w-2xl bg-slate-800 p-6 md:p-8 rounded-2xl shadow-xl border border-slate-700 hidden">
-        
-        <!-- 관리자 전용 상단 네비게이션 탭 -->
         <div id="admin-switch-bar" class="hidden mb-4 p-2 bg-slate-900/80 rounded-lg border border-emerald-500/40 flex justify-between items-center">
             <span id="admin-badge-text" class="text-xs text-emerald-400 font-semibold px-2">🛡️ 관리자 권한 보유 계정</span>
             <button onclick="switchToAdmin()" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded transition">관리자 대시보드로 이동하기 ➡️</button>
         </div>
-
         <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <div>
                 <h2 id="user-welcome" class="text-2xl font-bold text-white"></h2>
-                <p class="text-xs text-slate-400 mt-1">팀 총 진행 매치: <span id="team-total-matches-display" class="font-bold text-amber-400">20회</span> | 시스템 버전: <span class="text-emerald-400 font-bold">v1.0</span></p>
+                <p class="text-xs text-slate-400 mt-1">팀 총 진행 매치: <span id="team-total-matches-display" class="font-bold text-amber-400">20회</span></p>
             </div>
             <div class="flex gap-2">
                 <button onclick="openPwModal()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">비밀번호 변경</button>
                 <button onclick="logout()" class="px-3 py-1.5 bg-rose-900/40 hover:bg-rose-800/60 text-rose-300 text-xs rounded-lg transition border border-rose-700/50">로그아웃</button>
             </div>
         </div>
-
-        <!-- 프로필 카드 -->
-        <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700 mb-6 flex flex-col sm:flex-row items-center gap-4">
-            <div class="w-20 h-20 rounded-full overflow-hidden border-2 border-emerald-500 bg-slate-800 flex-shrink-0 flex items-center justify-center text-2xl font-bold text-emerald-400">
-                <img id="user-photo" src="" alt="프로필 사진" class="w-full h-full object-cover hidden">
+        <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700 mb-6 flex items-center gap-4">
+            <div class="w-20 h-20 rounded-full overflow-hidden border-2 border-emerald-500 bg-slate-800 flex items-center justify-center text-2xl font-bold text-emerald-400">
                 <span id="user-photo-fallback">⚽</span>
             </div>
-            <div class="flex-1 grid grid-cols-2 gap-2 text-xs text-slate-300 w-full">
-                <div><span class="text-slate-500">생년월일(만나이):</span> <span id="prof-birth" class="font-medium text-white">-</span></div>
-                <div><span class="text-slate-500">포지션:</span> <span id="prof-position" class="font-medium text-emerald-400">-</span></div>
-                <div><span class="text-slate-500">연락처:</span> <span id="prof-phone" class="font-medium text-white">-</span></div>
-                <div><span class="text-slate-500">카카오톡 ID:</span> <span id="prof-kakao" class="font-medium text-amber-300">-</span></div>
-                <div><span class="text-slate-500">가입일:</span> <span id="prof-joindate" class="font-medium text-white">-</span></div>
-                <div><span class="text-slate-500">회원구분:</span> <span id="prof-role" class="font-medium text-sky-400">정회원</span></div>
-                <div class="col-span-2"><span class="text-slate-500">주소지:</span> <span id="prof-address" class="font-medium text-white">-</span></div>
-            </div>
-        </div>
-
-        <!-- 핵심 요약 카드 -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-            <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-700 text-center relative">
-                <div class="flex items-center justify-center gap-1">
-                    <p class="text-xs text-slate-400">현재 평점</p>
-                    <span class="relative group cursor-pointer text-slate-400 hover:text-emerald-400 text-xs font-bold px-1 rounded bg-slate-800 border border-slate-700">i
-                        <!-- 평점 기준 안내 툴팁 팝업 -->
-                        <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-72 p-3 bg-slate-800 text-slate-200 text-[11px] rounded-xl shadow-2xl border border-emerald-500/50 z-50 text-left leading-relaxed">
-                            <p class="font-bold text-emerald-400 mb-1">📌 평점 산정 및 반영 기준</p>
-                            <p class="mb-2 text-slate-300">평점은 팀 밸런스를 위해 필요한 기준으로, 정기 운동 시 감코진이 각 멤버의 실력과 활동량을 종합적으로 판단하여 상대평가로 결정합니다.</p>
-                            <p class="font-semibold text-amber-300 mb-1">상·하향은 1회 한 단계(0.5점)씩 적용</p>
-                            <ul class="list-disc pl-4 mb-2 space-y-0.5 text-slate-300">
-                                <li>C(6.0) → 상향 시 C+(6.5)</li>
-                                <li>C(6.0) → 하향 시 C-(5.5)</li>
-                                <li>C-와 D+는 동일 수준(5.5점)으로 봅니다.</li>
-                            </ul>
-                            <div class="border-t border-slate-700 pt-1 mt-1 font-semibold text-emerald-300 mb-1">등급별 대표 점수표</div>
-                            <div class="grid grid-cols-2 gap-x-2 text-[10px] text-slate-300">
-                                <div><b>A</b> : 10.0점 (A+ 10.5점)</div>
-                                <div><b>B</b> : 8.0점</div>
-                                <div><b>C</b> : 6.0점</div>
-                                <div><b>D</b> : 4.0점</div>
-                                <div><b>E~F</b> : 2.0점 이하</div>
-                            </div>
-                        </div>
-                    </span>
-                </div>
-                <p id="stat-rating" class="text-3xl font-extrabold text-emerald-400 mt-1">-</p>
-            </div>
-            <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-700 text-center">
-                <p class="text-xs text-slate-400">팀 내 순위</p>
-                <div id="stat-percentile" class="text-base font-bold text-sky-400 mt-2 leading-snug">-</div>
-            </div>
-            <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-700 text-center">
-                <p class="text-xs text-slate-400">매치 출석 횟수</p>
-                <p id="stat-attendance" class="text-lg font-bold text-amber-400 mt-2">-</p>
-            </div>
-            <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-700 text-center">
-                <p class="text-xs text-slate-400">참석률 (출석률)</p>
-                <p id="stat-att-rate" class="text-xl font-extrabold text-indigo-400 mt-1">-</p>
-            </div>
-        </div>
-
-        <!-- 감코진 피드백 코멘트 -->
-        <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700 mb-6">
-            <h3 class="text-xs font-semibold text-slate-300 mb-2 uppercase tracking-wider">📋 감코진 피드백 및 코멘트</h3>
-            <p id="user-feedback" class="text-sm text-slate-300 italic bg-slate-900/80 p-3 rounded-lg border border-slate-800">"등록된 피드백이 없습니다."</p>
-        </div>
-
-        <!-- 상대적 위치 -->
-        <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700 mb-6">
-            <h3 class="text-xs font-semibold text-slate-300 mb-3 uppercase tracking-wider">👥 팀 내 위치 및 상대적 그룹</h3>
-            <div class="space-y-2 text-xs">
-                <div class="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
-                    <span class="text-emerald-400 font-semibold">⬆️ 한 단계 위 등급</span>
-                    <span id="rank-above" class="text-slate-200 font-medium">-</span>
-                </div>
-                <div class="flex justify-between items-center bg-emerald-950/40 p-2.5 rounded-lg border border-emerald-800/50">
-                    <span class="text-emerald-300 font-bold">🎯 내 등급 그룹 (라이벌)</span>
-                    <span id="rank-same" class="text-emerald-200 font-medium">-</span>
-                </div>
-                <div class="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
-                    <span class="text-rose-400 font-semibold">⬇️ 한 단계 아래 등급</span>
-                    <span id="rank-below" class="text-slate-200 font-medium">-</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- 평점 변동 그래프 -->
-        <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700">
-            <h3 class="text-xs font-semibold text-slate-300 mb-3 uppercase tracking-wider">📈 평점 변동 이력</h3>
-            <div class="relative h-48">
-                <canvas id="ratingChart"></canvas>
+            <div class="flex-1 grid grid-cols-2 gap-2 text-xs text-slate-300">
+                <div>포지션: <span id="prof-position" class="text-emerald-400">-</span></div>
+                <div>연락처: <span id="prof-phone" class="text-white">-</span></div>
             </div>
         </div>
     </div>
@@ -162,308 +65,86 @@
         <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <div>
                 <h2 id="admin-title" class="text-2xl font-bold text-emerald-400">🛡️ 관리자 대시보드</h2>
-                <p class="text-xs text-slate-400 mt-1">팀 전체 총 매치: <span id="admin-team-matches" class="font-bold text-amber-400">20회</span> | 시스템 버전: <span class="text-emerald-400 font-bold">v1.0</span></p>
+                <p class="text-xs text-slate-400 mt-1">팀 전체 총 매치: <span id="admin-team-matches" class="font-bold text-amber-400">20회</span></p>
             </div>
-            <div class="flex gap-2">
-                <button onclick="switchToMyPage()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">내 마이페이지 보기</button>
-                <button onclick="logout()" class="px-3 py-1.5 bg-rose-900/40 hover:bg-rose-800/60 text-rose-300 text-xs rounded-lg transition border border-rose-700/50">로그아웃</button>
-            </div>
+            <button onclick="logout()" class="px-3 py-1.5 bg-rose-900/40 text-rose-300 text-xs rounded-lg border border-rose-700/50">로그아웃</button>
         </div>
 
-        <!-- 관리자 유틸리티 바 -->
-        <div id="admin-action-bar" class="bg-slate-900/70 p-4 rounded-xl border border-slate-700 mb-4 flex flex-col md:flex-row justify-between items-center gap-3">
-            <div class="flex gap-2 w-full md:w-auto flex-wrap">
-                <button onclick="toggleAllCheckboxes(true)" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded transition">전체 선택</button>
-                <button onclick="toggleAllCheckboxes(false)" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded transition">선택 해제</button>
-                <button onclick="openAddMemberModal()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded shadow transition">+ 신규 멤버 등록</button>
-                <button onclick="openSubAdminManageModal()" id="sub-admin-manage-btn" class="px-3 py-1.5 bg-sky-700 hover:bg-sky-600 text-white font-bold text-xs rounded shadow transition">🛡️ 부관리자 관리</button>
-                <button onclick="exportMemberTextData()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded shadow transition">전체 멤버 텍스트 복사</button>
-            </div>
-            <div id="admin-action-buttons" class="flex gap-2 w-full md:w-auto justify-end flex-wrap">
-                <button onclick="batchAdjustRating('up')" class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs rounded shadow transition">선택 평점 일괄 상향 (▲)</button>
-                <button onclick="batchAdjustRating('down')" class="px-3 py-1.5 bg-rose-800 hover:bg-rose-700 text-white font-bold text-xs rounded shadow transition">선택 평점 일괄 하향 (▼)</button>
-                <button onclick="applyBatchAttendance()" class="px-4 py-1.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded shadow transition">선택 멤버 출석 반영 (+1)</button>
-            </div>
-        </div>
-
-        <!-- 멤버 관리 테이블 -->
         <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700 overflow-x-auto">
             <table class="w-full text-left text-xs text-slate-300">
-                <thead class="bg-slate-800 text-slate-400 uppercase select-none">
+                <thead class="bg-slate-800 text-slate-400 uppercase">
                     <tr>
-                        <th id="th-checkbox" class="p-3 w-10 text-center"><input type="checkbox" id="select-all-main" onclick="toggleSelectAll(this)"></th>
-                        <th class="p-3 cursor-pointer hover:text-emerald-400 transition" onclick="changeSort('name')">
-                            성명 <span id="sort-icon-name" class="text-slate-500">↕</span>
-                        </th>
-                        <th class="p-3 cursor-pointer hover:text-emerald-400 transition" onclick="changeSort('birth')">
-                            출생년도 <span id="sort-icon-birth" class="text-emerald-400">▼</span>
-                        </th>
+                        <th class="p-3">성명</th>
+                        <th class="p-3">출생년도</th>
                         <th class="p-3">포지션</th>
-                        <th class="p-3 cursor-pointer hover:text-emerald-400 transition" onclick="changeSort('rating')">
-                            현재 평점 <span id="sort-icon-rating" class="text-slate-500">↕</span>
-                        </th>
-                        <th class="p-3 cursor-pointer hover:text-emerald-400 transition" onclick="changeSort('attendance')">
-                            출석 횟수 / 참석률 <span id="sort-icon-attendance" class="text-slate-500">↕</span>
-                        </th>
-                        <th class="p-3">연락처 / 카톡ID</th>
-                        <th id="th-action" class="p-3 text-center">관리</th>
+                        <th class="p-3">현재 평점</th>
+                        <th class="p-3">출석 횟수</th>
+                        <th class="p-3">연락처</th>
                     </tr>
                 </thead>
                 <tbody id="admin-member-list" class="divide-y divide-slate-700/50">
-                    <!-- 자바스크립트로 동적 생성 -->
+                    <!-- 데이터 로딩 전 안내 메시지 -->
+                    <tr><td colspan="6" class="p-4 text-center text-slate-400">데이터를 불러오는 중입니다...</td></tr>
                 </tbody>
             </table>
         </div>
     </div>
 
-    <!-- 신규 멤버 등록 모달 -->
-    <div id="add-member-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-slate-800 w-full max-w-md p-6 rounded-2xl border border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <h3 class="text-lg font-bold text-white mb-4">➕ 신규 멤버 등록</h3>
-            <form id="add-member-form" class="space-y-3">
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">성명 *</label>
-                    <input type="text" id="add-name" required class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white" placeholder="예: 홍길동">
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">초기 비밀번호 *</label>
-                        <input type="password" id="add-pw" required class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white" placeholder="예: 1234">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">포지션</label>
-                        <input type="text" id="add-position" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white" placeholder="예: 공격">
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">출생년월일 (예: 1995.05.10)</label>
-                        <input type="text" id="add-birth" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">가입일</label>
-                        <input type="text" id="add-joindate" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white" value="2026년">
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">주소지</label>
-                    <input type="text" id="add-address" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white" placeholder="예: 서울시 마포구">
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">초기 평점</label>
-                        <input type="text" id="add-rating" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white uppercase" value="C" placeholder="예: C, B">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">회원구분</label>
-                        <select id="add-role" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
-                            <option value="member">정회원</option>
-                            <option value="sub_admin">부관리자</option>
-                            <option value="admin">주관리자</option>
-                            <option value="guest">용병</option>
-                            <option value="acquaintance">지인</option>
-                        </select>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">연락처</label>
-                    <input type="text" id="add-phone" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white" placeholder="010-XXXX-XXXX">
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">카카오톡 ID</label>
-                    <input type="text" id="add-kakao" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">감코진 피드백 코멘트</label>
-                    <textarea id="add-feedback" rows="2" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white" placeholder="신규 등록 선수 코멘트"></textarea>
-                </div>
-                <div class="flex gap-2 pt-2">
-                    <button type="button" onclick="closeAddMemberModal()" class="flex-1 py-2 bg-slate-700 text-slate-300 text-xs rounded">취소</button>
-                    <button type="submit" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded">등록 완료</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- 부관리자 관리 모달 -->
-    <div id="sub-admin-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-slate-800 w-full max-w-md p-6 rounded-2xl border border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <h3 class="text-lg font-bold text-emerald-400 mb-2">🛡️ 부관리자 임명 및 해제</h3>
-            <p class="text-xs text-slate-400 mb-4">정회원 중 운영을 도울 부관리자를 지정하거나 해제할 수 있습니다.</p>
-            <div id="sub-admin-list-container" class="space-y-2 mb-4 max-h-60 overflow-y-auto pr-1"></div>
-            <button onclick="closeSubAdminModal()" class="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded">닫기</button>
-        </div>
-    </div>
-
-    <!-- 멤버 정보 수정 모달 -->
-    <div id="admin-edit-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-slate-800 w-full max-w-md p-6 rounded-2xl border border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <h3 id="edit-modal-title" class="text-lg font-bold text-white mb-4">멤버 정보 수정</h3>
-            <form id="admin-edit-form" class="space-y-3">
-                <input type="hidden" id="edit-member-name">
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">성명</label>
-                    <input type="text" id="edit-name" disabled class="w-full px-3 py-2 bg-slate-900/50 border border-slate-700 rounded text-sm text-slate-400">
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">평점 (A+ ~ F-)</label>
-                        <input type="text" id="edit-rating" required class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white uppercase">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">포지션</label>
-                        <input type="text" id="edit-position" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">출생년월일</label>
-                        <input type="text" id="edit-birth" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">가입일</label>
-                        <input type="text" id="edit-joindate" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">주소지</label>
-                    <input type="text" id="edit-address" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">개인 출석 횟수</label>
-                        <input type="number" id="edit-attended" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">회원구분</label>
-                        <select id="edit-role-type" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
-                            <option value="member">정회원</option>
-                            <option value="sub_admin">부관리자</option>
-                            <option value="admin">주관리자</option>
-                            <option value="guest">용병</option>
-                            <option value="acquaintance">지인</option>
-                        </select>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">탈퇴 여부 처리</label>
-                    <label class="flex items-center gap-2 cursor-pointer bg-slate-900 p-2.5 rounded border border-slate-700">
-                        <input type="checkbox" id="edit-withdrawn" class="w-4 h-4 text-rose-600 rounded">
-                        <span class="text-xs text-rose-400 font-semibold">탈퇴 멤버로 처리 (로그인 제한)</span>
-                    </label>
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">프로필 사진 첨부</label>
-                    <input type="file" id="edit-photo-file" accept="image/*" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-slate-300 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500">
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">연락처</label>
-                    <input type="text" id="edit-phone" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">카카오톡 ID</label>
-                    <input type="text" id="edit-kakao" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">감코진 피드백 코멘트</label>
-                    <textarea id="edit-feedback" rows="3" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white"></textarea>
-                </div>
-                <div class="flex gap-2 pt-2">
-                    <button type="button" onclick="closeAdminModal()" class="flex-1 py-2 bg-slate-700 text-slate-300 text-xs rounded">취소</button>
-                    <button type="submit" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded">저장하기</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- 비밀번호 변경 모달 -->
-    <div id="pw-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-slate-800 w-full max-w-sm p-6 rounded-2xl border border-slate-700 shadow-2xl">
-            <h3 class="text-lg font-bold text-white mb-4">비밀번호 변경</h3>
-            <form id="pw-form" class="space-y-3">
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">현재 비밀번호</label>
-                    <input type="password" id="current-pw" required class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">새 비밀번호</label>
-                    <input type="password" id="new-pw" required class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">새 비밀번호 확인</label>
-                    <input type="password" id="new-pw-confirm" required class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
-                </div>
-                <div class="flex gap-2 pt-2">
-                    <button type="button" onclick="closePwModal()" class="flex-1 py-2 bg-slate-700 text-slate-300 text-xs rounded">취소</button>
-                    <button type="submit" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded">변경 완료</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
     <script>
-        // Supabase 클라이언트 초기화 (요청하신 API 키 고정)
+        // Supabase 클라이언트 초기화 (정확한 API 키 고정)
         const SUPABASE_URL = 'https://bxuiwomkpgqsbyaagmlp.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_mXkGsaxwwfnnAR3lpE8T1A_n0kiPdZj'; 
         const { createClient } = supabase;
         const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        const ratingHierarchy = [
-            "F-", "F", "E-", "E", "E+", "D-", "D", "D+", "C-", "C", "C+", "B-", "B", "B+", "A-", "A", "A+"
-        ];
-
-        const scoreMap = { 
-            "A+": 10.5, "A": 10.0, "A-": 9.5, 
-            "B+": 8.5,  "B": 8.0,  "B-": 7.5, 
-            "C+": 6.5,  "C": 6.0,  "C-": 5.5, 
-            "D+": 5.5,  "D": 4.0,  "D-": 3.5, 
-            "E+": 2.5,  "E": 2.0,  "E-": 1.5, 
-            "F": 1.0,   "F-": 0.5 
-        };
-
-        let teamTotalMatches = 20;
         let membersData = [];
         let currentUser = null;
-        let myChart = null;
-
-        let currentSortField = 'birth'; 
-        let currentSortOrder = 'asc';  
 
         async function fetchMembers() {
-            const { data, error } = await db.from('members').select('*');
-            if (error) {
-                console.error('데이터 조회 오류:', error);
+            try {
+                const { data, error } = await db.from('members').select('*');
+                if (error) {
+                    console.error('Supabase 에러:', error);
+                    alert('데이터베이스 연결 오류: ' + error.message);
+                    return false;
+                }
+
+                if (data && data.length > 0) {
+                    membersData = data.map(item => ({
+                        id: item.id,
+                        name: item.name,
+                        password: item.password,
+                        fullPhone: item.full_phone,
+                        kakaoId: item.kakao_id,
+                        photo: item.photo || "",
+                        birth: item.birth,
+                        address: item.address,
+                        position: item.position,
+                        rating: item.rating,
+                        joinDate: item.join_date,
+                        role: item.role,
+                        isWithdrawn: item.is_withdrawn,
+                        attendedMatches: item.attended_matches,
+                        history: item.history || [],
+                        feedback: item.feedback
+                    }));
+                    return true;
+                } else {
+                    console.warn('데이터가 비어있습니다.');
+                    return false;
+                }
+            } catch (err) {
+                console.error('통신 예외 발생:', err);
                 return false;
             }
-
-            if (data && data.length > 0) {
-                membersData = data.map(item => ({
-                    id: item.id,
-                    name: item.name,
-                    password: item.password,
-                    fullPhone: item.full_phone,
-                    kakaoId: item.kakao_id,
-                    photo: item.photo || "",
-                    birth: item.birth,
-                    address: item.address,
-                    position: item.position,
-                    rating: item.rating,
-                    joinDate: item.join_date,
-                    role: item.role,
-                    isWithdrawn: item.is_withdrawn,
-                    attendedMatches: item.attended_matches,
-                    history: item.history || [],
-                    feedback: item.feedback
-                }));
-                return true;
-            }
-            return false;
         }
 
-        // 앱 초기화 및 세션 복원
         async function initApp() {
             const success = await fetchMembers();
-            if (!success) return;
+            if (!success) {
+                alert('서버에서 멤버 데이터를 가져오지 못했습니다. Supabase 설정 또는 네트워크를 확인해주세요.');
+                return;
+            }
             
             const savedUserName = localStorage.getItem('tenfc_logged_user');
             if (savedUserName) {
@@ -476,7 +157,6 @@
                         loadAdminDashboard();
                     } else {
                         document.getElementById('dashboard-container').classList.remove('hidden');
-                        loadMemberDashboard(currentUser);
                     }
                 } else {
                     localStorage.removeItem('tenfc_logged_user');
@@ -486,35 +166,6 @@
 
         initApp();
 
-        function changeSort(field) {
-            if (currentSortField === field) {
-                currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
-            } else {
-                currentSortField = field;
-                currentSortOrder = 'asc';
-            }
-            loadAdminDashboard();
-        }
-
-        function calculateInternationalAge(birthStr) {
-            if (!birthStr) return "-";
-            const parts = birthStr.split('.');
-            if (parts.length < 3) return birthStr;
-            
-            const bYear = parseInt(parts[0], 10);
-            const bMonth = parseInt(parts[1], 10);
-            const bDay = parseInt(parts[2], 10);
-
-            const today = new Date();
-            let age = today.getFullYear() - bYear;
-            const m = (today.getMonth() + 1) - bMonth;
-            
-            if (m < 0 || (m === 0 && today.getDate() < bDay)) {
-                age--;
-            }
-            return `${birthStr} (만 ${age}세)`;
-        }
-
         document.getElementById('login-form').addEventListener('submit', function(e) {
             e.preventDefault();
             const inputName = document.getElementById('name-input').value.trim();
@@ -523,12 +174,6 @@
             const user = membersData.find(m => m.name === inputName && m.password === inputPw);
 
             if (user) {
-                if (user.isWithdrawn) {
-                    document.getElementById('withdrawn-msg').innerText = `${user.name} 님은 현재 탈퇴 처리된 멤버입니다.`;
-                    document.getElementById('withdrawn-modal').classList.remove('hidden');
-                    return;
-                }
-
                 currentUser = user;
                 localStorage.setItem('tenfc_logged_user', user.name); 
                 document.getElementById('login-container').classList.add('hidden');
@@ -538,580 +183,35 @@
                     loadAdminDashboard();
                 } else {
                     document.getElementById('dashboard-container').classList.remove('hidden');
-                    loadMemberDashboard(user);
                 }
             } else {
                 document.getElementById('login-error').classList.remove('hidden');
             }
         });
 
-        function closeWithdrawnModal() {
-            document.getElementById('withdrawn-modal').classList.add('hidden');
-        }
-
-        function loadMemberDashboard(user) {
-            document.getElementById('user-welcome').innerText = `${user.name} 님`;
-            document.getElementById('stat-rating').innerText = user.rating;
-            document.getElementById('team-total-matches-display').innerText = `${teamTotalMatches}회`;
-            
-            const photoImg = document.getElementById('user-photo');
-            const photoFallback = document.getElementById('user-photo-fallback');
-            if (user.photo && user.photo.trim() !== "") {
-                photoImg.src = user.photo;
-                photoImg.classList.remove('hidden');
-                photoFallback.classList.add('hidden');
-            } else {
-                photoImg.classList.add('hidden');
-                photoFallback.classList.remove('hidden');
-            }
-
-            document.getElementById('prof-birth').innerText = calculateInternationalAge(user.birth);
-            document.getElementById('prof-position').innerText = user.position;
-            document.getElementById('prof-phone').innerText = user.fullPhone;
-            document.getElementById('prof-kakao').innerText = user.kakaoId || "-";
-            document.getElementById('prof-joindate').innerText = user.joinDate || "-";
-            document.getElementById('prof-address').innerText = user.address || "-";
-            
-            let roleText = '정회원';
-            if (user.role === 'admin' || user.role === 'sub_admin') roleText = '운영진';
-            else if (user.role === 'guest') roleText = '용병';
-            else if (user.role === 'acquaintance') roleText = '지인';
-            document.getElementById('prof-role').innerText = roleText;
-
-            const attRate = teamTotalMatches > 0 ? Math.round((user.attendedMatches / teamTotalMatches) * 100) : 0;
-            document.getElementById('stat-attendance').innerText = `${user.attendedMatches}회 / ${teamTotalMatches}회`;
-            document.getElementById('stat-att-rate').innerText = `${attRate}%`;
-
-            document.getElementById('user-feedback').innerText = user.feedback ? `"${user.feedback}"` : "등록된 피드백이 없습니다.";
-
-            if (currentUser.role === 'admin' || currentUser.role === 'sub_admin') {
-                document.getElementById('admin-switch-bar').classList.remove('hidden');
-                document.getElementById('admin-badge-text').innerText = currentUser.role === 'admin' ? '🛡️ 주관리자 권한 보유 계정' : '👁️ 부관리자 (조회 전용) 권한 보유 계정';
-            } else {
-                document.getElementById('admin-switch-bar').classList.add('hidden');
-            }
-
-            const myScore = scoreMap[user.rating] || 6.0;
-            const sortedMembers = [...membersData].filter(m => !m.isWithdrawn).sort((a, b) => (scoreMap[b.rating] || 0) - (scoreMap[a.rating] || 0));
-
-            let rank = 1;
-            for (let i = 0; i < sortedMembers.length; i++) {
-                if ((scoreMap[sortedMembers[i].rating] || 0) > myScore) rank++;
-            }
-            const totalCount = sortedMembers.length;
-            const percentile = Math.round((rank / totalCount) * 100);
-
-            document.getElementById('stat-percentile').innerHTML = `공동 ${rank}위<br><span class="text-xs text-slate-400 font-normal">(상위 ${percentile}%)</span>`;
-
-            const sameGroup = sortedMembers.filter(m => (scoreMap[m.rating] || 0) === myScore && m.name !== user.name);
-            const aboveGroup = sortedMembers.filter(m => (scoreMap[m.rating] || 0) > myScore);
-            const belowGroup = sortedMembers.filter(m => (scoreMap[m.rating] || 0) < myScore);
-
-            if (aboveGroup.length > 0) {
-                const targetScore = scoreMap[aboveGroup[aboveGroup.length - 1].rating];
-                const targetUsers = aboveGroup.filter(m => scoreMap[m.rating] === targetScore);
-                const extraCount = targetUsers.length;
-                document.getElementById('rank-above').innerText = extraCount > 1 ? `${targetUsers[0].name} 외 ${extraCount - 1}명 (${aboveGroup[aboveGroup.length-1].rating})` : `${aboveGroup[aboveGroup.length-1].name} (${aboveGroup[aboveGroup.length-1].rating})`;
-            } else {
-                document.getElementById('rank-above').innerText = "최상위 등급입니다 🏆";
-            }
-
-            if (sameGroup.length > 0) {
-                const extraCount = sameGroup.length;
-                document.getElementById('rank-same').innerText = extraCount > 1 ? `${sameGroup[0].name} 외 ${extraCount - 1}명 (${user.rating} 동급)` : `${sameGroup[0].name} (${user.rating} 동급)`;
-            } else {
-                document.getElementById('rank-same').innerText = `단독 ${user.rating} 등급`;
-            }
-
-            if (belowGroup.length > 0) {
-                const targetScore = scoreMap[belowGroup[0].rating];
-                const targetUsers = belowGroup.filter(m => scoreMap[m.rating] === targetScore);
-                const extraCount = targetUsers.length;
-                document.getElementById('rank-below').innerText = extraCount > 1 ? `${targetUsers[0].name} 외 ${extraCount - 1}명 (${belowGroup[0].rating})` : `${targetUsers[0].name} (${targetUsers[0].rating})`;
-            } else {
-                document.getElementById('rank-below').innerText = "하위 그룹 없음";
-            }
-
-            renderChart(user.history);
-        }
-
-        function switchToAdmin() {
-            document.getElementById('dashboard-container').classList.add('hidden');
-            document.getElementById('admin-container').classList.remove('hidden');
-            loadAdminDashboard();
-        }
-
-        function switchToMyPage() {
-            document.getElementById('admin-container').classList.add('hidden');
-            document.getElementById('dashboard-container').classList.remove('hidden');
-            loadMemberDashboard(currentUser);
-        }
-
         function loadAdminDashboard() {
-            document.getElementById('admin-team-matches').innerText = `${teamTotalMatches}회`;
-            
-            const isAdmin = currentUser.role === 'admin';
-            document.getElementById('admin-title').innerText = isAdmin ? '🛡️ 주관리자 대시보드' : '👁️ 부관리자 대시보드 (조회 전용)';
-            document.getElementById('admin-mode-desc').innerText = isAdmin ? '전체 멤버 평점 및 출석 일괄 관리' : '전체 멤버 현황 및 평점 조회 (수정 권한 없음)';
-            
-            const subAdminBtn = document.getElementById('sub-admin-manage-btn');
-            if (subAdminBtn) subAdminBtn.style.display = isAdmin ? 'inline-block' : 'none';
-
-            if (isAdmin) {
-                document.getElementById('admin-action-bar').classList.remove('hidden');
-                document.getElementById('th-checkbox').classList.remove('hidden');
-                document.getElementById('th-action').classList.remove('hidden');
-            } else {
-                document.getElementById('admin-action-bar').classList.add('hidden');
-                document.getElementById('th-checkbox').classList.add('hidden');
-                document.getElementById('th-action').classList.add('hidden');
-            }
-
-            ['name', 'birth', 'rating', 'attendance'].forEach(field => {
-                const icon = document.getElementById(`sort-icon-${field}`);
-                if (icon) {
-                    if (currentSortField === field) {
-                        icon.innerText = currentSortOrder === 'asc' ? '▲' : '▼';
-                        icon.className = "text-emerald-400 font-bold";
-                    } else {
-                        icon.innerText = '↕';
-                        icon.className = "text-slate-500";
-                    }
-                }
-            });
-
-            let displayList = [...membersData];
-            displayList.sort((a, b) => {
-                let valA, valB;
-                if (currentSortField === 'name') {
-                    valA = a.name; valB = b.name;
-                    return currentSortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
-                } else if (currentSortField === 'birth') {
-                    valA = a.birth || ""; valB = b.birth || "";
-                    return currentSortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
-                } else if (currentSortField === 'rating') {
-                    valA = scoreMap[a.rating] || 0; valB = scoreMap[b.rating] || 0;
-                    return currentSortOrder === 'asc' ? valB - valA : valA - valB;
-                } else if (currentSortField === 'attendance') {
-                    valA = teamTotalMatches > 0 ? (a.attendedMatches / teamTotalMatches) : 0;
-                    valB = teamTotalMatches > 0 ? (b.attendedMatches / teamTotalMatches) : 0;
-                    return currentSortOrder === 'asc' ? valA - valB : valB - valA;
-                }
-            });
-
             const tbody = document.getElementById('admin-member-list');
             tbody.innerHTML = '';
 
-            displayList.forEach(m => {
-                const attRate = teamTotalMatches > 0 ? Math.round((m.attendedMatches / teamTotalMatches) * 100) : 0;
-                
-                let roleBadge = '';
-                if (m.isWithdrawn) roleBadge = '<span class="text-rose-400 text-[10px] ml-1 font-bold">(탈퇴)</span>';
-                else if (m.role === 'admin' || m.role === 'sub_admin') roleBadge = '<span class="text-emerald-400 text-[10px] ml-1">(운영진)</span>';
-                else if (m.role === 'guest') roleBadge = '<span class="text-amber-400 text-[10px] ml-1">(용병)</span>';
-                else if (m.role === 'acquaintance') roleBadge = '<span class="text-purple-400 text-[10px] ml-1">(지인)</span>';
+            if (membersData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-rose-400">등록된 멤버 데이터가 없습니다.</td></tr>`;
+                return;
+            }
 
-                const numericScore = scoreMap[m.rating] !== undefined ? scoreMap[m.rating].toFixed(1) : '-';
-                const ratingDisplay = `${m.rating} (${numericScore}점)`;
-
+            membersData.forEach(m => {
                 const tr = document.createElement('tr');
-                tr.className = `hover:bg-slate-700/35 transition ${m.isWithdrawn ? 'opacity-60 bg-rose-950/10' : ''}`;
-                
-                let rowHtml = '';
-                if (isAdmin) {
-                    rowHtml += `<td class="p-3 text-center"><input type="checkbox" class="member-checkbox" value="${m.name}"></td>`;
-                }
-                
-                rowHtml += `
-                    <td class="p-3 font-bold text-white flex items-center gap-2">
-                        <div class="w-7 h-7 rounded-full overflow-hidden bg-slate-700 flex-shrink-0 flex items-center justify-center text-xs">
-                            ${m.photo ? `<img src="${m.photo}" class="w-full h-full object-cover">` : '⚽'}
-                        </div>
-                        <span>${m.name} ${roleBadge}</span>
-                    </td>
-                    <td class="p-3 text-slate-300">${calculateInternationalAge(m.birth)}</td>
-                    <td class="p-3 text-slate-300">${m.position}</td>
-                    <td class="p-3 font-extrabold text-emerald-400">${ratingDisplay}</td>
-                    <td class="p-3 text-slate-300">${m.attendedMatches}회 / ${teamTotalMatches}회 <span class="text-indigo-400 font-bold">(${attRate}%)</span></td>
-                    <td class="p-3 text-slate-300">${m.fullPhone}<br><span class="text-amber-300">@${m.kakaoId || '-'}</span></td>
+                tr.className = "hover:bg-slate-700/35 transition";
+                tr.innerHTML = `
+                    <td class="p-3 font-bold text-white">${m.name}</td>
+                    <td class="p-3 text-slate-300">${m.birth || '-'}</td>
+                    <td class="p-3 text-slate-300">${m.position || '-'}</td>
+                    <td class="p-3 font-extrabold text-emerald-400">${m.rating || '-'}</td>
+                    <td class="p-3 text-slate-300">${m.attendedMatches || 0}회</td>
+                    <td class="p-3 text-slate-300">${m.fullPhone || '-'}</td>
                 `;
-
-                if (isAdmin) {
-                    rowHtml += `
-                        <td class="p-3 text-center">
-                            <button onclick="openAdminEdit('${m.name}')" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold">수정</button>
-                        </td>
-                    `;
-                }
-
-                tr.innerHTML = rowHtml;
                 tbody.appendChild(tr);
             });
-
-            const selectAll = document.getElementById('select-all-main');
-            if (selectAll) selectAll.checked = false;
         }
-
-        function openAddMemberModal() {
-            document.getElementById('add-member-form').reset();
-            document.getElementById('add-member-modal').classList.remove('hidden');
-        }
-        function closeAddMemberModal() {
-            document.getElementById('add-member-modal').classList.add('hidden');
-        }
-
-        document.getElementById('add-member-form').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const name = document.getElementById('add-name').value.trim();
-            const pw = document.getElementById('add-pw').value.trim();
-            const position = document.getElementById('add-position').value.trim() || "멀티";
-            const birth = document.getElementById('add-birth').value.trim();
-            const joinDate = document.getElementById('add-joindate').value.trim();
-            const address = document.getElementById('add-address').value.trim();
-            const rating = document.getElementById('add-rating').value.trim().toUpperCase() || "C";
-            const role = document.getElementById('add-role').value;
-            const phone = document.getElementById('add-phone').value.trim() || "010-XXXX-XXXX";
-            const kakao = document.getElementById('add-kakao').value.trim();
-            const feedback = document.getElementById('add-feedback').value.trim();
-
-            if (membersData.some(m => m.name === name)) {
-                alert('이미 존재하는 성명입니다.');
-                return;
-            }
-
-            const initialScore = scoreMap[rating] !== undefined ? scoreMap[rating] : 6.0;
-
-            const { error } = await db.from('members').insert([{
-                name: name,
-                password: pw,
-                full_phone: phone,
-                kakao_id: kakao,
-                photo: "",
-                birth: birth,
-                address: address,
-                position: position,
-                rating: rating,
-                join_date: joinDate,
-                role: role,
-                is_withdrawn: false,
-                attended_matches: 0,
-                history: [{ date: "등록", score: initialScore }],
-                feedback: feedback || "신규 등록된 멤버입니다."
-            }]);
-
-            if (error) {
-                alert('멤버 등록 중 오류가 발생했습니다.');
-                return;
-            }
-
-            alert(`[${name}] 님의 신규 등록이 완료되었습니다!`);
-            closeAddMemberModal();
-            await fetchMembers();
-            loadAdminDashboard();
-        });
-
-        function openSubAdminManageModal() {
-            const container = document.getElementById('sub-admin-list-container');
-            container.innerHTML = '';
-            const targetMembers = membersData.filter(m => m.role !== 'admin');
-
-            if (targetMembers.length === 0) {
-                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">지정할 수 있는 멤버가 없습니다.</p>`;
-            } else {
-                targetMembers.forEach(m => {
-                    const isSub = m.role === 'sub_admin';
-                    const div = document.createElement('div');
-                    div.className = "flex justify-between items-center bg-slate-900/60 p-2.5 rounded-lg border border-slate-700 text-xs";
-                    div.innerHTML = `
-                        <div>
-                            <span class="font-bold text-white">${m.name}</span>
-                            <span class="text-slate-400 ml-2">(${m.position} / ${isSub ? '부관리자' : m.role === 'guest' ? '용병' : '정회원'})</span>
-                        </div>
-                        <div>
-                            ${isSub 
-                                ? `<button onclick="toggleSubAdminRole('${m.name}', false)" class="px-2.5 py-1 bg-rose-800 hover:bg-rose-700 text-white font-semibold rounded">해제</button>` 
-                                : `<button onclick="toggleSubAdminRole('${m.name}', true)" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded">부관리자 임명</button>`
-                            }
-                        </div>
-                    `;
-                    container.appendChild(div);
-                });
-            }
-            document.getElementById('sub-admin-modal').classList.remove('hidden');
-        }
-
-        function closeSubAdminModal() {
-            document.getElementById('sub-admin-modal').classList.add('hidden');
-            loadAdminDashboard();
-        }
-
-        async function toggleSubAdminRole(name, makeSub) {
-            const newRole = makeSub ? 'sub_admin' : 'member';
-            const { error } = await db.from('members').update({ role: newRole }).eq('name', name);
-            if (!error) {
-                alert(`${name} 님이 성공적으로 ${makeSub ? '부관리자로 임명' : '일반 회원으로 해제'}되었습니다!`);
-                await fetchMembers();
-                openSubAdminManageModal();
-            }
-        }
-
-        function toggleSelectAll(master) {
-            document.querySelectorAll('.member-checkbox').forEach(cb => cb.checked = master.checked);
-        }
-
-        function toggleAllCheckboxes(status) {
-            document.querySelectorAll('.member-checkbox').forEach(cb => cb.checked = status);
-            const selectAll = document.getElementById('select-all-main');
-            if (selectAll) selectAll.checked = status;
-        }
-
-        function exportMemberTextData() {
-            let validMembers = membersData.filter(m => m.name !== "Test" && m.name !== "테스트");
-            let coreList = validMembers.filter(m => m.role === 'admin' || m.role === 'sub_admin' || m.role === 'member').sort((a, b) => (a.birth || "").localeCompare(b.birth || ""));
-            let otherList = validMembers.filter(m => m.role === 'guest' || m.role === 'acquaintance').sort((a, b) => (a.birth || "").localeCompare(b.birth || ""));
-
-            let textOutput = "=== TenFC 풋살팀 멤버 명단 ===\n";
-            coreList.forEach(m => {
-                let roleStr = "정회원";
-                if (m.role === 'admin' || m.role === 'sub_admin') roleStr = "운영진";
-                if (m.isWithdrawn) roleStr += "(탈퇴)";
-                const numericScore = scoreMap[m.rating] !== undefined ? scoreMap[m.rating].toFixed(1) : '-';
-                textOutput += `${m.name}(${roleStr}) / ${m.birth || '-'} / ${m.rating} (${numericScore}점)\n`;
-            });
-
-            if (otherList.length > 0) {
-                textOutput += "-----\n";
-                otherList.forEach(m => {
-                    let roleStr = "용병";
-                    if (m.role === 'acquaintance') roleStr = "지인";
-                    if (m.isWithdrawn) roleStr += "(탈퇴)";
-                    const numericScore = scoreMap[m.rating] !== undefined ? scoreMap[m.rating].toFixed(1) : '-';
-                    textOutput += `${m.name}(${roleStr}) / ${m.birth || '-'} / ${m.rating} (${numericScore}점)\n`;
-                });
-            }
-
-            navigator.clipboard.writeText(textOutput).then(() => alert('전체 멤버 데이터가 클립보드에 복사되었습니다!'));
-        }
-
-        async function batchAdjustRating(direction) {
-            if (currentUser.role !== 'admin') return;
-            const checkedBoxes = document.querySelectorAll('.member-checkbox:checked');
-            if (checkedBoxes.length === 0) {
-                alert('평점을 조정할 멤버를 체크해주세요.');
-                return;
-            }
-
-            let previewText = "";
-            let updates = [];
-
-            checkedBoxes.forEach(cb => {
-                const name = cb.value;
-                const m = membersData.find(item => item.name === name);
-                if (m) {
-                    let currentIndex = ratingHierarchy.indexOf(m.rating);
-                    if (currentIndex === -1) currentIndex = 9;
-                    let newIndex = currentIndex;
-                    if (direction === 'up' && currentIndex < ratingHierarchy.length - 1) newIndex = currentIndex + 1;
-                    else if (direction === 'down' && currentIndex > 0) newIndex = currentIndex - 1;
-
-                    const newRating = ratingHierarchy[newIndex];
-                    updates.push({ member: m, newRating: newRating });
-                    previewText += `• ${m.name}: [${m.rating}] ➡️ [${newRating}]\n`;
-                }
-            });
-
-            if (confirm(`[평점 일괄 조정 확인]\n\n${previewText}\n적용하시겠습니까?`)) {
-                for (let u of updates) {
-                    u.member.rating = u.newRating;
-                    u.member.history.push({ date: "최신", score: scoreMap[u.newRating] || 6.0 });
-
-                    await db.from('members').update({
-                        rating: u.member.rating,
-                        history: u.member.history
-                    }).eq('name', u.member.name);
-                }
-                alert('일괄 조정이 완료되었습니다!');
-                await fetchMembers();
-                loadAdminDashboard();
-            }
-        }
-
-        async function applyBatchAttendance() {
-            if (currentUser.role !== 'admin') return;
-            const checkedBoxes = document.querySelectorAll('.member-checkbox:checked');
-            if (checkedBoxes.length === 0) {
-                alert('출석을 반영할 멤버를 체크해주세요.');
-                return;
-            }
-
-            if (!confirm(`선택한 멤버들에게 출석을 반영하시겠습니까?`)) return;
-
-            for (let cb of checkedBoxes) {
-                const name = cb.value;
-                const m = membersData.find(item => item.name === name);
-                if (m) {
-                    m.attendedMatches += 1;
-                    await db.from('members').update({ attended_matches: m.attendedMatches }).eq('name', m.name);
-                }
-            }
-            teamTotalMatches += 1;
-            alert('출석이 반영되었습니다!');
-            await fetchMembers();
-            loadAdminDashboard();
-        }
-
-        function openAdminEdit(name) {
-            if (currentUser.role !== 'admin') return;
-            const m = membersData.find(item => item.name === name);
-            if (!m) return;
-
-            document.getElementById('edit-member-name').value = m.name;
-            document.getElementById('edit-name').value = m.name;
-            document.getElementById('edit-modal-title').innerText = `${m.name} 정보 수정`;
-            document.getElementById('edit-rating').value = m.rating;
-            document.getElementById('edit-position').value = m.position;
-            document.getElementById('edit-birth').value = m.birth || '';
-            document.getElementById('edit-joindate').value = m.joinDate || '';
-            document.getElementById('edit-address').value = m.address || '';
-            document.getElementById('edit-attended').value = m.attendedMatches;
-            document.getElementById('edit-role-type').value = m.role || 'member';
-            document.getElementById('edit-withdrawn').checked = m.isWithdrawn || false;
-            document.getElementById('edit-photo-file').value = "";
-            document.getElementById('edit-phone').value = m.fullPhone;
-            document.getElementById('edit-kakao').value = m.kakaoId || '';
-            document.getElementById('edit-feedback').value = m.feedback || '';
-
-            document.getElementById('admin-edit-modal').classList.remove('hidden');
-        }
-
-        function closeAdminModal() {
-            document.getElementById('admin-edit-modal').classList.add('hidden');
-        }
-
-        document.getElementById('admin-edit-form').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            if (currentUser.role !== 'admin') return;
-
-            const name = document.getElementById('edit-member-name').value;
-            const m = membersData.find(item => item.name === name);
-            const fileInput = document.getElementById('edit-photo-file');
-
-            if (m) {
-                m.rating = document.getElementById('edit-rating').value.trim().toUpperCase();
-                m.position = document.getElementById('edit-position').value.trim();
-                m.birth = document.getElementById('edit-birth').value.trim();
-                m.joinDate = document.getElementById('edit-joindate').value.trim();
-                m.address = document.getElementById('edit-address').value.trim();
-                m.attendedMatches = parseInt(document.getElementById('edit-attended').value) || 0;
-                m.role = document.getElementById('edit-role-type').value;
-                m.isWithdrawn = document.getElementById('edit-withdrawn').checked;
-                m.fullPhone = document.getElementById('edit-phone').value.trim();
-                m.kakaoId = document.getElementById('edit-kakao').value.trim();
-                m.feedback = document.getElementById('edit-feedback').value.trim();
-                m.history.push({ date: "최신", score: scoreMap[m.rating] || 6.0 });
-
-                async function saveToDB(photoUrl) {
-                    await db.from('members').update({
-                        rating: m.rating,
-                        position: m.position,
-                        birth: m.birth,
-                        join_date: m.joinDate,
-                        address: m.address,
-                        attended_matches: m.attendedMatches,
-                        role: m.role,
-                        is_withdrawn: m.isWithdrawn,
-                        full_phone: m.fullPhone,
-                        kakao_id: m.kakaoId,
-                        feedback: m.feedback,
-                        history: m.history,
-                        photo: photoUrl !== undefined ? photoUrl : m.photo
-                    }).eq('name', m.name);
-
-                    alert('정보가 성공적으로 업데이트되었습니다!');
-                    closeAdminModal();
-                    await fetchMembers();
-                    loadAdminDashboard();
-                }
-
-                if (fileInput.files && fileInput.files[0]) {
-                    const reader = new FileReader();
-                    reader.onload = async function(event) {
-                        m.photo = event.target.result;
-                        await saveToDB(m.photo);
-                    };
-                    reader.readAsDataURL(fileInput.files[0]);
-                } else {
-                    await saveToDB();
-                }
-            }
-        });
-
-        function renderChart(history) {
-            const ctx = document.getElementById('ratingChart').getContext('2d');
-            if (myChart) myChart.destroy();
-
-            myChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: history.map(h => h.date),
-                    datasets: [{
-                        label: '평점 추이',
-                        data: history.map(h => h.score),
-                        borderColor: '#10b981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                        borderWidth: 3,
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 5,
-                        pointBackgroundColor: '#10b981'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: { 
-                            min: 0, 
-                            max: 11, 
-                            ticks: { 
-                                color: '#94a3b8',
-                                stepSize: 1,
-                                callback: function(value) {
-                                    const labels = {
-                                        10.5: "A+", 10: "A", 9.5: "A-",
-                                        8.5: "B+", 8: "B", 7.5: "B-",
-                                        6.5: "C+", 6: "C", 5.5: "C-/D+",
-                                        4: "D", 3.5: "D-", 2: "E", 1: "F"
-                                    };
-                                    return labels[value] || (value + '점');
-                                }
-                            }, 
-                            grid: { color: '#334155' } 
-                        },
-                        x: { ticks: { color: '#94a3b8' }, grid: { display: false } }
-                    },
-                    plugins: { legend: { display: false } }
-                }
-            });
-        }
-
-        function openPwModal() { document.getElementById('pw-modal').classList.remove('hidden'); }
-        function closePwModal() { document.getElementById('pw-modal').classList.add('hidden'); document.getElementById('pw-form').reset(); }
-
-        document.getElementById('pw-form').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const currentPw = document.getElementById('current-pw').value.trim();
-            const newPw = document.getElementById('new-pw').value.trim();
-            const newPwConfirm = document.getElementById('new-pw-confirm').value.trim();
-
-            if (currentPw !== currentUser.password) { alert('현재 비밀번호가 일치하지 않습니다.'); return; }
-            if (newPw !== newPwConfirm) { alert('새 비밀번호가 서로 일치하지 않습니다.'); return; }
-
-            currentUser.password = newPw;
-            await db.from('members').update({ password: newPw }).eq('name', currentUser.name);
-            alert('비밀번호가 성공적으로 변경되었습니다!');
-            closePwModal();
-        });
 
         function logout() {
             currentUser = null;
@@ -1120,7 +220,6 @@
             document.getElementById('admin-container').classList.add('hidden');
             document.getElementById('login-container').classList.remove('hidden');
             document.getElementById('login-form').reset();
-            document.getElementById('login-error').classList.add('hidden');
         }
     </script>
 </body>

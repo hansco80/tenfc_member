@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 풋살팀 통합 시스템 v2.0</title>
+    <title>TenFC 풋살팀 통합 시스템 v2.1</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
@@ -17,7 +17,7 @@
     <div id="login-container" class="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
         <div class="text-center mb-6">
             <h1 class="text-3xl font-bold text-emerald-400">⚽ TenFC 풋살팀</h1>
-            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v2.0</span></p>
+            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v2.1</span></p>
         </div>
         <form id="login-form" class="space-y-4">
             <div>
@@ -83,12 +83,11 @@
             <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-700 text-center relative">
                 <div class="flex items-center justify-center gap-1.5">
                     <p class="text-xs text-slate-400">현재 평점</p>
-                    <!-- i 안내 툴팁 아이콘 부활 -->
                     <div class="relative group cursor-pointer inline-flex items-center">
                         <span class="w-4 h-4 rounded-full bg-slate-700 text-slate-300 text-[10px] font-bold flex items-center justify-center hover:bg-emerald-600 hover:text-white transition">i</span>
                         <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 p-2.5 bg-slate-900 text-slate-200 text-[11px] rounded-lg shadow-2xl border border-slate-700 opacity-0 group-hover:opacity-100 transition pointer-events-none z-30 text-left">
                             <p class="font-bold text-emerald-400 mb-1 border-b border-slate-800 pb-1">⚽ 평점 산정 기준</p>
-                            <p class="text-slate-300 leading-tight">팀 감코진이 평가하는 멤버 실력 및 기여도 지표입니다. (A+ ~ F-)</p>
+                            <p class="text-slate-300 leading-tight">평점은 팀 밸런스를 위해 필요한 기준으로, 정기 운동 시 감코진이 각 멤버의 실력과 활동량을 종합적으로 판단하여 상대평가로 결정합니다. 상·하향은 1회 한 단계(0.5점)씩 적용 (A+ ~ F-)</p>
                         </div>
                     </div>
                 </div>
@@ -114,20 +113,20 @@
             <p id="user-feedback" class="text-sm text-slate-300 italic bg-slate-900/80 p-3 rounded-lg border border-slate-800">"등록된 피드백이 없습니다."</p>
         </div>
 
-        <!-- 상대적 위치 -->
+        <!-- 출석 기준 상대적 위치 -->
         <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700 mb-6">
-            <h3 class="text-xs font-semibold text-slate-300 mb-3 uppercase tracking-wider">👥 팀 내 위치 및 상대적 그룹</h3>
+            <h3 class="text-xs font-semibold text-slate-300 mb-3 uppercase tracking-wider">👥 팀 내 위치 및 출석 그룹</h3>
             <div class="space-y-2 text-xs">
                 <div class="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
-                    <span class="text-emerald-400 font-semibold">⬆️ 한 단계 위 등급</span>
+                    <span class="text-emerald-400 font-semibold">⬆️ 나보다 출석 많은 선배</span>
                     <span id="rank-above" class="text-slate-200 font-medium">-</span>
                 </div>
                 <div class="flex justify-between items-center bg-emerald-950/40 p-2.5 rounded-lg border border-emerald-800/50">
-                    <span class="text-emerald-300 font-bold">🎯 내 등급 그룹 (라이벌)</span>
+                    <span class="text-emerald-300 font-bold">🎯 나와 출석 같은 라이벌</span>
                     <span id="rank-same" class="text-emerald-200 font-medium">-</span>
                 </div>
                 <div class="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
-                    <span class="text-rose-400 font-semibold">⬇️ 한 단계 아래 등급</span>
+                    <span class="text-rose-400 font-semibold">⬇️ 나보다 출석 적은 후배</span>
                     <span id="rank-below" class="text-slate-200 font-medium">-</span>
                 </div>
             </div>
@@ -511,7 +510,7 @@
                     loadMemberDashboard(user);
                 }
             } else {
-                document.getElementById('login-error').classList.remove('hidden');
+                document.getElementById('login-error').classList.add('hidden');
             }
         });
 
@@ -554,57 +553,62 @@
 
             if (currentUser.role === 'admin' || currentUser.role === 'sub_admin') {
                 document.getElementById('admin-switch-bar').classList.remove('hidden');
-                document.getElementById('admin-badge-text').innerText = currentUser.role === 'admin' ? '🛡️ 주관리자 주도 계정' : '👁️ 부관리자 권한 보유 계정';
+                document.getElementById('admin-badge-text').innerText = currentUser.role === 'admin' ? '🛡️ 주관리자 권한 보유 계정' : '👁️ 부관리자 권한 보유 계정';
             } else {
                 document.getElementById('admin-switch-bar').classList.add('hidden');
             }
 
+            // 평점 기준 순위 계산 유지
             const myScore = scoreMap[user.rating] || 6.0;
-            const sortedMembers = [...membersData].filter(m => !m.isWithdrawn).sort((a, b) => (scoreMap[b.rating] || 0) - (scoreMap[a.rating] || 0));
+            const sortedMembersForRating = [...membersData].filter(m => !m.isWithdrawn).sort((a, b) => (scoreMap[b.rating] || 0) - (scoreMap[a.rating] || 0));
 
             let rank = 1;
-            for (let i = 0; i < sortedMembers.length; i++) {
-                if ((scoreMap[sortedMembers[i].rating] || 0) > myScore) rank++;
+            for (let i = 0; i < sortedMembersForRating.length; i++) {
+                if ((scoreMap[sortedMembersForRating[i].rating] || 0) > myScore) rank++;
             }
-            const percentile = Math.round((rank / sortedMembers.length) * 100);
+            const percentile = Math.round((rank / sortedMembersForRating.length) * 100);
             document.getElementById('stat-percentile').innerHTML = `공동 ${rank}위<br><span class="text-xs text-slate-400 font-normal">(상위 ${percentile}%)</span>`;
 
-            // 라이벌 그룹 및 위아래 등급 계산 (혼자일 경우 외 0명 생략 적용 완료)
-            const sameGroup = sortedMembers.filter(m => (scoreMap[m.rating] || 0) === myScore && m.name !== user.name);
-            const aboveGroup = sortedMembers.filter(m => (scoreMap[m.rating] || 0) > myScore);
-            const belowGroup = sortedMembers.filter(m => (scoreMap[m.rating] || 0) < myScore);
+            // ==========================================
+            // [출석 횟수 기준 상대적 그룹 계산 로직]
+            // ==========================================
+            const activeMembers = [...membersData].filter(m => !m.isWithdrawn);
+            const myAtt = user.attendedMatches;
 
-            // 한 단계 위 등급
-            if (aboveGroup.length > 0) {
-                const highestAboveScore = scoreMap[aboveGroup[aboveGroup.length - 1].rating];
-                const aboveTierGroup = aboveGroup.filter(m => scoreMap[m.rating] === highestAboveScore);
-                const leadAbove = aboveTierGroup[0];
-                const restAboveCount = aboveTierGroup.length - 1;
+            // 1. 나와 출석 횟수가 같은 라이벌 그룹
+            const sameAttGroup = activeMembers.filter(m => m.attendedMatches === myAtt && m.name !== user.name);
+            if (sameAttGroup.length > 0) {
+                document.getElementById('rank-same').innerText = `${sameAttGroup[0].name} 외 ${sameAttGroup.length - 1}명 (${myAtt}회 동급)`;
+            } else {
+                document.getElementById('rank-same').innerText = `단독 ${myAtt}회 출석`;
+            }
+
+            // 2. 나보다 출석이 많은 선배 그룹 (나보다 큰 출석 횟수 중 가장 작은 출석 횟수를 가진 그룹)
+            const aboveAttList = activeMembers.filter(m => m.attendedMatches > myAtt).sort((a, b) => a.attendedMatches - b.attendedMatches);
+            if (aboveAttList.length > 0) {
+                const targetAtt = aboveAttList[0].attendedMatches;
+                const aboveGroup = aboveAttList.filter(m => m.attendedMatches === targetAtt);
+                const leadAbove = aboveGroup[0];
+                const restAboveCount = aboveGroup.length - 1;
                 document.getElementById('rank-above').innerText = restAboveCount > 0 
-                    ? `${leadAbove.name} 외 ${restAboveCount}명 (${leadAbove.rating} 동급)` 
-                    : `${leadAbove.name} (${leadAbove.rating})`;
+                    ? `${leadAbove.name} 외 ${restAboveCount}명 (${targetAtt}회)` 
+                    : `${leadAbove.name} (${targetAtt}회)`;
             } else {
-                document.getElementById('rank-above').innerText = "최상위 등급입니다 🏆";
-            }
-            
-            // 내 등급 그룹
-            if (sameGroup.length > 0) {
-                document.getElementById('rank-same').innerText = `${sameGroup[0].name} 외 ${sameGroup.length - 1}명 (${user.rating} 동급)`;
-            } else {
-                document.getElementById('rank-same').innerText = `단독 ${user.rating} 등급`;
+                document.getElementById('rank-above').innerText = "팀 내 최다 출석입니다 🏆";
             }
 
-            // 한 단계 아래 등급
-            if (belowGroup.length > 0) {
-                const lowestBelowScore = scoreMap[belowGroup[0].rating];
-                const belowTierGroup = belowGroup.filter(m => scoreMap[m.rating] === lowestBelowScore);
-                const leadBelow = belowTierGroup[0];
-                const restBelowCount = belowTierGroup.length - 1;
+            // 3. 나보다 출석이 적은 후배 그룹 (나보다 작은 출석 횟수 중 가장 큰 출석 횟수를 가진 그룹)
+            const belowAttList = activeMembers.filter(m => m.attendedMatches < myAtt).sort((a, b) => b.attendedMatches - a.attendedMatches);
+            if (belowAttList.length > 0) {
+                const targetAtt = belowAttList[0].attendedMatches;
+                const belowGroup = belowAttList.filter(m => m.attendedMatches === targetAtt);
+                const leadBelow = belowGroup[0];
+                const restBelowCount = belowGroup.length - 1;
                 document.getElementById('rank-below').innerText = restBelowCount > 0 
-                    ? `${leadBelow.name} 외 ${restBelowCount}명 (${leadBelow.rating} 동급)` 
-                    : `${leadBelow.name} (${leadBelow.rating})`;
+                    ? `${leadBelow.name} 외 ${restBelowCount}명 (${targetAtt}회)` 
+                    : `${leadBelow.name} (${targetAtt}회)`;
             } else {
-                document.getElementById('rank-below').innerText = "하위 그룹 없음";
+                document.getElementById('rank-below').innerText = "하위 출석 그룹 없음";
             }
 
             renderChart(user.history || []);

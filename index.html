@@ -402,7 +402,7 @@
     </div>
 
     <script>
-        // Supabase 클라이언트 초기화
+        // Supabase 클라이언트 초기화 (정확한 API 키 고정 유지)
         const SUPABASE_URL = 'https://bxuiwomkpgqsbyaagmlp.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_mXkGsaxwwfnnAR3lpE8T1A_n0kiPdZj'; 
         const { createClient } = supabase;
@@ -433,7 +433,7 @@
             const { data, error } = await db.from('members').select('*');
             if (error) {
                 console.error('데이터 조회 오류:', error);
-                return;
+                return false;
             }
 
             if (data && data.length > 0) {
@@ -455,12 +455,15 @@
                     history: item.history || [],
                     feedback: item.feedback
                 }));
+                return true;
             }
+            return false;
         }
 
-        // 앱 초기화 및 세션(로그인) 복원
+        // 앱 초기화 및 세션(로그인) 복원 (데이터 로딩 완료 후 안전하게 복원)
         async function initApp() {
-            await fetchMembers();
+            const loaded = await fetchMembers();
+            if (!loaded) return;
             
             const savedUserName = localStorage.getItem('tenfc_logged_user');
             if (savedUserName) {
@@ -525,7 +528,7 @@
                 }
 
                 currentUser = user;
-                localStorage.setItem('tenfc_logged_user', user.name); // 로그인 세션 저장
+                localStorage.setItem('tenfc_logged_user', user.name); 
                 document.getElementById('login-container').classList.add('hidden');
                 
                 if (user.role === 'admin' || user.role === 'sub_admin') {
@@ -707,7 +710,6 @@
                 else if (m.role === 'acquaintance') roleBadge = '<span class="text-purple-400 text-[10px] ml-1">(지인)</span>';
 
                 const numericScore = scoreMap[m.rating] !== undefined ? scoreMap[m.rating].toFixed(1) : '-';
-                // 수정 요청 반영: F (F 1.0점) 형태가 아닌 F (1.0점) 형태로 출력
                 const ratingDisplay = `${m.rating} (${numericScore}점)`;
 
                 const tr = document.createElement('tr');
@@ -1111,7 +1113,7 @@
 
         function logout() {
             currentUser = null;
-            localStorage.removeItem('tenfc_logged_user'); // 세션 삭제
+            localStorage.removeItem('tenfc_logged_user'); 
             document.getElementById('dashboard-container').classList.add('hidden');
             document.getElementById('admin-container').classList.add('hidden');
             document.getElementById('login-container').classList.remove('hidden');

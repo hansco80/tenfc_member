@@ -390,10 +390,7 @@
         async function fetchMembersFromSupabase() {
             try {
                 const { data, error } = await supabaseClient.from('members').select('*');
-                if (error) {
-                    console.error("Supabase 조회 에러:", error);
-                    return;
-                }
+                if (error) { console.error("Supabase 조회 에러:", error); return; }
                 if (data && data.length > 0) {
                     membersData = data.map(m => ({
                         id: m.id,
@@ -414,9 +411,7 @@
                         feedback: m.feedback || ""
                     }));
                 }
-            } catch (err) {
-                console.error("데이터 로딩 실패:", err);
-            }
+            } catch (err) { console.error("데이터 로딩 실패:", err); }
         }
 
         async function initApp() {
@@ -657,9 +652,11 @@
 
         document.getElementById('add-member-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            const name = document.getElementById('add-name').value.trim();
+            const rating = document.getElementById('add-rating').value.trim().toUpperCase() || "C";
+            const initialScore = scoreMap[rating] !== undefined ? scoreMap[rating] : 6.0;
+
             const newMember = {
-                name: name,
+                name: document.getElementById('add-name').value.trim(),
                 password: document.getElementById('add-pw').value.trim(),
                 full_phone: document.getElementById('add-phone').value.trim() || "010-XXXX-XXXX",
                 kakao_id: document.getElementById('add-kakao').value.trim(),
@@ -667,19 +664,19 @@
                 birth: document.getElementById('add-birth').value.trim(),
                 address: document.getElementById('add-address').value.trim(),
                 position: document.getElementById('add-position').value.trim() || "멀티",
-                rating: document.getElementById('add-rating').value.trim().toUpperCase() || "C",
+                rating: rating,
                 join_date: document.getElementById('add-joindate').value.trim(),
                 role: document.getElementById('add-role').value,
                 is_withdrawn: false,
                 attended_matches: 0,
-                history: [{ date: "등록", score: 6.0 }],
+                history: [{ date: "등록", score: initialScore }],
                 feedback: document.getElementById('add-feedback').value.trim() || "신규 등록된 멤버입니다."
             };
 
             const { error } = await supabaseClient.from('members').insert([newMember]);
             if (error) { alert('등록 실패: ' + error.message); return; }
 
-            alert(`[${name}] 님 등록 완료!`);
+            alert(`[${newMember.name}] 님 등록 완료!`);
             closeAddMemberModal();
             await fetchMembersFromSupabase();
             loadAdminDashboard();
@@ -733,8 +730,15 @@
                     if (direction === 'up' && idx < ratingHierarchy.length - 1) idx++;
                     else if (direction === 'down' && idx > 0) idx--;
                     const newRating = ratingHierarchy[idx];
+                    const newScore = scoreMap[newRating] || 6.0;
                     
-                    await supabaseClient.from('members').update({ rating: newRating }).eq('name', m.name);
+                    let historyArr = Array.isArray(m.history) ? [...m.history] : [];
+                    historyArr.push({ date: "최신", score: newScore });
+
+                    await supabaseClient.from('members').update({ 
+                        rating: newRating,
+                        history: historyArr 
+                    }).eq('name', m.name);
                 }
             }
             await fetchMembersFromSupabase();
@@ -784,10 +788,17 @@
         document.getElementById('admin-edit-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const name = document.getElementById('edit-member-name').value;
+            const m = membersData.find(item => item.name === name);
             const fileInput = document.getElementById('edit-photo-file');
 
+            const newRating = document.getElementById('edit-rating').value.trim().toUpperCase();
+            const newScore = scoreMap[newRating] !== undefined ? scoreMap[newRating] : 6.0;
+
+            let historyArr = m && Array.isArray(m.history) ? [...m.history] : [];
+            historyArr.push({ date: "최신", score: newScore });
+
             const updatedFields = {
-                rating: document.getElementById('edit-rating').value.trim().toUpperCase(),
+                rating: newRating,
                 position: document.getElementById('edit-position').value.trim(),
                 birth: document.getElementById('edit-birth').value.trim(),
                 join_date: document.getElementById('edit-joindate').value.trim(),
@@ -797,7 +808,8 @@
                 is_withdrawn: document.getElementById('edit-withdrawn').checked,
                 full_phone: document.getElementById('edit-phone').value.trim(),
                 kakao_id: document.getElementById('edit-kakao').value.trim(),
-                feedback: document.getElementById('edit-feedback').value.trim()
+                feedback: document.getElementById('edit-feedback').value.trim(),
+                history: historyArr
             };
 
             async function saveToSupabase(photoUrl) {
@@ -842,7 +854,24 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        y: { min: 0, max: 11, ticks: { color: '#94a3b8', stepSize: 1 }, grid: { color: '#334155' } },
+                        y: { 
+                            min: 0, 
+                            max: 11, 
+                            ticks: { 
+                                color: '#94a3b8',
+                                stepSize: 1,
+                                callback: function(value) {
+                                    const labels = {
+                                        10.5: "A+", 10: "A", 9.5: "A-",
+                                        8.5: "B+", 8: "B", 7.5: "B-",
+                                        6.5: "C+", 6: "C", 5.5: "C-/D+",
+                                        4: "D", 3.5: "D-", 2: "E", 1: "F"
+                                    };
+                                    return labels[value] || (value + '점');
+                                }
+                            }, 
+                            grid: { color: '#334155' } 
+                        },
                         x: { ticks: { color: '#94a3b8' }, grid: { display: false } }
                     },
                     plugins: { legend: { display: false } }

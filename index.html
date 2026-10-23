@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 풋살팀 통합 시스템 v2.15</title>
+    <title>TenFC 풋살팀 통합 시스템 v2.17</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
@@ -19,7 +19,7 @@
     <div id="login-container" class="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
         <div class="text-center mb-6">
             <h1 class="text-3xl font-bold text-emerald-400">⚽ TenFC 풋살팀</h1>
-            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v2.15</span></p>
+            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v2.17</span></p>
         </div>
         <form id="login-form" class="space-y-4">
             <div>
@@ -55,7 +55,7 @@
         <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <div>
                 <h2 id="user-welcome" class="text-2xl font-bold text-white"></h2>
-                <p class="text-xs text-slate-400 mt-1">정회원 총원: <span id="member-total-count" class="font-bold text-emerald-400">0명</span> | 팀 총 매치: <span id="team-total-matches-display" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.15</span></p>
+                <p class="text-xs text-slate-400 mt-1">정회원 총원: <span id="member-total-count" class="font-bold text-emerald-400">0명</span> | 팀 총 매치: <span id="team-total-matches-display" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.17</span></p>
             </div>
             <div class="flex gap-2">
                 <button onclick="openPwModal()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">비밀번호 변경</button>
@@ -165,7 +165,7 @@
         <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700">
             <div class="flex justify-between items-center mb-3">
                 <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">👥 팀 멤버 현황 (제한 보기)</h3>
-                <span class="text-[11px] text-slate-400">평점 및 휴대폰 번호 비공개</span>
+                <span class="text-[11px] text-slate-400">정회원 전용 / 평점·연락처 비공개</span>
             </div>
             <div class="overflow-x-auto max-h-72 overflow-y-auto">
                 <table class="w-full text-left text-xs text-slate-300">
@@ -173,7 +173,6 @@
                         <tr>
                             <th class="p-2.5">성명</th>
                             <th class="p-2.5">출생년도</th>
-                            <th class="p-2.5">포지션</th>
                             <th class="p-2.5">출석 횟수 / 참석률</th>
                             <th class="p-2.5">카카오톡 닉네임</th>
                         </tr>
@@ -189,7 +188,7 @@
         <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <div>
                 <h2 id="admin-title" class="text-2xl font-bold text-emerald-400">🛡️ 관리자 대시보드</h2>
-                <p class="text-xs text-slate-400 mt-1">정회원 총원: <span id="admin-member-total-count" class="font-bold text-emerald-400">0명</span> | 팀 전체 총 매치: <span id="admin-team-matches" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.15</span></p>
+                <p class="text-xs text-slate-400 mt-1">정회원 총원: <span id="admin-member-total-count" class="font-bold text-emerald-400">0명</span> | 팀 전체 총 매치: <span id="admin-team-matches" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.17</span></p>
             </div>
             <div class="flex gap-2">
                 <button onclick="switchToMyPage()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">내 마이페이지 보기</button>
@@ -586,6 +585,24 @@
             return `${birthStr} (만 ${age}세)`;
         }
 
+        // 일반회원 제한 보기 전용 출생년도 간소화 포맷 (예: 75년8월 (만51세))
+        function formatShortBirthAge(birthStr) {
+            if (!birthStr) return "-";
+            const cleanBirth = birthStr.split(' ')[0];
+            const parts = cleanBirth.split('.');
+            if (parts.length < 3) return birthStr;
+            const bYear = parseInt(parts[0], 10);
+            const bMonth = parseInt(parts[1], 10);
+            const bDay = parseInt(parts[2], 10);
+            const today = new Date();
+            let age = today.getFullYear() - bYear;
+            const m = (today.getMonth() + 1) - bMonth;
+            if (m < 0 || (m === 0 && today.getDate() < bDay)) age--;
+            
+            const shortYear = String(bYear).slice(-2);
+            return `${shortYear}년${bMonth}월 (만${age}세)`;
+        }
+
         document.getElementById('login-form').addEventListener('submit', function(e) {
             e.preventDefault();
             const inputName = document.getElementById('name-input').value.trim();
@@ -721,27 +738,25 @@
             const tbody = document.getElementById('member-restricted-list');
             tbody.innerHTML = '';
 
-            let displayList = [...membersData].sort((a, b) => {
-                let groupA = getMemberGroupRank(a);
-                let groupB = getMemberGroupRank(b);
-                if (groupA !== groupB) return groupA - groupB;
+            // 용병, 지인, 탈퇴자를 제외하고 정회원 및 운영진만 필터링
+            let displayList = membersData.filter(m => !m.isWithdrawn && m.role !== 'guest' && m.role !== 'acquaintance');
+
+            displayList.sort((a, b) => {
                 let bA = a.birth ? a.birth.trim() : "";
                 let bB = b.birth ? b.birth.trim() : "";
                 if (bA === "" && bB !== "") return 1;
                 if (bA !== "" && bB === "") return -1;
+                if (bA === "" && bB === "") return 0;
                 return bA.localeCompare(bB);
             });
 
             displayList.forEach(m => {
                 const attRate = teamTotalMatches > 0 ? Math.round((m.attendedMatches / teamTotalMatches) * 100) : 0;
                 let roleBadge = '';
-                if (m.isWithdrawn) roleBadge = '<span class="text-rose-400 text-[10px] ml-1 font-bold">(탈퇴)</span>';
-                else if (m.role === 'admin' || m.role === 'sub_admin') roleBadge = '<span class="text-emerald-400 text-[10px] ml-1">(운영진)</span>';
-                else if (m.role === 'guest') roleBadge = '<span class="text-amber-400 text-[10px] ml-1">(용병)</span>';
-                else if (m.role === 'acquaintance') roleBadge = '<span class="text-purple-400 text-[10px] ml-1">(지인)</span>';
+                if (m.role === 'admin' || m.role === 'sub_admin') roleBadge = '<span class="text-emerald-400 text-[10px] ml-1">(운영진)</span>';
 
                 const tr = document.createElement('tr');
-                tr.className = `hover:bg-slate-700/35 transition ${m.isWithdrawn ? 'opacity-60 bg-rose-950/10' : ''}`;
+                tr.className = "hover:bg-slate-700/35 transition";
                 tr.innerHTML = `
                     <td class="p-2.5 font-bold text-white flex items-center gap-2">
                         <div class="w-6 h-6 rounded-full overflow-hidden bg-slate-700 flex-shrink-0 flex items-center justify-center text-[10px]">
@@ -749,8 +764,7 @@
                         </div>
                         <span class="text-white font-bold">${m.name}</span> ${roleBadge}
                     </td>
-                    <td class="p-2.5 text-slate-300">${calculateInternationalAge(m.birth)}</td>
-                    <td class="p-2.5 text-slate-300">${m.position}</td>
+                    <td class="p-2.5 text-slate-300">${formatShortBirthAge(m.birth)}</td>
                     <td class="p-2.5 text-slate-300">${m.attendedMatches}회 / ${teamTotalMatches}회 <span class="text-indigo-400 font-bold">(${attRate}%)</span></td>
                     <td class="p-2.5 text-amber-300 font-medium">${m.kakaoId || '-'}</td>
                 `;

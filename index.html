@@ -723,7 +723,7 @@
             document.getElementById('prof-address').innerText = user.address || "-";
             
             let roleText = '정회원';
-            if (user.role === 'admin') roleText = '주관리자 (감독/회장)';
+            if (user.role === 'admin') roleText = '주관리자 (운영진)';
             else if (user.role === 'sub_admin') roleText = '부관리자 (운영진)';
             else if (user.role === 'guest') roleText = '용병';
             else if (user.role === 'acquaintance') roleText = '지인';

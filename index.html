@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚽ TenFC 랭킹 및 멤버 관리 시스템 (<span class="text-emerald-400 font-bold">v2.12</span>)</title>
+    <title>⚽ TenFC 랭킹 및 멤버 관리 시스템 (<span class="text-emerald-400 font-bold">v2.13</span>)</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
@@ -20,7 +20,7 @@
     <div id="login-container" class="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
         <div class="text-center mb-6">
             <h1 class="text-3xl font-bold text-emerald-400">⚽ TenFC 풋살팀</h1>
-            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 (<span class="text-emerald-400 font-bold">v2.12</span>)</p>
+            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 (<span class="text-emerald-400 font-bold">v2.13</span>)</p>
         </div>
         <form id="login-form" class="space-y-4">
             <div>
@@ -46,7 +46,7 @@
         </div>
     </div>
 
-    <!-- 대시보드 화면 -->
+    <!-- 대시보드 화면 (마이페이지) -->
     <div id="dashboard-container" class="w-full max-w-2xl bg-slate-800 p-6 md:p-8 rounded-2xl shadow-xl border border-slate-700 hidden">
         
         <!-- 관리자 전용 상단 네비게이션 탭 -->
@@ -58,7 +58,7 @@
         <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <div>
                 <h2 id="user-welcome" class="text-2xl font-bold text-white"></h2>
-                <p class="text-xs text-slate-400 mt-1">팀 총 진행 매치: <span id="team-total-matches-display" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.12</span></p>
+                <p class="text-xs text-slate-400 mt-1">팀 총 진행 매치: <span id="team-total-matches-display" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.13</span></p>
             </div>
             <div class="flex gap-2">
                 <button onclick="openPwModal()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">비밀번호 변경</button>
@@ -120,16 +120,35 @@
         </div>
     </div>
 
-    <!-- 관리자 대시보드 화면 -->
+    <!-- 관리자 대시보드 화면 (멤버 관리 테이블 포함) -->
     <div id="admin-container" class="w-full max-w-5xl bg-slate-800 p-6 md:p-8 rounded-2xl shadow-xl border border-slate-700 hidden">
         <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <div>
                 <h2 class="text-2xl font-bold text-emerald-400">🛡️ 관리자 대시보드</h2>
-                <p class="text-xs text-slate-400 mt-1">시스템 버전: <span class="text-emerald-400 font-bold">v2.12</span></p>
+                <p class="text-xs text-slate-400 mt-1">시스템 버전: <span class="text-emerald-400 font-bold">v2.13</span></p>
             </div>
             <button onclick="switchToMyPage()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">내 마이페이지 보기</button>
         </div>
-        <div class="text-slate-300 text-sm">관리자 기능 영역입니다.</div>
+
+        <!-- 관리자 멤버 목록 테이블 -->
+        <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700 overflow-x-auto">
+            <h3 class="text-sm font-bold text-white mb-3">📋 팀 전체 멤버 관리 현황</h3>
+            <table class="w-full text-left text-xs text-slate-300 border-collapse">
+                <thead>
+                    <tr class="border-b border-slate-700 text-emerald-400">
+                        <th class="py-3 px-4">성명</th>
+                        <th class="py-3 px-4">회원구분</th>
+                        <th class="py-3 px-4">평점</th>
+                        <th class="py-3 px-4">출석횟수</th>
+                        <th class="py-3 px-4">포지션</th>
+                        <th class="py-3 px-4">연락처</th>
+                    </tr>
+                </thead>
+                <tbody id="admin-member-table-body">
+                    <!-- 데이터 동적 삽입 -->
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <script>
@@ -277,6 +296,27 @@
             renderRatingChart(member);
         }
 
+        // 관리자 대시보드 로드 및 테이블 렌더링
+        function loadAdminDashboard() {
+            const tbody = document.getElementById('admin-member-table-body');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            membersData.forEach(m => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-slate-700/60 hover:bg-slate-700/30';
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-bold text-white">${m.name}</td>
+                    <td class="py-3 px-4 text-sky-400">${m.role || '정회원'}</td>
+                    <td class="py-3 px-4 text-emerald-400 font-semibold">${m.rating || '-'}</td>
+                    <td class="py-3 px-4 text-amber-300">${m.attendance || 0}회</td>
+                    <td class="py-3 px-4 text-slate-300">${m.position || '-'}</td>
+                    <td class="py-3 px-4 text-slate-300">${m.phone || '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
         // 그래프 렌더링 함수
         function renderRatingChart(member) {
             const history = member.rating_history || [];
@@ -339,6 +379,7 @@
         function switchToAdmin() {
             document.getElementById('dashboard-container').classList.add('hidden');
             document.getElementById('admin-container').classList.remove('hidden');
+            loadAdminDashboard(); // 관리자 대시보드로 전환 시 테이블 데이터 렌더링 실행
         }
 
         function switchToMyPage() {

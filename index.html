@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚽ TenFC 랭킹 및 멤버 관리 시스템 (v2.8)</title>
+    <title>⚽ TenFC 랭킹 및 멤버 관리 시스템 (v2.1)</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
@@ -20,7 +20,7 @@
     <div id="login-container" class="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
         <div class="text-center mb-6">
             <h1 class="text-3xl font-bold text-emerald-400">⚽ TenFC 풋살팀</h1>
-            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 (v2.8)</p>
+            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 (v2.1)</p>
         </div>
         <form id="login-form" class="space-y-4">
             <div>
@@ -46,7 +46,7 @@
         </div>
     </div>
 
-    <!-- 대시보드 화면 (일반 멤버 & 관리자 공용 마이페이지) -->
+    <!-- 대시보드 화면 -->
     <div id="dashboard-container" class="w-full max-w-2xl bg-slate-800 p-6 md:p-8 rounded-2xl shadow-xl border border-slate-700 hidden">
         
         <!-- 관리자 전용 상단 네비게이션 탭 -->
@@ -58,7 +58,7 @@
         <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <div>
                 <h2 id="user-welcome" class="text-2xl font-bold text-white"></h2>
-                <p class="text-xs text-slate-400 mt-1">팀 총 진행 매치: <span id="team-total-matches-display" class="font-bold text-amber-400">0회</span> | 버전: v2.8</p>
+                <p class="text-xs text-slate-400 mt-1">팀 총 진행 매치: <span id="team-total-matches-display" class="font-bold text-amber-400">0회</span> | 버전: v2.1</p>
             </div>
             <div class="flex gap-2">
                 <button onclick="openPwModal()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">비밀번호 변경</button>
@@ -94,11 +94,11 @@
             <h3 class="text-xs font-semibold text-slate-300 mb-3 uppercase tracking-wider">👥 팀 내 출석 및 평점 위치 비교</h3>
             <div class="space-y-3 text-xs">
                 <div class="bg-slate-900/60 p-3 rounded-lg border border-slate-800">
-                    <span class="text-emerald-400 font-semibold block mb-1">📈 나보다 출석 수가 많은 전체 멤버</span>
+                    <span class="text-emerald-400 font-semibold block mb-1">📈 나보다 출석 수가 많은 전체 멤버 (용병/지인/탈퇴 제외)</span>
                     <span id="attendance-above" class="text-slate-200 font-medium">-</span>
                 </div>
                 <div class="bg-slate-900/60 p-3 rounded-lg border border-slate-800">
-                    <span class="text-rose-400 font-semibold block mb-1">📉 나보다 출석 수가 적은 전체 멤버</span>
+                    <span class="text-rose-400 font-semibold block mb-1">📉 나보다 출석 수가 적은 전체 멤버 (용병/지인/탈퇴 제외)</span>
                     <span id="attendance-below" class="text-slate-200 font-medium">-</span>
                 </div>
                 <div class="flex justify-between items-center bg-emerald-950/40 p-2.5 rounded-lg border border-emerald-800/50">
@@ -120,12 +120,12 @@
         </div>
     </div>
 
-    <!-- 관리자 대시보드 화면 (추후 확장용 플레이스홀더 스크립트 연동) -->
+    <!-- 관리자 대시보드 화면 -->
     <div id="admin-container" class="w-full max-w-5xl bg-slate-800 p-6 md:p-8 rounded-2xl shadow-xl border border-slate-700 hidden">
         <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <div>
                 <h2 class="text-2xl font-bold text-emerald-400">🛡️ 관리자 대시보드</h2>
-                <p class="text-xs text-slate-400 mt-1">시스템 버전: v2.8</p>
+                <p class="text-xs text-slate-400 mt-1">시스템 버전: v2.1</p>
             </div>
             <button onclick="switchToMyPage()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">내 마이페이지 보기</button>
         </div>
@@ -133,8 +133,12 @@
     </div>
 
     <script>
-        // Supabase 설정 및 핵심 로직 (v2.8 반영)
-        // 1. 평점 점수 테이블 정의 (E, F 등급 신규 세분화 반영)
+        // Supabase 설정 (본인의 URL과 Key 입력 필요)
+        const SUPABASE_URL = 'https://bxuiwomkpgqsbyaagmlp.supabase.co';
+        const SUPABASE_KEY = '여기에_API_키를_입력하세요'; 
+        const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // 평점 점수 테이블 정의
         const RATING_SCORES = {
             'A+': 10.0, 'A': 9.5, 'A-': 9.0,
             'B+': 8.5, 'B': 8.0, 'B-': 7.5,
@@ -143,6 +147,10 @@
             'E+': 4.0, 'E': 3.5, 'E-': 3.0,
             'F+': 2.5, 'F': 2.0, 'F-': 1.5
         };
+
+        let membersData = [];
+        let teamTotalMatches = 0;
+        let ratingChartInstance = null;
 
         // 날짜 포맷 함수 (YYYY.MM.DD -> MM.DD 변환)
         function formatDateToMMDD(dateStr) {
@@ -156,16 +164,173 @@
             return dateStr;
         }
 
-        // URL 파라미터 뷰어 권한 체크 로직
-        const urlParams = new URLSearchParams(window.location.search);
-        const viewTarget = urlParams.get('view');
-        if (viewTarget) {
-            // 외부 링크로 특정 개인 페이지 조회 시 관리자 권한 확인 필수
-            const currentUserRole = localStorage.getItem('tenfc_role');
-            if (currentUserRole !== 'admin' && currentUserRole !== '운영진') {
-                alert('⚠️ 접근 권한이 없습니다. 링크를 통한 개인 페이지 조호는 운영진만 가능합니다.');
-                window.location.href = window.location.pathname; // 파라미터 제거 후 리다이렉트
+        // 멤버 데이터 불러오기
+        async function fetchMembers() {
+            try {
+                const { data, error } = await _supabase.from('members').select('*');
+                if (error) throw error;
+                membersData = data || [];
+            } catch (err) {
+                console.error('데이터 조회 오류:', err);
             }
+        }
+
+        // 페이지 로드 시 초기화 및 로그인 이벤트 핸들러 바인딩
+        window.addEventListener('DOMContentLoaded', async () => {
+            await fetchMembers();
+
+            // URL 파라미터 뷰어 권한 체크 로직 (운영진만 조회 가능)
+            const urlParams = new URLSearchParams(window.location.search);
+            const viewTarget = urlParams.get('view');
+            if (viewTarget) {
+                const currentUserRole = localStorage.getItem('tenfc_role');
+                if (currentUserRole !== 'admin' && currentUserRole !== '운영진') {
+                    alert('⚠️ 접근 권한이 없습니다. 링크를 통한 개인 페이지 조회는 운영진만 가능합니다.');
+                    window.location.href = window.location.pathname;
+                    return;
+                }
+                const targetMember = membersData.find(m => m.name === viewTarget);
+                if (targetMember) {
+                    loadMemberDashboard(targetMember);
+                    return;
+                }
+            }
+
+            // 세션 유지 확인
+            const savedName = localStorage.getItem('tenfc_logged_in');
+            if (savedName) {
+                const member = membersData.find(m => m.name === savedName);
+                if (member) {
+                    loadMemberDashboard(member);
+                }
+            }
+        });
+
+        // 로그인 폼 제출 이벤트 처리
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const inputName = document.getElementById('name-input').value.trim();
+            const inputPhone = document.getElementById('phone-input').value.trim();
+            const errorMsg = document.getElementById('login-error');
+
+            if (membersData.length === 0) {
+                await fetchMembers();
+            }
+
+            const member = membersData.find(m => m.name === inputName);
+            if (!member || String(member.password) !== String(inputPhone)) {
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            errorMsg.classList.add('hidden');
+
+            // 탈퇴 멤버 체크
+            if (member.role === '탈퇴자') {
+                document.getElementById('withdrawn-msg').textContent = `${member.name}님은 현재 탈퇴 처리된 멤버입니다.`;
+                document.getElementById('withdrawn-modal').classList.remove('hidden');
+                return;
+            }
+
+            localStorage.setItem('tenfc_logged_in', member.name);
+            localStorage.setItem('tenfc_role', member.role);
+            loadMemberDashboard(member);
+        });
+
+        // 대시보드 로드 및 데이터 바인딩
+        function loadMemberDashboard(member) {
+            document.getElementById('login-container').classList.add('hidden');
+            document.getElementById('dashboard-container').classList.remove('hidden');
+
+            // 이름 화이트 색상 적용 및 환영 메시지
+            document.getElementById('user-welcome').innerHTML = `<span class="text-white">${member.name}</span>님 환영합니다!`;
+            
+            // 프로필 정보 바인딩
+            document.getElementById('prof-birth').textContent = member.birth || '-';
+            document.getElementById('prof-position').textContent = member.position || '-';
+            document.getElementById('prof-phone').textContent = member.phone || '-';
+            document.getElementById('prof-kakao').textContent = member.kakao || '-';
+            document.getElementById('prof-joindate').textContent = member.joindate || '-';
+            document.getElementById('prof-role').textContent = member.role || '정회원';
+            document.getElementById('prof-address').textContent = member.address || '-';
+            document.getElementById('user-feedback').textContent = member.feedback ? `"${member.feedback}"` : '"등록된 피드백이 없습니다."';
+
+            // 관리자 권한 확인
+            if (member.role === 'admin' || member.role === '운영진') {
+                document.getElementById('admin-switch-bar').classList.remove('hidden');
+            }
+
+            // 출석 비교 로직 (용병, 지인, 탈퇴자 제외)
+            const validMembers = membersData.filter(m => m.role !== '용병' && m.role !== '지인' && m.role !== '탈퇴자');
+            const myAttendance = Number(member.attendance) || 0;
+
+            const aboveMembers = validMembers.filter(m => (Number(m.attendance) || 0) > myAttendance).map(m => m.name);
+            const belowMembers = validMembers.filter(m => (Number(m.attendance) || 0) < myAttendance).map(m => m.name);
+
+            document.getElementById('attendance-above').textContent = aboveMembers.length > 0 ? aboveMembers.join(', ') : '없음';
+            document.getElementById('attendance-below').textContent = belowMembers.length > 0 ? belowMembers.join(', ') : '없음';
+
+            // 평점 그룹 (라이벌)
+            const sameRankMembers = validMembers.filter(m => m.rating === member.rating && m.name !== member.name).map(m => m.name);
+            document.getElementById('rank-same').textContent = sameRankMembers.length > 0 ? `${member.rating}등급 (${sameRankMembers.join(', ')})` : `${member.rating}등급 (동일 등급 없음)`;
+
+            // 평점 변동 그래프 (날짜 MM.DD 형식 반영)
+            renderRatingChart(member);
+        }
+
+        // 그래프 렌더링 함수
+        function renderRatingChart(member) {
+            const history = member.rating_history || []; // [{date: '2026.04.12', rating: 'A'}, ...]
+            const wrapper = document.getElementById('chart-container-wrapper');
+            const blindMsg = document.getElementById('chart-blind-msg');
+
+            // D- 이하 등급 블라인드 처리 예시 또는 히스토리 부족 시 처리
+            if (history.length < 2) {
+                wrapper.classList.add('hidden');
+                blindMsg.classList.remove('hidden');
+                return;
+            }
+
+            wrapper.classList.remove('hidden');
+            blindMsg.classList.add('hidden');
+
+            const labels = history.map(h => formatDateToMMDD(h.date));
+            const dataPoints = history.map(h => RATING_SCORES[h.rating] || 0);
+
+            const ctx = document.getElementById('ratingChart').getContext('2d');
+            if (ratingChartInstance) ratingChartInstance.destroy();
+
+            ratingChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '평점 변동',
+                        data: dataPoints,
+                        borderColor: '#34d399',
+                        backgroundColor: 'rgba(52, 211, 153, 0.1)',
+                        fill: true,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            min: 1.5,
+                            max: 10.0,
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: '#334155' }
+                        },
+                        x: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
         }
 
         function logout() {
@@ -186,6 +351,7 @@
         function closeWithdrawnModal() {
             document.getElementById('withdrawn-modal').classList.add('hidden');
         }
+
         function openPwModal() {
             alert('비밀번호 변경 기능입니다.');
         }

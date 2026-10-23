@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 풋살팀 통합 시스템 v2.1</title>
+    <title>TenFC 풋살팀 통합 시스템 v2.11</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
@@ -19,7 +19,7 @@
     <div id="login-container" class="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
         <div class="text-center mb-6">
             <h1 class="text-3xl font-bold text-emerald-400">⚽ TenFC 풋살팀</h1>
-            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v2.1</span></p>
+            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v2.11</span></p>
         </div>
         <form id="login-form" class="space-y-4">
             <div>
@@ -55,7 +55,7 @@
         <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <div>
                 <h2 id="user-welcome" class="text-2xl font-bold text-white"></h2>
-                <p class="text-xs text-slate-400 mt-1">정회원 총원: <span id="member-total-count" class="font-bold text-emerald-400">0명</span> | 팀 총 매치: <span id="team-total-matches-display" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.1</span></p>
+                <p class="text-xs text-slate-400 mt-1">정회원 총원: <span id="member-total-count" class="font-bold text-emerald-400">0명</span> | 팀 총 매치: <span id="team-total-matches-display" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.11</span></p>
             </div>
             <div class="flex gap-2">
                 <button onclick="openPwModal()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">비밀번호 변경</button>
@@ -125,7 +125,7 @@
             <h3 class="text-xs font-semibold text-slate-300 mb-3 uppercase tracking-wider">👥 팀 내 출석 비교</h3>
             <div class="space-y-2 text-xs">
                 <div class="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
-                    <span class="text-emerald-400 font-semibold">⬆️ 나보다 출석 수가 많은 전체 멤버 (용병/지인/탈퇴 제외)</span>
+                    <span class="text-emerald-400 font-semibold">⬆️ 나보다 출석 수가 많은 회원</span>
                     <span id="rank-above" class="text-slate-200 font-medium">-</span>
                 </div>
                 <div class="flex justify-between items-center bg-emerald-950/40 p-2.5 rounded-lg border border-emerald-800/50">
@@ -133,7 +133,7 @@
                     <span id="rank-same" class="text-slate-200 font-medium">-</span>
                 </div>
                 <div class="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
-                    <span class="text-rose-400 font-semibold">⬇️ 나보다 출석 수가 적은 전체 멤버 (용병/지인/탈퇴 제외)</span>
+                    <span class="text-rose-400 font-semibold">⬇️ 나보다 출석 수가 적은 회원</span>
                     <span id="rank-below" class="text-slate-200 font-medium">-</span>
                 </div>
             </div>
@@ -167,7 +167,7 @@
         <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <div>
                 <h2 id="admin-title" class="text-2xl font-bold text-emerald-400">🛡️ 관리자 대시보드</h2>
-                <p class="text-xs text-slate-400 mt-1">정회원 총원: <span id="admin-member-total-count" class="font-bold text-emerald-400">0명</span> | 팀 전체 총 매치: <span id="admin-team-matches" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.1</span></p>
+                <p class="text-xs text-slate-400 mt-1">정회원 총원: <span id="admin-member-total-count" class="font-bold text-emerald-400">0명</span> | 팀 전체 총 매치: <span id="admin-team-matches" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.11</span></p>
             </div>
             <div class="flex gap-2">
                 <button onclick="switchToMyPage()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">내 마이페이지 보기</button>
@@ -419,7 +419,7 @@
 
         const ratingHierarchy = ["F-", "F", "F+", "E-", "E", "E+", "D-", "D", "D+", "C-", "C", "C+", "B-", "B", "B+", "A-", "A", "A+"];
         
-        // 요청하신 새로운 평점 점수 세팅 반영
+        // 새로운 평점 점수 세팅
         const scoreMap = { 
             "A+": 10.0, "A": 9.5, "A-": 9.0, 
             "B+": 8.5,  "B": 8.0,  "B-": 7.5, 
@@ -509,7 +509,7 @@
                 // 운영진(admin 또는 sub_admin) 권한 검증
                 if (!loggedUser || (loggedUser.role !== 'admin' && loggedUser.role !== 'sub_admin')) {
                     alert('⚠️ 접근 권한이 없습니다. 링크를 통한 개인 페이지 조회는 운영진만 가능합니다.');
-                    window.location.href = window.location.pathname; // 파라미터 제거 후 메인으로 리다이렉트
+                    window.location.href = window.location.pathname; // 메인으로 리다이렉트
                     return;
                 }
 
@@ -601,8 +601,19 @@
 
         function closeWithdrawnModal() { document.getElementById('withdrawn-modal').classList.add('hidden'); }
 
+        // 출석 명단을 "OOO 외 N명 (X회)" 스타일로 포맷팅하는 헬퍼 함수
+        function formatGroupText(memberList) {
+            if (!memberList || memberList.length === 0) return "없음";
+            const leadMember = memberList[0];
+            const restCount = memberList.length - 1;
+            if (restCount > 0) {
+                return `${leadMember.name} 외 ${restCount}명 (${leadMember.attendedMatches}회)`;
+            } else {
+                return `${leadMember.name} (${leadMember.attendedMatches}회)`;
+            }
+        }
+
         function loadMemberDashboard(user) {
-            // 이름 화이트 색상 적용
             document.getElementById('user-welcome').innerHTML = `<span class="text-white">${user.name} 님</span>`;
             document.getElementById('team-total-matches-display').innerText = `${teamTotalMatches}회`;
             document.getElementById('member-total-count').innerText = `${activeRegularMemberCount}명`;
@@ -674,25 +685,20 @@
 
             const myAtt = user.attendedMatches;
 
-            // 팀 내 출석 비교 로직 수정 (나보다 많은 전체 인원, 나보다 적은 전체 인원 - 용병/지인/탈퇴자 제외)
-            const attendanceComparisonPool = membersData.filter(m => !m.isWithdrawn && m.role !== 'guest' && m.role !== 'acquaintance');
+            // 출석 비교용 그룹 (용병/지인/탈퇴자 제외)
+            const attendancePool = membersData.filter(m => !m.isWithdrawn && m.role !== 'guest' && m.role !== 'acquaintance');
 
-            const sameAttGroup = attendanceComparisonPool.filter(m => m.attendedMatches === myAtt && m.name !== user.name);
-            if (sameAttGroup.length > 0) {
-                document.getElementById('rank-same').innerText = `${sameAttGroup.map(m => m.name).join(', ')} (${myAtt}회 동급)`;
-            } else {
-                document.getElementById('rank-same').innerText = `단독 ${myAtt}회 출석`;
-            }
+            // 1. 나보다 출석 수가 많은 인원
+            const aboveAttList = attendancePool.filter(m => m.attendedMatches > myAtt).sort((a, b) => b.attendedMatches - a.attendedMatches);
+            document.getElementById('rank-above').innerText = aboveAttList.length > 0 ? formatGroupText(aboveAttList) : "정회원 내 최다 출석입니다 🏆";
 
-            const aboveAttList = attendanceComparisonPool.filter(m => m.attendedMatches > myAtt).sort((a, b) => b.attendedMatches - a.attendedMatches);
-            document.getElementById('rank-above').innerText = aboveAttList.length > 0 
-                ? aboveAttList.map(m => `${m.name}(${m.attendedMatches}회)`).join(', ') 
-                : "정회원 내 최다 출석입니다 🏆";
+            // 2. 나와 출석 수가 같은 인원
+            const sameAttList = attendancePool.filter(m => m.attendedMatches === myAtt && m.name !== user.name);
+            document.getElementById('rank-same').innerText = sameAttList.length > 0 ? formatGroupText(sameAttList) : `단독 ${myAtt}회 출석`;
 
-            const belowAttList = attendanceComparisonPool.filter(m => m.attendedMatches < myAtt).sort((a, b) => b.attendedMatches - a.attendedMatches);
-            document.getElementById('rank-below').innerText = belowAttList.length > 0 
-                ? belowAttList.map(m => `${m.name}(${m.attendedMatches}회)`).join(', ') 
-                : "하위 출석 그룹 없음";
+            // 3. 나보다 출석 수가 적은 인원
+            const belowAttList = attendancePool.filter(m => m.attendedMatches < myAtt).sort((a, b) => b.attendedMatches - a.attendedMatches);
+            document.getElementById('rank-below').innerText = belowAttList.length > 0 ? formatGroupText(belowAttList) : "하위 출석 그룹 없음";
 
             renderGradeCountChart(regularPool);
         }

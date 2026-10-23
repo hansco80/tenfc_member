@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚽ TenFC 랭킹 및 멤버 관리 시스템 (v2.1)</title>
+    <title>⚽ TenFC 랭킹 및 멤버 관리 시스템 (<span class="text-emerald-400 font-bold">v2.12</span>)</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
@@ -20,7 +20,7 @@
     <div id="login-container" class="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
         <div class="text-center mb-6">
             <h1 class="text-3xl font-bold text-emerald-400">⚽ TenFC 풋살팀</h1>
-            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 (v2.1)</p>
+            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 (<span class="text-emerald-400 font-bold">v2.12</span>)</p>
         </div>
         <form id="login-form" class="space-y-4">
             <div>
@@ -58,7 +58,7 @@
         <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <div>
                 <h2 id="user-welcome" class="text-2xl font-bold text-white"></h2>
-                <p class="text-xs text-slate-400 mt-1">팀 총 진행 매치: <span id="team-total-matches-display" class="font-bold text-amber-400">0회</span> | 버전: v2.1</p>
+                <p class="text-xs text-slate-400 mt-1">팀 총 진행 매치: <span id="team-total-matches-display" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.12</span></p>
             </div>
             <div class="flex gap-2">
                 <button onclick="openPwModal()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">비밀번호 변경</button>
@@ -125,7 +125,7 @@
         <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <div>
                 <h2 class="text-2xl font-bold text-emerald-400">🛡️ 관리자 대시보드</h2>
-                <p class="text-xs text-slate-400 mt-1">시스템 버전: v2.1</p>
+                <p class="text-xs text-slate-400 mt-1">시스템 버전: <span class="text-emerald-400 font-bold">v2.12</span></p>
             </div>
             <button onclick="switchToMyPage()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">내 마이페이지 보기</button>
         </div>
@@ -133,12 +133,12 @@
     </div>
 
     <script>
-        // Supabase 설정 (본인의 URL과 Key 입력 필요)
+        // Supabase 설정 (고정된 올바른 API Key 적용)[cite: 1]
         const SUPABASE_URL = 'https://bxuiwomkpgqsbyaagmlp.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_mXkGsaxwwfnnAR3lpE8T1A_n0kiPdZj'; 
+        const SUPABASE_KEY = 'sb_publishable_mXkGsaxwwfnnAR3lpE8T1A_n0kiPdZj';
         const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // 평점 점수 테이블 정의
+        // 평점 점수 테이블 정의 (재세팅 반영)
         const RATING_SCORES = {
             'A+': 10.0, 'A': 9.5, 'A-': 9.0,
             'B+': 8.5, 'B': 8.0, 'B-': 7.5,
@@ -149,7 +149,6 @@
         };
 
         let membersData = [];
-        let teamTotalMatches = 0;
         let ratingChartInstance = null;
 
         // 날짜 포맷 함수 (YYYY.MM.DD -> MM.DD 변환)
@@ -164,7 +163,7 @@
             return dateStr;
         }
 
-        // 멤버 데이터 불러오기
+        // 멤버 데이터 불러오기 함수 (비동기)
         async function fetchMembers() {
             try {
                 const { data, error } = await _supabase.from('members').select('*');
@@ -280,11 +279,10 @@
 
         // 그래프 렌더링 함수
         function renderRatingChart(member) {
-            const history = member.rating_history || []; // [{date: '2026.04.12', rating: 'A'}, ...]
+            const history = member.rating_history || [];
             const wrapper = document.getElementById('chart-container-wrapper');
             const blindMsg = document.getElementById('chart-blind-msg');
 
-            // D- 이하 등급 블라인드 처리 예시 또는 히스토리 부족 시 처리
             if (history.length < 2) {
                 wrapper.classList.add('hidden');
                 blindMsg.classList.remove('hidden');

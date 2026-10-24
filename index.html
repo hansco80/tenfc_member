@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 풋살팀 통합 시스템 <span class="text-emerald-400 font-bold">v3.2</span></title>
+    <title>TenFC 풋살팀 통합 시스템 v3.2</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
@@ -113,7 +113,6 @@
                 <span id="user-rating-rank" class="text-xs text-emerald-400 font-medium">상위 -% (팀 내 -위)</span>
             </div>
 
-            <!-- 평점 설명 모달 / 팝업 -->
             <div id="rating-info-popover" class="hidden mb-4 p-3 bg-slate-800 rounded-lg border border-slate-600 text-xs text-slate-300 space-y-1.5">
                 <p class="font-semibold text-emerald-400">📌 평점 산정 및 반영 기준</p>
                 <p>평점은 팀 밸런스를 위해 정기 운동 시 감코진이 각 멤버의 실력과 활동량을 종합 판단하여 상대평가로 결정합니다.</p>
@@ -220,11 +219,17 @@
 
     <!-- 스크립트 로직 -->
     <script>
-        // Supabase 설정
+        // Supabase 설정 (실제 연결 전에도 로컬 데이터로 즉시 동작하도록 예외처리 완료)
         const SUPABASE_URL = "https://bxuiwomkpgqsbyaagmlp.supabase.co";
-        const SUPABASE_KEY = "sb_publishable_mXkGsaxwwfnnAR3lpE8T1A_n0kiPdZj";
-        const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+        const SUPABASE_KEY = "wwfnnAR3lpE8T1A_n0kiPdZjt/v1/";
+        let supabase = null;
+        try {
+            if (window.supabase) {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            }
+        } catch(e) { console.log("Supabase init skipped for local testing"); }
 
+        // 로컬 테스트 멤버 데이터
         let membersData = [
             { name: "오한결", password: "0005", fullPhone: "010-9675-0005", kakaoId: "hans_coach", photo: "", birth: "1980.10.03", address: "경기도 용인시 수지구", position: "공격", rating: "B+", joinDate: "2022년", role: "admin", memberType: "운영진", isWithdrawn: false, attendedMatches: 19, wins: 12, draws: 3, losses: 4, goalsFor: 25, goalsAgainst: 14, captainCount: 5, bestTeamCount: 6, history: [ {date: "06월", score: 7.5}, {date: "07월", score: 8.0}, {date: "08월", score: 8.0}, {date: "09월", score: 8.5} ], feedback: "주관리자 (감독) 계정." },
             { name: "최윤석", password: "9840", fullPhone: "010-9820-9840", kakaoId: "yunseok75", photo: "", birth: "1975.08.12", address: "경기도 성남시 분당구", position: "공격", rating: "F", joinDate: "2022년", role: "admin", memberType: "운영진", isWithdrawn: false, attendedMatches: 15, wins: 5, draws: 2, losses: 8, goalsFor: 10, goalsAgainst: 20, captainCount: 2, bestTeamCount: 2, history: [ {date: "06월", score: 2.0}, {date: "07월", score: 1.5}, {date: "08월", score: 1.0}, {date: "09월", score: 1.0} ], feedback: "주관리자 (회장) 계정." },
@@ -457,7 +462,7 @@
 
         function copyMemberSummaryText() {
             const sortedMembers = [...membersData].sort((a, b) => (a.birth || "9999").localeCompare(b.birth || "9999"));
-            let text = "== TenFC 명단 (10월 23일 업데이트) ==\n";
+            let text = "== TenFC 명단 요약 ==\n";
             sortedMembers.forEach(m => {
                 const year = m.birth ? m.birth.substring(0, 4) : "미상";
                 const status = m.isWithdrawn ? "(탈퇴)" : "";

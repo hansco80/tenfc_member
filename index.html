@@ -3,13 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 풋살팀 통합 시스템 v3.2</title>
+    <title>TenFC 풋살팀 통합 시스템 <span class="text-emerald-400 font-bold">v3.2</span></title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Chart.js DataLabels Plugin CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     <!-- Supabase JS SDK CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -18,7 +16,7 @@
     <!-- 로그인 화면 -->
     <div id="login-container" class="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
         <div class="text-center mb-6">
-            <h1 class="text-3xl font-bold text-emerald-400">⚽ TenFC 풋살팀</h1>
+            <h1 class="text-3xl font-bold text-emerald-400">⚽ TenFC 풋살팀 <span class="text-emerald-400 font-bold text-sm">v3.2</span></h1>
             <p class="text-slate-400 text-sm mt-1">멤버 평점, 출석 및 경기 결과 집계 시스템</p>
         </div>
         <form id="login-form" class="space-y-4">
@@ -57,7 +55,7 @@
         <div class="flex justify-between items-center border-b border-slate-700 pb-4 mb-6">
             <div>
                 <h2 id="user-welcome" class="text-2xl font-bold text-white">반갑습니다!</h2>
-                <p class="text-xs text-slate-400 mt-0.5">TenFC 멤버 마이페이지</p>
+                <p class="text-xs text-slate-400 mt-0.5">TenFC 멤버 마이페이지 (<span class="text-emerald-400 font-bold">v3.2</span>)</p>
             </div>
             <button id="logout-btn" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs rounded-lg transition">로그아웃</button>
         </div>
@@ -85,7 +83,7 @@
             </div>
         </div>
 
-        <!-- 개인 경기 기록 & 통계 카드 요약 (새로 추가) -->
+        <!-- 개인 경기 기록 & 통계 카드 요약 -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 text-center">
             <div class="bg-slate-900/70 p-3 rounded-xl border border-slate-700">
                 <p class="text-xs text-slate-400">출석 횟수 / 참석률</p>
@@ -118,14 +116,7 @@
             <!-- 평점 설명 모달 / 팝업 -->
             <div id="rating-info-popover" class="hidden mb-4 p-3 bg-slate-800 rounded-lg border border-slate-600 text-xs text-slate-300 space-y-1.5">
                 <p class="font-semibold text-emerald-400">📌 평점 산정 및 반영 기준</p>
-                <p>평점은 팀 밸런스를 위해 정기 운동 시 감코진이 각 멤버의 실력과 활동량을 종합 판단하여 상대평가로 결정합니다. (상/하향 1회 1단계 적용)</p>
-                <div class="grid grid-cols-2 gap-1 pt-1 border-t border-slate-700 text-[11px]">
-                    <div>• <b>A 등급</b>: 키 플레이어 (10점)</div>
-                    <div>• <b>B 등급</b>: 중요 플레이어 (8점)</div>
-                    <div>• <b>C 등급</b>: 평균 수준 (6점)</div>
-                    <div>• <b>D 등급</b>: 평균 이하 (4점)</div>
-                    <div>• <b>E~F 등급</b>: 향상 필요 (2점 이하)</div>
-                </div>
+                <p>평점은 팀 밸런스를 위해 정기 운동 시 감코진이 각 멤버의 실력과 활동량을 종합 판단하여 상대평가로 결정합니다.</p>
             </div>
 
             <div class="flex items-baseline space-x-2">
@@ -150,7 +141,7 @@
     <div id="admin-container" class="w-full max-w-4xl bg-slate-800 p-6 md:p-8 rounded-2xl shadow-xl border border-emerald-500/30 hidden my-6">
         <div class="flex justify-between items-center border-b border-slate-700 pb-4 mb-6">
             <div>
-                <h2 class="text-2xl font-bold text-emerald-400">🛡️ 감코진 관리자 대시보드</h2>
+                <h2 class="text-2xl font-bold text-emerald-400">🛡️ 감코진 관리자 대시보드 (<span class="text-emerald-400 font-bold">v3.2</span>)</h2>
                 <p class="text-xs text-slate-400 mt-0.5">멤버 데이터 수정, 출석 관리 및 경기 결과 집계</p>
             </div>
             <button onclick="switchToUser()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs rounded-lg transition">👤 내 마이페이지로 이동</button>
@@ -163,15 +154,13 @@
             </h3>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- 라인업 텍스트 입력 -->
                 <div>
                     <label class="block text-xs font-semibold text-slate-300 mb-1">1) 당일 팀 라인업 텍스트 붙여넣기</label>
-                    <textarea id="lineup-input" rows="5" placeholder="⚽ 1팀 [레드] 오한결(80)* / 박성복(81) / 최규환(82)&#10;⚽ 2팀 [블랙] 장현호(93)* / 우희중(83) / 정권명(86)&#10;⚽ 3팀 [그린] 이동윤(81)* / 용병-재현(79) / 지인-홍길동" class="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-emerald-500 font-mono"></textarea>
+                    <textarea id="lineup-input" rows="5" placeholder="⚽ 1팀 [레드] 오한결(80)* / 박성복(81)&#10;⚽ 2팀 [블랙] 장현호(93)* / 우희중(83)" class="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-emerald-500 font-mono"></textarea>
                 </div>
-                <!-- 경기 결과 입력 -->
                 <div>
                     <label class="block text-xs font-semibold text-slate-300 mb-1">2) 경기 스코어 결과 입력 (예: 그1:레0, 레2:블1)</label>
-                    <textarea id="match-results-input" rows="5" placeholder="그1:레0&#10;레2:블1&#10;그1:블1&#10;블2:레0" class="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-emerald-500 font-mono"></textarea>
+                    <textarea id="match-results-input" rows="5" placeholder="그1:레0&#10;레2:블1" class="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-emerald-500 font-mono"></textarea>
                 </div>
             </div>
 
@@ -182,7 +171,6 @@
             <div id="match-process-result" class="hidden p-3 bg-slate-950 rounded-lg text-xs text-slate-300 space-y-1"></div>
         </div>
 
-        <!-- 2. 전체 데이터 내보내기 및 엑셀 기능 -->
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-bold text-white">👥 전체 멤버 목록 (<span id="admin-member-count">0</span>명)</h3>
             <button onclick="copyMemberSummaryText()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg font-semibold transition border border-slate-600">
@@ -190,7 +178,6 @@
             </button>
         </div>
 
-        <!-- 3. 멤버 관리 테이블 -->
         <div class="overflow-x-auto bg-slate-900/50 rounded-xl border border-slate-700">
             <table class="w-full text-left border-collapse text-xs">
                 <thead>
@@ -203,13 +190,11 @@
                         <th class="p-3 text-center">관리</th>
                     </tr>
                 </thead>
-                <tbody id="admin-member-table-body" class="divide-y divide-slate-800">
-                    <!-- 자바스크립트로 동적 생성 -->
-                </tbody>
+                <tbody id="admin-member-table-body" class="divide-y divide-slate-800"></tbody>
             </table>
         </div>
 
-        <!-- 4. 세부 매치 기록 및 히스토리 로그 (Match History Log) -->
+        <!-- 세부 매치 로그 -->
         <div class="mt-8 bg-slate-900/50 p-4 rounded-xl border border-slate-700">
             <h3 class="text-md font-bold text-slate-200 mb-3 flex items-center gap-2">
                 <span>📜 세부 경기 기록 & 로그 (Match Logs)</span>
@@ -235,23 +220,19 @@
 
     <!-- 스크립트 로직 -->
     <script>
-        // --- Supabase 설정 ---
+        // Supabase 설정
         const SUPABASE_URL = "https://bxuiwomkpgqsbyaagmlp.supabase.co";
-        const SUPABASE_KEY = "wwfnnAR3lpE8T1A_n0kiPdZjt/v1/";
+        const SUPABASE_KEY = "sb_publishable_mXkGsaxwwfnnAR3lpE8T1A_n0kiPdZj";
         const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
-        // 샘플 멤버 초기 데이터 및 통계 구조
         let membersData = [
-            { name: "오한결", password: "0005", fullPhone: "010-9675-0005", kakaoId: "hans_coach", photo: "", birth: "1980.10.03", address: "경기도 용인시 수지구", position: "공격", rating: "B+", joinDate: "2022년", role: "admin", memberType: "운영진", isWithdrawn: false, attendedMatches: 19, wins: 12, draws: 3, losses: 4, goalsFor: 25, goalsAgainst: 14, captainCount: 5, bestTeamCount: 6, history: [ {date: "06월", score: 7.5}, {date: "07월", score: 8.0}, {date: "08월", score: 8.0}, {date: "09월", score: 8.5} ], feedback: "주관리자 (감독) 계정. 전술 이해도가 높고 팀 리더십이 훌륭함." },
-            { name: "최윤석", password: "9840", fullPhone: "010-9820-9840", kakaoId: "yunseok75", photo: "", birth: "1975.08.12", address: "경기도 성남시 분당구", position: "공격", rating: "F", joinDate: "2022년", role: "admin", memberType: "운영진", isWithdrawn: false, attendedMatches: 15, wins: 5, draws: 2, losses: 8, goalsFor: 10, goalsAgainst: 20, captainCount: 2, bestTeamCount: 2, history: [ {date: "06월", score: 2.0}, {date: "07월", score: 1.5}, {date: "08월", score: 1.0}, {date: "09월", score: 1.0} ], feedback: "주관리자 (회장) 계정. 투지 넘치는 플레이와 헌신적인 활동량." },
-            { name: "장현호", password: "9790", fullPhone: "010-8012-9790", kakaoId: "hyunho_coach", photo: "", birth: "1993.06.04", address: "서울시 강남구", position: "수비", rating: "B", joinDate: "2023년", role: "sub_admin", memberType: "운영진", isWithdrawn: false, attendedMatches: 17, wins: 10, draws: 4, losses: 3, goalsFor: 20, goalsAgainst: 12, captainCount: 4, bestTeamCount: 4, history: [ {date: "06월", score: 7.0}, {date: "07월", score: 7.5}, {date: "08월", score: 8.0}, {date: "09월", score: 8.0} ], feedback: "부관리자 (코치진). 대인 방어 능력이 뛰어나고 빌드업 기점이 됨." },
-            { name: "테스트", password: "0000", fullPhone: "010-0000-0000", kakaoId: "test_user", photo: "", birth: "1990.05.15", address: "서울특별시 서초구 반포동", position: "멀티", rating: "A-", joinDate: "2024년", role: "member", memberType: "일반회원", isWithdrawn: false, attendedMatches: 18, wins: 11, draws: 4, losses: 3, goalsFor: 28, goalsAgainst: 15, captainCount: 3, bestTeamCount: 5, history: [ {date: "03월", score: 6.5}, {date: "04월", score: 7.0}, {date: "05월", score: 7.5}, {date: "06월", score: 8.0}, {date: "07월", score: 8.5}, {date: "08월", score: 9.0}, {date: "09월", score: 9.5} ], feedback: "왕성한 활동량과 정확한 킥력을 겸비한 핵심 자원." }
+            { name: "오한결", password: "0005", fullPhone: "010-9675-0005", kakaoId: "hans_coach", photo: "", birth: "1980.10.03", address: "경기도 용인시 수지구", position: "공격", rating: "B+", joinDate: "2022년", role: "admin", memberType: "운영진", isWithdrawn: false, attendedMatches: 19, wins: 12, draws: 3, losses: 4, goalsFor: 25, goalsAgainst: 14, captainCount: 5, bestTeamCount: 6, history: [ {date: "06월", score: 7.5}, {date: "07월", score: 8.0}, {date: "08월", score: 8.0}, {date: "09월", score: 8.5} ], feedback: "주관리자 (감독) 계정." },
+            { name: "최윤석", password: "9840", fullPhone: "010-9820-9840", kakaoId: "yunseok75", photo: "", birth: "1975.08.12", address: "경기도 성남시 분당구", position: "공격", rating: "F", joinDate: "2022년", role: "admin", memberType: "운영진", isWithdrawn: false, attendedMatches: 15, wins: 5, draws: 2, losses: 8, goalsFor: 10, goalsAgainst: 20, captainCount: 2, bestTeamCount: 2, history: [ {date: "06월", score: 2.0}, {date: "07월", score: 1.5}, {date: "08월", score: 1.0}, {date: "09월", score: 1.0} ], feedback: "주관리자 (회장) 계정." },
+            { name: "장현호", password: "9790", fullPhone: "010-8012-9790", kakaoId: "hyunho_coach", photo: "", birth: "1993.06.04", address: "서울시 강남구", position: "수비", rating: "B", joinDate: "2023년", role: "sub_admin", memberType: "부관리자 (운영진)", isWithdrawn: false, attendedMatches: 17, wins: 10, draws: 4, losses: 3, goalsFor: 20, goalsAgainst: 12, captainCount: 4, bestTeamCount: 4, history: [ {date: "06월", score: 7.0}, {date: "07월", score: 7.5}, {date: "08월", score: 8.0}, {date: "09월", score: 8.0} ], feedback: "부관리자 계정." },
+            { name: "테스트", password: "0000", fullPhone: "010-0000-0000", kakaoId: "test_user", photo: "", birth: "1990.05.15", address: "서울특별시 서초구", position: "멀티", rating: "A-", joinDate: "2024년", role: "member", memberType: "일반회원", isWithdrawn: false, attendedMatches: 18, wins: 11, draws: 4, losses: 3, goalsFor: 28, goalsAgainst: 15, captainCount: 3, bestTeamCount: 5, history: [ {date: "06월", score: 8.0}, {date: "07월", score: 8.5}, {date: "08월", score: 9.0}, {date: "09월", score: 9.5} ], feedback: "테스트 계정." }
         ];
 
-        // 매치 세부 히스토리 로그 데이터
         let matchLogs = [];
-
-        // 알파벳 평점 <-> 점수 매핑 테이블
         const ratingScoreMap = {
             "A+": 11, "A": 10, "A-": 9,
             "B+": 8.5, "B": 8, "B-": 7.5,
@@ -264,39 +245,55 @@
         let currentLoggedInUser = null;
         let chartInstance = null;
 
-        // --- 초기화 및 이벤트 리스너 ---
         document.addEventListener("DOMContentLoaded", () => {
-            document.getElementById("login-form").addEventListener("submit", handleLogin);
-            document.getElementById("logout-btn").addEventListener("click", handleLogout);
+            const loginForm = document.getElementById("login-form");
+            if (loginForm) {
+                loginForm.addEventListener("submit", handleLogin);
+            }
+            const logoutBtn = document.getElementById("logout-btn");
+            if (logoutBtn) {
+                logoutBtn.addEventListener("click", handleLogout);
+            }
         });
 
-        // --- 로그인 처리 ---
         function handleLogin(e) {
             e.preventDefault();
-            const name = document.getElementById("name-input").value.trim();
-            const pass = document.getElementById("phone-input").value.trim();
+            const nameInput = document.getElementById("name-input");
+            const phoneInput = document.getElementById("phone-input");
+            
+            if (!nameInput || !phoneInput) return;
+
+            const name = nameInput.value.trim();
+            const pass = phoneInput.value.trim();
 
             const user = membersData.find(m => m.name === name && (m.password === pass || m.fullPhone.endsWith(pass)));
 
             if (!user) {
-                document.getElementById("login-error").classList.remove("hidden");
+                const errEl = document.getElementById("login-error");
+                if (errEl) errEl.classList.remove("hidden");
                 return;
             }
 
             if (user.isWithdrawn) {
-                document.getElementById("withdrawn-modal").classList.remove("hidden");
+                const modal = document.getElementById("withdrawn-modal");
+                if (modal) modal.classList.remove("hidden");
                 return;
             }
 
             currentLoggedInUser = user;
-            document.getElementById("login-container").classList.add("hidden");
-            document.getElementById("dashboard-container").classList.remove("hidden");
+            const loginContainer = document.getElementById("login-container");
+            const dashboardContainer = document.getElementById("dashboard-container");
 
-            // 관리자 권한 확인
-            if (user.role === "admin" || user.role === "sub_admin") {
-                document.getElementById("admin-switch-bar").classList.remove("hidden");
-            } else {
-                document.getElementById("admin-switch-bar").classList.add("hidden");
+            if (loginContainer) loginContainer.classList.add("hidden");
+            if (dashboardContainer) dashboardContainer.classList.remove("hidden");
+
+            const adminBar = document.getElementById("admin-switch-bar");
+            if (adminBar) {
+                if (user.role === "admin" || user.role === "sub_admin") {
+                    adminBar.classList.remove("hidden");
+                } else {
+                    adminBar.classList.add("hidden");
+                }
             }
 
             renderUserDashboard(user);
@@ -315,7 +312,6 @@
             document.getElementById("withdrawn-modal").classList.add("hidden");
         }
 
-        // --- 사용자 마이페이지 렌더링 ---
         function renderUserDashboard(user) {
             document.getElementById("user-welcome").innerText = `⚽ ${user.name} 님`;
             document.getElementById("user-name").innerText = user.name;
@@ -327,7 +323,6 @@
             document.getElementById("user-joindate").innerText = user.joinDate || "-";
             document.getElementById("user-feedback").innerText = user.feedback || "등록된 피드백이 없습니다.";
 
-            // 개인 경기 통계 렌더링
             const totalMatches = user.attendedMatches || 0;
             document.getElementById("user-attendance").innerText = `${totalMatches}회`;
             document.getElementById("user-best-team-count").innerText = `${user.bestTeamCount || 0}회`;
@@ -339,16 +334,12 @@
             const pts = (w * 3) + (d * 1);
             document.getElementById("user-match-stat").innerText = `${w}승 ${d}무 ${l}패 (${pts}점)`;
 
-            // 평점 및 점수 매핑
             const rating = user.rating || "C";
             const score = ratingScoreMap[rating] !== undefined ? ratingScoreMap[rating] : 6.0;
             document.getElementById("user-rating-grade").innerText = rating;
             document.getElementById("user-rating-score").innerText = `(${score}점)`;
 
-            // 순위 및 상위 % 계산
             calculateRankAndPercent(user);
-
-            // 평점 추이 차트 생성
             renderRatingChart(user.history || []);
         }
 
@@ -361,13 +352,12 @@
             });
 
             const rank = sorted.findIndex(m => m.name === user.name) + 1;
-            const percent = ((rank / sorted.length) * 100).toFixed(1);
+            const percent = sorted.length > 0 ? ((rank / sorted.length) * 100).toFixed(1) : 0;
             document.getElementById("user-rating-rank").innerText = `상위 ${percent}% (팀 내 ${rank}위 / 총 ${sorted.length}명)`;
         }
 
         function toggleRatingInfo() {
-            const popover = document.getElementById("rating-info-popover");
-            popover.classList.toggle("hidden");
+            document.getElementById("rating-info-popover").classList.toggle("hidden");
         }
 
         function renderRatingChart(history) {
@@ -398,15 +388,7 @@
                         y: {
                             min: 0,
                             max: 12,
-                            ticks: {
-                                color: '#94a3b8',
-                                callback: function(val) {
-                                    for (const [grade, sc] of Object.entries(ratingScoreMap)) {
-                                        if (sc === val) return grade;
-                                    }
-                                    return val;
-                                }
-                            }
+                            ticks: { color: '#94a3b8' }
                         },
                         x: { ticks: { color: '#94a3b8' } }
                     },
@@ -415,7 +397,6 @@
             });
         }
 
-        // --- 화면 전환 ---
         function switchToAdmin() {
             document.getElementById("dashboard-container").classList.add("hidden");
             document.getElementById("admin-container").classList.remove("hidden");
@@ -428,21 +409,14 @@
             document.getElementById("dashboard-container").classList.remove("hidden");
         }
 
-        // --- 관리자: 멤버 데이터 테이블 렌더링 (나이순 정렬) ---
         function renderAdminTable() {
             const tbody = document.getElementById("admin-member-table-body");
             tbody.innerHTML = "";
 
-            // 나이 순 정렬 (생년월일 오름차순)
-            const sortedMembers = [...membersData].sort((a, b) => {
-                const birthA = a.birth || "9999";
-                const birthB = b.birth || "9999";
-                return birthA.localeCompare(birthB);
-            });
-
+            const sortedMembers = [...membersData].sort((a, b) => (a.birth || "9999").localeCompare(b.birth || "9999"));
             document.getElementById("admin-member-count").innerText = sortedMembers.filter(m => !m.isWithdrawn).length;
 
-            sortedMembers.forEach((m, idx) => {
+            sortedMembers.forEach((m) => {
                 const tr = document.createElement("tr");
                 tr.className = m.isWithdrawn ? "bg-rose-950/20 text-slate-500" : "hover:bg-slate-800/50 text-slate-200";
 
@@ -470,11 +444,9 @@
                         <div><b>${w}승 ${d}무 ${l}패</b></div>
                         <div class="text-cyan-400">팀장: ${cap}회 | 최우수: ${m.bestTeamCount || 0}회</div>
                     </td>
-                    <td class="p-3 text-[11px] text-slate-400 max-w-[150px] truncate">
-                        ${m.feedback || '-'}
-                    </td>
-                    <td class="p-3 text-center space-x-1">
-                        <button onclick="toggleWithdraw('${m.name}')" class="px-2 py-1 ${m.isWithdrawn ? 'bg-slate-700 hover:bg-slate-600' : 'bg-rose-950 hover:bg-rose-900 border border-rose-800'} text-[10px] text-slate-200 rounded">
+                    <td class="p-3 text-[11px] text-slate-400 max-w-[150px] truncate">${m.feedback || '-'}</td>
+                    <td class="p-3 text-center">
+                        <button onclick="toggleWithdraw('${m.name}')" class="px-2 py-1 ${m.isWithdrawn ? 'bg-slate-700' : 'bg-rose-950 border border-rose-800'} text-[10px] text-slate-200 rounded">
                             ${m.isWithdrawn ? '복구' : '탈퇴'}
                         </button>
                     </td>
@@ -483,11 +455,9 @@
             });
         }
 
-        // --- 관리자: 텍스트 요약 내보내기 ---
         function copyMemberSummaryText() {
             const sortedMembers = [...membersData].sort((a, b) => (a.birth || "9999").localeCompare(b.birth || "9999"));
-            
-            let text = "[TenFC 멤버 명단 요약 (나이순)]\n";
+            let text = "== TenFC 명단 (10월 23일 업데이트) ==\n";
             sortedMembers.forEach(m => {
                 const year = m.birth ? m.birth.substring(0, 4) : "미상";
                 const status = m.isWithdrawn ? "(탈퇴)" : "";
@@ -507,7 +477,6 @@
             }
         }
 
-        // --- 관리자: 라인업 파싱 & 경기 결과 집계 로직 ---
         function processMatchAndAttendance() {
             const lineupText = document.getElementById("lineup-input").value.trim();
             const resultsText = document.getElementById("match-results-input").value.trim();
@@ -517,8 +486,6 @@
                 return;
             }
 
-            // 1. 라인업 파싱 및 팀/팀장 구조 생성
-            // 팀 구조: { teamName: "레드", shortName: "레", members: ["오한결", ...], captain: "오한결" }
             const lines = lineupText.split('\n');
             const teams = [];
             const attendedMemberNames = new Set();
@@ -526,35 +493,19 @@
 
             lines.forEach(line => {
                 if (!line.trim()) return;
-                
-                // 팀 이름 추출 (예: [레드], 1팀 [레드])
                 let teamName = "팀";
                 const teamMatch = line.match(/\[(.*?)\]/);
-                if (teamMatch) {
-                    teamName = teamMatch[1].trim();
-                } else if (line.includes("1팀")) teamName = "레드";
-                else if (line.includes("2팀")) teamName = "블랙";
-                else if (line.includes("3팀")) teamName = "그린";
+                if (teamMatch) teamName = teamMatch[1].trim();
 
-                const shortName = teamName.substring(0, 1); // "레", "블", "그" 등 단축 이름
-
-                // 멤버 파싱
+                const shortName = teamName.substring(0, 1);
                 const members = [];
                 const rawTokens = line.split(/[\/,\n]/);
 
                 rawTokens.forEach(token => {
                     let cleaned = token.replace(/⚽|\d+팀|\[.*?\]/g, '').trim();
-                    if (!cleaned) return;
+                    if (!cleaned || cleaned.startsWith("용병-") || cleaned.startsWith("지인-")) return;
 
-                    // 용병, 지인 제외
-                    if (cleaned.startsWith("용병-") || cleaned.startsWith("지인-") || cleaned.includes("용병") || cleaned.includes("지인")) {
-                        return;
-                    }
-
-                    // 팀장 마크(*) 확인
                     const isCaptain = cleaned.includes("*");
-                    
-                    // 이름만 추출: 괄호(80), 별표(*) 등 제거
                     let pureName = cleaned.replace(/\(.*?\)/g, '').replace(/\*/g, '').trim();
 
                     if (pureName) {
@@ -567,41 +518,29 @@
                 teams.push({ teamName, shortName, members });
             });
 
-            // 2. 출석수 & 팀장 횟수 적용
             membersData.forEach(m => {
-                if (attendedMemberNames.has(m.name)) {
-                    m.attendedMatches = (m.attendedMatches || 0) + 1;
-                }
-                if (captains.includes(m.name)) {
-                    m.captainCount = (m.captainCount || 0) + 1;
-                }
+                if (attendedMemberNames.has(m.name)) m.attendedMatches = (m.attendedMatches || 0) + 1;
+                if (captains.includes(m.name)) m.captainCount = (m.captainCount || 0) + 1;
             });
 
-            // 3. 경기 결과 파싱 & 승무패 / 득실점 계산
-            // 포맷: 그1:레0, 레2:블1 등
             const matchLines = resultsText.split(/[\n,]/);
-            const teamStats = {}; // { "레드": { wins: 0, draws: 0, losses: 0, gf: 0, ga: 0, pts: 0 } }
-            
+            const teamStats = {};
             teams.forEach(t => {
                 teamStats[t.teamName] = { wins: 0, draws: 0, losses: 0, gf: 0, ga: 0, pts: 0 };
             });
 
             let matchCount = 0;
-
             matchLines.forEach(mStr => {
                 const s = mStr.trim();
                 if (!s || !s.includes(":")) return;
-
-                // 스코어 파싱: 예) 그1 : 레0
                 const parts = s.split(":");
                 if (parts.length !== 2) return;
 
-                const teamAStr = parts[0].trim(); // 예: "그1"
-                const teamBStr = parts[1].trim(); // 예: "레0"
+                const teamAStr = parts[0].trim();
+                const teamBStr = parts[1].trim();
 
                 const teamA_Short = teamAStr.replace(/[0-9]/g, '').trim();
                 const teamA_Score = parseInt(teamAStr.replace(/[^0-9]/g, '')) || 0;
-
                 const teamB_Short = teamBStr.replace(/[0-9]/g, '').trim();
                 const teamB_Score = parseInt(teamBStr.replace(/[^0-9]/g, '')) || 0;
 
@@ -613,25 +552,19 @@
                     const statA = teamStats[teamA.teamName];
                     const statB = teamStats[teamB.teamName];
 
-                    statA.gf += teamA_Score;
-                    statA.ga += teamB_Score;
-                    statB.gf += teamB_Score;
-                    statB.ga += teamA_Score;
+                    statA.gf += teamA_Score; statA.ga += teamB_Score;
+                    statB.gf += teamB_Score; statB.ga += teamA_Score;
 
                     if (teamA_Score > teamB_Score) {
-                        statA.wins++; statA.pts += 3;
-                        statB.losses++;
+                        statA.wins++; statA.pts += 3; statB.losses++;
                     } else if (teamB_Score > teamA_Score) {
-                        statB.wins++; statB.pts += 3;
-                        statA.losses++;
+                        statB.wins++; statB.pts += 3; statA.losses++;
                     } else {
-                        statA.draws++; statA.pts += 1;
-                        statB.draws++; statB.pts += 1;
+                        statA.draws++; statA.pts += 1; statB.draws++; statB.pts += 1;
                     }
                 }
             });
 
-            // 4. 당일 최우수 승리팀 산출 (승점 > 골득실 기준)
             let bestTeam = null;
             let maxPts = -1;
             let maxGd = -999;
@@ -640,13 +573,10 @@
                 const st = teamStats[tName];
                 const gd = st.gf - st.ga;
                 if (st.pts > maxPts || (st.pts === maxPts && gd > maxGd)) {
-                    maxPts = st.pts;
-                    maxGd = gd;
-                    bestTeam = tName;
+                    maxPts = st.pts; maxGd = gd; bestTeam = tName;
                 }
             });
 
-            // 5. 회원별 승무패 및 최우수팀 누적 반영
             teams.forEach(t => {
                 const st = teamStats[t.teamName];
                 const isBest = (t.teamName === bestTeam && maxPts > 0);
@@ -659,14 +589,11 @@
                         member.losses = (member.losses || 0) + st.losses;
                         member.goalsFor = (member.goalsFor || 0) + st.gf;
                         member.goalsAgainst = (member.goalsAgainst || 0) + st.ga;
-                        if (isBest) {
-                            member.bestTeamCount = (member.bestTeamCount || 0) + 1;
-                        }
+                        if (isBest) member.bestTeamCount = (member.bestTeamCount || 0) + 1;
                     }
                 });
             });
 
-            // 6. 매치 로그 기록 추가
             const todayStr = new Date().toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' });
             matchLogs.unshift({
                 id: Date.now(),
@@ -676,14 +603,12 @@
                 bestTeam: bestTeam || "없음"
             });
 
-            // 7. 결과 안내 띄우기
             const resBox = document.getElementById("match-process-result");
             resBox.classList.remove("hidden");
             resBox.innerHTML = `
-                <p class="text-emerald-400 font-bold">✅ 경기 결과 및 출석 집계 완시!</p>
-                <p>• 출석 체크된 회원: <b>${attendedMemberNames.size}명</b> (${Array.from(attendedMemberNames).join(', ')})</p>
+                <p class="text-emerald-400 font-bold">✅ 경기 결과 및 출석 집계 완료!</p>
+                <p>• 출석 체크된 회원: <b>${attendedMemberNames.size}명</b></p>
                 <p>• 지정된 팀장: <b>${captains.join(', ') || '없음'}</b></p>
-                <p>• 당일 진행 경기 수: <b>${matchCount}경기</b></p>
                 <p>• 당일 최우수 승리팀: <b class="text-amber-400">${bestTeam || '없음'}</b></p>
             `;
 
@@ -691,7 +616,6 @@
             renderMatchLogs();
         }
 
-        // --- 세부 매치 로그 렌더링 ---
         function renderMatchLogs() {
             const tbody = document.getElementById("match-log-table-body");
             tbody.innerHTML = "";

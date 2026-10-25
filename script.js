@@ -364,37 +364,157 @@ async function deleteMatchLog(id) {
 function openLineupModal() { document.getElementById('lineup-modal').classList.remove('hidden'); }
 function closeLineupModal() { document.getElementById('lineup-modal').classList.add('hidden'); }
 
+// 💡 텍스트 포맷을 완벽 분석하여 출석, 팀장, 승무패, 득실점을 자동 집계하는 스마트 파서
 async function processLineupAttendance() {
     const rawText = document.getElementById('lineup-textarea').value;
     const resText = document.getElementById('match-results-input').value.trim();
-    if (!rawText.trim()) { alert('라인업을 입력해주세요.'); return; }
+    if (!rawText.trim()) { alert('라인업 내용을 입력해주세요.'); return; }
 
-    let tokens = rawText.split(/[\n,\/]+/);
-    let targetMembers = [];
-    tokens.forEach(token => {
-        let clean = token.trim();
-        if (!clean || clean.startsWith('⚽') || clean.includes('팀')) return;
-        let pureName = clean.replace(/\([^)]*\)/g, '').replace(/[\*\-\s]/g, '');
-        let found = membersData.find(m => !m.isWithdrawn && (m.name === clean || m.name === pureName));
-        if (found && !targetMembers.some(i => i.id === found.id)) targetMembers.push(found);
+    let lines = rawText.split('\n');
+    let teamRosters = {}; // 팀별 멤버 목록 { "레드": [{name, isCaptain}], ... }
+    let currentTeamName = "기본";
+
+    // 1단계: 라인업 텍스트 파싱
+    for (let line of lines) {
+        let trimmed = line.trim();
+        if (!trimmed) continue;
+
+        // 팀명 감지 (예: "1팀 [레드]", "[레드팀]" 등)
+        if (trimmed.includes('팀') || trimmed.includes('[') || trimmed.includes(']')) {
+            if (trimmed.includes('레드')) currentTeamName = '레드';
+            else if (trimmed.includes('블랙')) currentTeamName = '블랙';
+            else if (trimmed.includes('그린')) currentTeamName = '그린';
+            else if (trimmed.includes('오렌지')) currentTeamName = '오렌지';
+            else {
+                let matchTeam = trimmed.match(/\[(.*?)\]/) || trimmed.match(/(\d+팀)/);
+                if (matchTeam) currentTeamName = matchTeam[1].replace('팀', '').trim();
+            }
+            if (!teamRosters[currentTeamName]) teamRosters[currentTeamName] = [];
+        }
+
+        // 멤버 이름 추출 (슬래시(/), 쉼표(,) 등으로 구분된 토큰 분리)
+        let tokens = trimmed.split(/[\/\,\s]+/);
+        for (let token of tokens) {
+            let clean = token.trim();
+            if (!clean || clean.startsWith('⚽') || clean.includes('팀') || clean.startsWith('[') || clean.includes(':')) continue;
+            
+            let isCaptain = clean.includes('*');
+            let pureName = clean.replace(/\([^)]*\)/g, '').replace(/[\*\-\s]/g, '');
+            
+            if (pureName.length >= 2) {
+                let found = membersData.find(m => !m.isWithdrawn && (m.name === pureName || m.name === clean.replace('*','')));
+                if (found) {
+                    if (!teamRosters[currentTeamName]) teamRosters[currentTeamName] = [];
+                    if (!teamRosters[currentTeamName].some(i => i.name === found.name)) {
+                        teamRosters[currentTeamName].push({ member: found, isCaptain: isCaptain });
+                    }
+                }
+            }
+        }
+    }
+
+    // 출석 대상자 전체 추출
+    let allAttended = [];
+    Object.values(teamRosters).forEach(roster => {
+        roster.forEach(r => {
+            if (!allAttended.some(i => i.name === r.member.name)) allAttended.push(r.member);
+        });
     });
 
-    if (targetMembers.length === 0) { alert('인식된 멤버가 없습니다.'); return; }
-    if (!confirm(`총 ${targetMembers.length}명의 출석(+1)을 반영하시겠습니까?`)) return;
+    if (allAttended.length === 0) { alert('인식된 멤버가 없습니다. 이름 형식을 확인해주세요.'); return; }
 
-    for (let m of targetMembers) {
-        await supabaseClient.from('test_members').update({ attended_matches: m.attendedMatches + 1 }).eq('name', m.name);
-    }
-
+    // 2단계: 경기 결과 분석 및 승무패 / 득실점 집계
+    let teamStats = {}; // { "레드": {wins:0, draws:0, losses:0, gf:0, ga:0}, ... }
+    
     if (resText) {
-        const now = new Date();
-        const dateStr = `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
-        await supabaseClient.from('match_logs').insert([{ match_date: dateStr, lineup_summary: rawText.slice(0, 30) + '...', result_summary: resText, best_team: '통합' }]);
+        let matchResults = resText.split(/[\,\/\n]+/);
+        matchResults.forEach(matchStr => {
+            let m = matchStr.trim();
+            // 예: "레드1:블랙0" 또는 "레1:블0"
+            let scoreMatch = m.match(/([가-힣\w]+)\s*(\d+)\s*[:\vsS]\s*([가-힣\w]+)\s*(\d+)/);
+            if (scoreMatch) {
+                let t1 = scoreMatch[1].replace(/팀|레|블|그/g, (match) => ({레:'레드', 블:'블랙', 그:'그린'}[match] || match));
+                let s1 = parseInt(scoreMatch[2], 10);
+                let t2 = scoreMatch[3].replace(/팀|레|블|그/g, (match) => ({레:'레드', 블:'블랙', 그:'그린'}[match] || match));
+                let s2 = parseInt(scoreMatch[4], 10);
+
+                // 팀 이름 정규화 매칭
+                let actualT1 = Object.keys(teamRosters).find(k => k.includes(t1) || t1.includes(k)) || t1;
+                let actualT2 = Object.keys(teamRosters).find(k => k.includes(t2) || t2.includes(k)) || t2;
+
+                if (!teamStats[actualT1]) teamStats[actualT1] = { wins: 0, draws: 0, losses: 0, gf: 0, ga: 0 };
+                if (!teamStats[actualT2]) teamStats[actualT2] = { wins: 0, draws: 0, losses: 0, gf: 0, ga: 0 };
+
+                teamStats[actualT1].gf += s1; teamStats[actualT1].ga += s2;
+                teamStats[actualT2].gf += s2; teamStats[actualT2].ga += s1;
+
+                if (s1 > s2) {
+                    teamStats[actualT1].wins++; teamStats[actualT2].losses++;
+                } else if (s1 < s2) {
+                    teamStats[actualT2].wins++; teamStats[actualT1].losses++;
+                } else {
+                    teamStats[actualT1].draws++; teamStats[actualT2].draws++;
+                }
+            }
+        });
     }
+
+    // 최우수 승리팀 선정 (승수 기준, 동률시 득실차)
+    let bestTeamName = "-";
+    let maxWins = -1;
+    Object.keys(teamStats).forEach(tName => {
+        let st = teamStats[tName];
+        if (st.wins > maxWins) {
+            maxWins = st.wins;
+            bestTeamName = tName;
+        }
+    });
+
+    if (!confirm(`총 ${allAttended.length}명 출석 및 경기 결과 반영을 진행하시겠습니까?`)) return;
+
+    // 3단계: Supabase 데이터베이스에 일괄 반영
+    for (let m of allAttended) {
+        let updateData = { attended_matches: m.attendedMatches + 1 };
+        
+        // 소속 팀의 성적 반영
+        for (let [tName, roster] of Object.entries(teamRosters)) {
+            if (roster.some(r => r.member.name === m.name)) {
+                let st = teamStats[tName] || { wins: 0, draws: 0, losses: 0, gf: 0, ga: 0 };
+                updateData.wins = m.wins + st.wins;
+                updateData.draws = m.draws + st.draws;
+                updateData.losses = m.losses + st.losses;
+                updateData.goals_for = m.goalsFor + st.gf;
+                updateData.goals_against = m.goalsAgainst + st.ga;
+
+                // 팀장 횟수 누적
+                let myEntry = roster.find(r => r.member.name === m.name);
+                if (myEntry && myEntry.isCaptain) {
+                    updateData.captain_count = (m.captainCount || 0) + 1;
+                }
+
+                // 최우수 승리팀 포함 횟수 누적
+                if (tName === bestTeamName && st.wins > 0) {
+                    updateData.best_team_count = (m.bestTeamCount || 0) + 1;
+                }
+            }
+        }
+
+        await supabaseClient.from('test_members').update(updateData).eq('name', m.name);
+    }
+
+    // 세부 매치 로그 저장
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
+    await supabaseClient.from('match_logs').insert([{
+        match_date: dateStr,
+        lineup_summary: rawText.slice(0, 40) + '...',
+        result_summary: resText || "결과 입력 없음",
+        best_team: bestTeamName !== "-" ? `${bestTeamName}팀 우승` : "결과 없음"
+    }]);
 
     await fetchMembersFromSupabase();
     closeLineupModal();
-    alert('반영 완료되었습니다!');
+    alert('경기 결과 및 통계가 성공적으로 반영되었습니다!');
     loadAdminDashboard();
 }
 
@@ -443,7 +563,7 @@ async function toggleSubAdminRole(name, makeSub) {
 
 function toggleSelectAll(master) { document.querySelectorAll('.member-checkbox').forEach(cb => cb.checked = master.checked); }
 function exportMemberTextData() {
-    let text = `== TenFC 멤버 명단 ==\n` + membersData.filter(m=>!m.isWithdrawn).map(m => `${m.name} / ${m.birth||'-'} / ${m.rating}`).join('\n');
+    let text = `== TenFC 명단 (${new Date().getMonth()+1}월 ${new Date().getDate()}일 업데이트) ==\n` + membersData.filter(m=>!m.isWithdrawn).map(m => `${m.name} / ${m.birth||'-'} / ${m.rating}`).join('\n');
     navigator.clipboard.writeText(text).then(() => alert('명단이 복사되었습니다!'));
 }
 
@@ -546,7 +666,7 @@ function renderChart(history) {
                     }, 
                     grid: { color: '#334155' } 
                 },
-                x: { ticks: { color: '#94a38' }, grid: { display: false } }
+                x: { ticks: { color: '#94a3b8' }, grid: { display: false } }
             },
             plugins: {
                 legend: { display: false },

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 풋살팀 통합 시스템 v2.23</title>
+    <title>TenFC 풋살팀 통합 시스템 v2.24</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
@@ -19,7 +19,7 @@
     <div id="login-container" class="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
         <div class="text-center mb-6">
             <h1 class="text-3xl font-bold text-emerald-400">⚽ TenFC 풋살팀</h1>
-            <p class="text-slate-400 text-sm mt-1">멤버 등급 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v2.23</span></p>
+            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v2.24</span></p>
         </div>
         <form id="login-form" class="space-y-4">
             <div>
@@ -60,7 +60,7 @@
         </div>
     </div>
 
-    <!-- 대시보드 화면 (개별 회원 전용) -->
+    <!-- 대시보드 화면 -->
     <div id="dashboard-container" class="w-full max-w-2xl bg-slate-800 p-6 md:p-8 rounded-2xl shadow-xl border border-slate-700 hidden">
         <div id="admin-switch-bar" class="hidden mb-4 p-2 bg-slate-900/80 rounded-lg border border-emerald-500/40 flex justify-between items-center">
             <span id="admin-badge-text" class="text-xs text-emerald-400 font-semibold px-2">🛡️ 관리자 권한 보유 계정</span>
@@ -70,7 +70,7 @@
         <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <div>
                 <h2 id="user-welcome" class="text-2xl font-bold text-white"></h2>
-                <p class="text-xs text-slate-400 mt-1">정회원 총원: <span id="member-total-count" class="font-bold text-emerald-400">0명</span> | 팀 총 매치: <span id="team-total-matches-display" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.23</span></p>
+                <p class="text-xs text-slate-400 mt-1">정회원 총원: <span id="member-total-count" class="font-bold text-emerald-400">0명</span> | 팀 총 매치: <span id="team-total-matches-display" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.24</span></p>
             </div>
             <div class="flex gap-2">
                 <button onclick="openPwModal()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">비밀번호 변경</button>
@@ -99,16 +99,12 @@
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-700 text-center relative">
                 <div class="flex items-center justify-center gap-1.5">
-                    <p class="text-xs text-slate-400">현재 등급</p>
+                    <p class="text-xs text-slate-400">현재 레벨</p>
                     <div class="relative group cursor-pointer inline-flex items-center">
                         <span class="w-4 h-4 rounded-full bg-slate-700 text-slate-300 text-[10px] font-bold flex items-center justify-center hover:bg-emerald-600 hover:text-white transition">i</span>
                         <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-900 text-slate-200 text-[11px] rounded-lg shadow-2xl border border-slate-700 opacity-0 group-hover:opacity-100 transition pointer-events-none z-30 text-left">
-                            <p class="font-bold text-emerald-400 mb-1.5 border-b border-slate-800 pb-1">📌 등급 산정 및 구분 기준</p>
-                            <p class="text-slate-300 leading-relaxed">
-                                • <b>루키</b>: F-, F, F+, E-, E, E+<br>
-                                • <b>아마추어</b>: D-, D, D+, C-, C, C+, B-, B<br>
-                                • <b>세미프로</b>: B+, A-, A, A+
-                            </p>
+                            <p class="font-bold text-emerald-400 mb-1.5 border-b border-slate-800 pb-1">📌 평점 산정 및 반영 기준</p>
+                            <p class="text-slate-300 leading-relaxed">평점은 팀 밸런스를 위해 필요한 기준으로, 정기 운동 시 감코진이 각 멤버의 실력과 활동량을 종합적으로 판단하여 상대평가로 결정합니다. 상·하향은 1회 한 단계(0.5점)씩 적용<br><span class="text-slate-400 mt-1 block">범위 (A+ ~ F-)</span></p>
                         </div>
                     </div>
                 </div>
@@ -128,7 +124,7 @@
             </div>
         </div>
 
-        <!-- D- 이하 등급 블라인드 안내 공지박스 -->
+        <!-- D- 이하 등급 블라인드 안내 공지박스 (그래프 블라인드용) -->
         <div id="blind-notice-box" class="hidden bg-rose-950/40 border border-rose-800/60 p-3 rounded-xl text-center mb-6">
             <p class="text-xs text-rose-300 font-semibold">⚠️ 아직 평점 데이터가 충분하지 않아 조회할 수 없습니다.</p>
         </div>
@@ -158,9 +154,9 @@
             </div>
         </div>
 
-        <!-- 등급 변동 이력 카드 -->
+        <!-- 평점 변동 이력 카드 -->
         <div id="chart-card-container" class="bg-slate-900/40 p-4 rounded-xl border border-slate-700 mb-6">
-            <h3 class="text-xs font-semibold text-slate-300 mb-3 uppercase tracking-wider">📈 등급 변동 이력</h3>
+            <h3 class="text-xs font-semibold text-slate-300 mb-3 uppercase tracking-wider">📈 평점 변동 이력</h3>
             <div id="chart-wrapper" class="relative h-48">
                 <canvas id="ratingChart"></canvas>
             </div>
@@ -169,10 +165,10 @@
             </div>
         </div>
 
-        <!-- 등급별 회원 수 현황 막대그래프 -->
+        <!-- 평점 등급별 회원 수 현황 막대그래프 -->
         <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700 mb-6">
             <div class="flex justify-between items-center mb-3">
-                <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">📊 등급별 회원 수 현황</h3>
+                <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">📊 평점 등급별 회원 수 현황</h3>
                 <span id="grade-chart-total-label" class="text-[11px] text-sky-400 font-bold">총 정회원: 0명</span>
             </div>
             <div class="relative h-48">
@@ -207,7 +203,7 @@
         <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <div>
                 <h2 id="admin-title" class="text-2xl font-bold text-emerald-400">🛡️ 관리자 대시보드</h2>
-                <p class="text-xs text-slate-400 mt-1">정회원 총원: <span id="admin-member-total-count" class="font-bold text-emerald-400">0명</span> | 팀 전체 총 매치: <span id="admin-team-matches" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.23</span></p>
+                <p class="text-xs text-slate-400 mt-1">정회원 총원: <span id="admin-member-total-count" class="font-bold text-emerald-400">0명</span> | 팀 전체 총 매치: <span id="admin-team-matches" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.24</span></p>
             </div>
             <div class="flex gap-2">
                 <button onclick="switchToMyPage()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">내 마이페이지 보기</button>
@@ -469,10 +465,8 @@
             "F+": 2.5,  "F": 2.0,  "F-": 1.5 
         };
 
-        const blindRatings = ["E+", "E", "E-", "F+", "F", "F-"];
-
-        // 알파벳 평점을 개별 회원용 3개 명칭으로 변환하는 함수
-        function getCustomGradeName(rating) {
+        // 알파벳 평점을 개별 회원용 3개 레벨(루키, 아마추어, 세미프로) 명칭으로 변환하는 함수
+        function getCustomLevelName(rating) {
             if (["F-", "F", "F+", "E-", "E", "E+"].includes(rating)) {
                 return "루키";
             } else if (["D-", "D", "D+", "C-", "C", "C+", "B-", "B"].includes(rating)) {
@@ -483,12 +477,8 @@
             return "루키";
         }
 
-        // 점수/평점 데이터를 등급 수치(1: 루키, 2: 아마추어, 3: 세미프로)로 매핑하는 함수
-        function getGradeLevelFromScore(score) {
-            if (score >= 8.5) return 3; // 세미프로 (B+ ~ A+)
-            if (score >= 4.5) return 2; // 아마추어 (D- ~ B)
-            return 1; // 루키 (F- ~ E+)
-        }
+        // 그래프 블라인드 대상 (D- 부터 F- 까지)
+        const graphBlindRatings = ["D-", "E+", "E", "E-", "F+", "F", "F-"];
 
         let teamTotalMatches = 0;
         let activeRegularMemberCount = 0;
@@ -766,40 +756,34 @@
 
             const regularPool = membersData.filter(m => !m.isWithdrawn && (m.role === 'member' || m.role === 'admin' || m.role === 'sub_admin'));
 
-            const isBlind = blindRatings.includes(user.rating);
-const blindNoticeBox = document.getElementById('blind-notice-box');
-const chartCardContainer = document.getElementById('chart-card-container');
+            // 현재 레벨은 등급에 상관없이 모든 사람이 볼 수 있도록 수정
+            const customLevel = getCustomLevelName(user.rating);
+            document.getElementById('stat-rating').innerText = customLevel;
+            
+            const myScore = scoreMap[user.rating] || 6.0;
+            const sortedMembersForRating = [...regularPool].sort((a, b) => (scoreMap[b.rating] || 0) - (scoreMap[a.rating] || 0));
 
-// D- 등급은 순위와 등급은 보이지만 그래프는 여전히 블라인드 처리하기 위한 체크
-const isGraphBlind = ["D-", "E+", "E", "E-", "F+", "F", "F-"].includes(user.rating);
+            let rank = 1;
+            for (let i = 0; i < sortedMembersForRating.length; i++) {
+                if ((scoreMap[sortedMembersForRating[i].rating] || 0) > myScore) rank++;
+            }
+            const percentile = Math.round((rank / sortedMembersForRating.length) * 100);
+            document.getElementById('stat-percentile').innerHTML = `공동 ${rank}위<br><span class="text-xs text-slate-400 font-normal">(상위 ${percentile}%)</span>`;
 
-if (isBlind) {
-    document.getElementById('stat-rating').innerText = "?";
-    document.getElementById('stat-percentile').innerHTML = `? 등급<br><span class="text-xs text-slate-400 font-normal">(조회 불가)</span>`;
-    blindNoticeBox.classList.remove('hidden');
-} else {
-    document.getElementById('stat-rating').innerText = user.rating;
-    
-    const myScore = scoreMap[user.rating] || 6.0;
-    const sortedMembersForRating = [...regularPool].sort((a, b) => (scoreMap[b.rating] || 0) - (scoreMap[a.rating] || 0));
+            // D- 부터 F- 까지는 그래프 영역만 블라인드 처리
+            const isGraphBlind = graphBlindRatings.includes(user.rating);
+            const blindNoticeBox = document.getElementById('blind-notice-box');
+            const chartCardContainer = document.getElementById('chart-card-container');
 
-    let rank = 1;
-    for (let i = 0; i < sortedMembersForRating.length; i++) {
-        if ((scoreMap[sortedMembersForRating[i].rating] || 0) > myScore) rank++;
-    }
-    const percentile = Math.round((rank / sortedMembersForRating.length) * 100);
-    document.getElementById('stat-percentile').innerHTML = `공동 ${rank}위<br><span class="text-xs text-slate-400 font-normal">(상위 ${percentile}%)</span>`;
-    
-    blindNoticeBox.classList.add('hidden');
-}
+            if (isGraphBlind) {
+                blindNoticeBox.classList.remove('hidden');
+                chartCardContainer.classList.add('hidden');
+            } else {
+                blindNoticeBox.classList.add('hidden');
+                chartCardContainer.classList.remove('hidden');
+                renderChart(user.history || []);
+            }
 
-// 그래프 영역 블라인드 처리 (D- 포함 그 이하 등급들)
-if (isGraphBlind) {
-    chartCardContainer.classList.add('hidden');
-} else {
-    chartCardContainer.classList.remove('hidden');
-    renderChart(user.history || []);
-}
             const myAtt = user.attendedMatches;
             const attendancePool = membersData.filter(m => !m.isWithdrawn && m.role !== 'guest' && m.role !== 'acquaintance');
 
@@ -1346,26 +1330,32 @@ if (isGraphBlind) {
             }
         });
 
-        // 개별 회원 화면: 등급 변동 이력 그래프 (3단계 범주로 시각화)
+        // 역점 매핑 객체 (점수 -> 등급명 변환용)
+        const reverseScoreMap = {
+            10.0: "A+", 9.5: "A", 9.0: "A-",
+            8.5: "B+", 8.0: "B", 7.5: "B-",
+            7.0: "C+", 6.5: "C", 6.0: "C-",
+            5.5: "D+", 5.0: "D", 4.5: "D-",
+            4.0: "E+", 3.5: "E", 3.0: "E-",
+            2.5: "F+", 2.0: "F", 1.5: "F-"
+        };
+
+        // 이전 버전 평점 변동 이력 그래프 복구
         function renderChart(history) {
             const ctx = document.getElementById('ratingChart').getContext('2d');
             if (myChart) myChart.destroy();
-
-            // 점수 데이터를 1: 루키, 2: 아마추어, 3: 세미프로 로 변환
-            const chartData = history.map(h => getGradeLevelFromScore(h.score));
-
             myChart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: history.map(h => h.date),
                     datasets: [{
-                        label: '등급 추이',
-                        data: chartData,
+                        label: '평점 추이',
+                        data: history.map(h => h.score),
                         borderColor: '#10b981',
                         backgroundColor: 'rgba(16, 185, 129, 0.15)',
                         borderWidth: 3,
                         fill: true,
-                        tension: 0.2,
+                        tension: 0.3,
                         pointRadius: 5,
                         pointBackgroundColor: '#10b981'
                     }]
@@ -1375,18 +1365,21 @@ if (isGraphBlind) {
                     maintainAspectRatio: false,
                     scales: {
                         y: { 
-                            min: 0.5,
-                            max: 3.5, 
+                            min: 1.5, 
+                            max: 10.5, 
                             ticks: { 
                                 color: '#94a3b8',
-                                stepSize: 1,
+                                stepSize: 0.5,
                                 callback: function(value) {
                                     const labels = {
-                                        1: "루키",
-                                        2: "아마추어",
-                                        3: "세미프로"
+                                        10.0: "A+", 9.5: "A", 9.0: "A-",
+                                        8.5: "B+", 8.0: "B", 7.5: "B-",
+                                        7.0: "C+", 6.5: "C", 6.0: "C-",
+                                        5.5: "D+", 5.0: "D", 4.5: "D-",
+                                        4.0: "E+", 3.5: "E", 3.0: "E-",
+                                        2.5: "F+", 2.0: "F", 1.5: "F-"
                                     };
-                                    return labels[value] || '';
+                                    return labels[value] || ''; 
                                 }
                             }, 
                             grid: { color: '#334155' } 
@@ -1398,9 +1391,9 @@ if (isGraphBlind) {
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    const val = context.parsed.y;
-                                    const names = { 1: "루키", 2: "아마추어", 3: "세미프로" };
-                                    return `현재 등급: ${names[val] || '루키'}`;
+                                    const score = context.parsed.y;
+                                    const gradeName = reverseScoreMap[score] || (score + '점');
+                                    return `평점 추이: ${gradeName}`;
                                 }
                             }
                         }
@@ -1409,31 +1402,26 @@ if (isGraphBlind) {
             });
         }
 
-        // 개별 회원 화면: 등급별 회원 수 현황 막대그래프 (3개 범주 표기)
+        // 이전 버전 등급별 회원 수 현황 막대그래프 복구
         function renderGradeCountChart(regularPool) {
             const ctx = document.getElementById('gradeCountChart').getContext('2d');
             if (gradeCountChartInstance) gradeCountChartInstance.destroy();
 
-            const categories = ["루키", "아마추어", "세미프로"];
-            
-            // 등급별 인원 수 집계
-            const rookieCount = regularPool.filter(m => ["F-", "F", "F+", "E-", "E", "E+"].includes(m.rating)).length;
-            const amateurCount = regularPool.filter(m => ["D-", "D", "D+", "C-", "C", "C+", "B-", "B"].includes(m.rating)).length;
-            const semiproCount = regularPool.filter(m => ["B+", "A-", "A", "A+"].includes(m.rating)).length;
-
-            const counts = [rookieCount, amateurCount, semiproCount];
+            const counts = ratingHierarchy.map(grade => {
+                return regularPool.filter(m => m.rating === grade).length;
+            });
 
             document.getElementById('grade-chart-total-label').innerText = `총 정회원: ${regularPool.length}명`;
 
             gradeCountChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: categories,
+                    labels: ratingHierarchy,
                     datasets: [{
                         label: '회원 수',
                         data: counts,
-                        backgroundColor: ['#38bdf8', '#10b981', '#f59e0b'],
-                        borderRadius: 6,
+                        backgroundColor: '#38bdf8',
+                        borderRadius: 4,
                     }]
                 },
                 options: {
@@ -1441,7 +1429,7 @@ if (isGraphBlind) {
                     maintainAspectRatio: false,
                     layout: {
                         padding: {
-                            top: 25
+                            top: 20
                         }
                     },
                     scales: {
@@ -1454,7 +1442,7 @@ if (isGraphBlind) {
                             grid: { color: '#334155' }
                         },
                         x: { 
-                            ticks: { color: '#e2e8f0', font: { weight: 'bold' } }, 
+                            ticks: { color: '#94a3b8' }, 
                             grid: { display: false } 
                         }
                     },
@@ -1464,9 +1452,9 @@ if (isGraphBlind) {
                             anchor: 'end',
                             align: 'top',
                             color: '#e2e8f0',
-                            font: { size: 12, weight: 'bold' },
+                            font: { size: 11, weight: 'bold' },
                             formatter: function(value) {
-                                return value > 0 ? value + '명' : '0명';
+                                return value > 0 ? value : '';
                             }
                         }
                     }

@@ -760,16 +760,22 @@
             const customLevel = getCustomLevelName(user.rating);
             document.getElementById('stat-rating').innerText = customLevel;
             
-            const myScore = scoreMap[user.rating] || 6.0;
-            const sortedMembersForRating = [...regularPool].sort((a, b) => (scoreMap[b.rating] || 0) - (scoreMap[a.rating] || 0));
+            // 루키 레벨(F- ~ E+)인 경우 팀 내 순위를 '?' 로 표시
+            const isRookieLevel = ["F-", "F", "F+", "E-", "E", "E+"].includes(user.rating);
 
-            let rank = 1;
-            for (let i = 0; i < sortedMembersForRating.length; i++) {
-                if ((scoreMap[sortedMembersForRating[i].rating] || 0) > myScore) rank++;
+            if (isRookieLevel) {
+                document.getElementById('stat-percentile').innerHTML = `? 등급<br><span class="text-xs text-slate-400 font-normal">(조회 불가)</span>`;
+            } else {
+                const myScore = scoreMap[user.rating] || 6.0;
+                const sortedMembersForRating = [...regularPool].sort((a, b) => (scoreMap[b.rating] || 0) - (scoreMap[a.rating] || 0));
+
+                let rank = 1;
+                for (let i = 0; i < sortedMembersForRating.length; i++) {
+                    if ((scoreMap[sortedMembersForRating[i].rating] || 0) > myScore) rank++;
+                }
+                const percentile = Math.round((rank / sortedMembersForRating.length) * 100);
+                document.getElementById('stat-percentile').innerHTML = `공동 ${rank}위<br><span class="text-xs text-slate-400 font-normal">(상위 ${percentile}%)</span>`;
             }
-            const percentile = Math.round((rank / sortedMembersForRating.length) * 100);
-            document.getElementById('stat-percentile').innerHTML = `공동 ${rank}위<br><span class="text-xs text-slate-400 font-normal">(상위 ${percentile}%)</span>`;
-
             // D- 부터 F- 까지는 그래프 영역만 블라인드 처리
             const isGraphBlind = graphBlindRatings.includes(user.rating);
             const blindNoticeBox = document.getElementById('blind-notice-box');

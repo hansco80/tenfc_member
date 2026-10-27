@@ -1419,14 +1419,19 @@
 
             document.getElementById('grade-chart-total-label').innerText = `총 정회원: ${regularPool.length}명`;
 
-            gradeCountChartInstance = new Chart(ctx, {
+           gradeCountChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: ratingHierarchy,
                     datasets: [{
                         label: '회원 수',
                         data: counts,
-                        backgroundColor: '#38bdf8',
+                        // 18개의 세부 등급(F- ~ A+) 순서에 맞춰 레벨별로 색상을 다르게 지정
+                        backgroundColor: [
+                            '#38bdf8', '#38bdf8', '#38bdf8', '#38bdf8', '#38bdf8', '#38bdf8', // 루키 (F- ~ E+) : 하늘색 계열
+                            '#10b981', '#10b981', '#10b981', '#10b981', '#10b981', '#10b981', '#10b981', '#10b981', // 아마추어 (D- ~ B) : 초록색 계열
+                            '#f59e0b', '#f59e0b', '#f59e0b', '#f59e0b'  // 세미프로 (B+ ~ A+) : 주황/노란색 계열
+                        ],
                         borderRadius: 4,
                     }]
                 },

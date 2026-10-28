@@ -757,8 +757,20 @@
             const regularPool = membersData.filter(m => !m.isWithdrawn && (m.role === 'member' || m.role === 'admin' || m.role === 'sub_admin'));
 
             // 현재 레벨은 등급에 상관없이 모든 사람이 볼 수 있도록 수정
+           // 현재 레벨은 등급에 상관없이 모든 사람이 볼 수 있도록 수정
             const customLevel = getCustomLevelName(user.rating);
-            document.getElementById('stat-rating').innerText = customLevel;
+            const ratingEl = document.getElementById('stat-rating');
+            ratingEl.innerText = customLevel;
+
+            // 하단 그래프 색상과 일치하도록 레벨별 색상 클래스 동적 적용
+            ratingEl.className = "text-2xl font-extrabold mt-1 ";
+            if (customLevel === "루키") {
+                ratingEl.classList.add("text-sky-400");     // 루키: 하늘색
+            } else if (customLevel === "아마추어") {
+                ratingEl.classList.add("text-emerald-400"); // 아마추어: 초록색
+            } else if (customLevel === "세미프로") {
+                ratingEl.classList.add("text-amber-400");   // 세미프로: 주황/노란색
+            }
             
             // 루키 레벨(F- ~ E+)인 경우 팀 내 순위를 '?' 로 표시
             const isRookieLevel = ["F-", "F", "F+", "E-", "E", "E+"].includes(user.rating);

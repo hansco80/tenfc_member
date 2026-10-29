@@ -480,12 +480,15 @@
         contentDiv.innerHTML = "<p class='text-slate-400 text-center py-4'>회칙을 불러오는 중입니다...</p>";
 
         try {
-            // 💡 기존 raw 주소 대신 아래의 jsDelivr CDN 주소로 교체합니다.
-            const response = await fetch('https://cdn.jsdelivr.net/gh/hansco80/tenfc_member@main/rules.md');
+            // 💡 CORS 우회 프록시(allorigins)를 통해 깃허브 마크다운 가져오기
+            const targetUrl = 'https://raw.githubusercontent.com/hansco80/tenfc_member/refs/heads/main/rules.md';
+            const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl);
             
+            const response = await fetch(proxyUrl);
             if (!response.ok) throw new Error('회칙을 불러오지 못했습니다.');
             
             const markdownText = await response.text();
+            // 마크다운을 HTML 태그로 변환하여 삽입
             contentDiv.innerHTML = marked.parse(markdownText);
 
         } catch (error) {

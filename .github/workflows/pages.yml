@@ -1,21 +1,21 @@
-# Simple workflow for deploying static content to GitHub Pages
 name: Deploy static content to Pages
 
 on:
-  # Runs on pushes targeting the default branch
   push:
     branches: ["main"]
-
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# 💡 이 부분이 핵심입니다! 엉켜 있는 이전 배포 큐를 강제 취소하고 충돌을 막아줍니다.
+# 💡 깃허브 액션이 Pages에 접근할 수 있는 권한을 부여합니다.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 concurrency:
   group: "pages"
   cancel-in-progress: true
 
 jobs:
-  # Single deploy job since we're just deploying
   deploy:
     environment:
       name: github-pages

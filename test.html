@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 회칙 마크다운 연동 테스트</title>
+    <title>TenFC 회칙 마크다운 스타일 교정 테스트</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind Typography 플러그인 (제목, 목록, 굵기 등을 이쁘게 살려줌) -->
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
     <!-- 마크다운 변환 라이브러리 (marked.js) -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
@@ -14,7 +16,7 @@
     <!-- 테스트용 메인 화면 -->
     <div class="bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700 text-center max-w-sm w-full">
         <h1 class="text-2xl font-bold text-emerald-400 mb-2">⚽ TenFC 회칙 테스트</h1>
-        <p class="text-slate-400 text-sm mb-6">마크다운 서식이 적용된 회칙을 확인해보세요.</p>
+        <p class="text-slate-400 text-sm mb-6">마크다운 서식이 완벽하게 적용되는지 확인해보세요.</p>
         
         <button type="button" onclick="openRulesModal()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition shadow-lg cursor-pointer">
             📄 TenFC 팀 회칙 보기
@@ -26,8 +28,10 @@
         <div class="bg-slate-800 w-full max-w-xl p-6 rounded-2xl border border-slate-700 shadow-2xl flex flex-col max-h-[85vh]">
             <h3 class="text-xl font-bold text-emerald-400 mb-4">📜 TenFC 팀 회칙</h3>
             
-            <!-- 💡 prose prose-invert를 추가하여 마크다운을 이쁘게 렌더링 -->
-            <div id="rules-content" class="bg-slate-900 p-5 rounded-lg text-slate-300 text-sm overflow-y-auto flex-1 leading-relaxed prose prose-invert max-w-none">
+            <!-- 💡 prose prose-invert와 함께 리스트/제목 스타일이 명확히 보이도록 설정 -->
+            <div id="rules-content" class="bg-slate-900 p-5 rounded-lg text-slate-300 text-sm overflow-y-auto flex-1 leading-relaxed prose prose-invert max-w-none 
+                prose-headings:text-emerald-400 prose-headings:font-bold 
+                prose-strong:text-white prose-li:my-1">
                 불러오는 중...
             </div>
             
@@ -55,7 +59,7 @@
                 
                 const markdownText = await response.text();
                 
-                // marked.parse를 통해 마크다운 문법을 HTML로 완벽 변환
+                // marked.parse를 통해 마크다운 문법을 HTML로 변환
                 contentDiv.innerHTML = marked.parse(markdownText);
 
             } catch (error) {

@@ -513,30 +513,34 @@
         let restrictedSortOrder = 'asc';
 
         // 깃허브 회칙 모달 열기 및 Raw 텍스트 불러오기
-       async function openRulesModal() {
-    const modal = document.getElementById('rules-modal');
-    const contentDiv = document.getElementById('rules-content');
+async function openRulesModal() {
+        const modal = document.getElementById('rules-modal');
+        const contentDiv = document.getElementById('rules-content');
+        
+        if (!modal || !contentDiv) {
+            alert('회칙 모달 요소를 찾을 수 없습니다.');
+            return;
+        }
 
-    modal.classList.remove('hidden');
-    contentDiv.innerHTML = "<p class='text-slate-400 text-center py-4'>회칙을 불러오는 중입니다...</p>";
+        modal.classList.remove('hidden');
+        contentDiv.innerHTML = "<p class='text-slate-400 text-center py-4'>회칙을 불러오는 중입니다...</p>";
 
-    try {
-        const response = await fetch('https://raw.githubusercontent.com/hansco80/tenfc_member/refs/heads/main/rules.md');
-        if (!response.ok) throw new Error('회칙을 불러오지 못했습니다.');
+        try {
+            const response = await fetch('https://raw.githubusercontent.com/hansco80/tenfc_member/refs/heads/main/rules.md');
+            if (!response.ok) throw new Error('회칙을 불러오지 못했습니다.');
+            
+            const markdownText = await response.text();
+            contentDiv.innerHTML = marked.parse(markdownText);
 
-        const markdownText = await response.text();
-        // 마크다운을 HTML 태그로 변환하여 삽입
-        contentDiv.innerHTML = marked.parse(markdownText);
-
-    } catch (error) {
-        contentDiv.innerHTML = "<p class='text-rose-400 text-center py-4'>회칙을 불러오는 데 실패했습니다. 잠시 후 다시 시도해주세요.</p>";
+        } catch (error) {
+            contentDiv.innerHTML = "<p class='text-rose-400 text-center py-4'>회칙을 불러오는 데 실패했습니다. 잠시 후 다시 시도해주세요.</p>";
+        }
     }
-}
 
-// 회칙 모달 닫기
-function closeRulesModal() {
-    document.getElementById('rules-modal').classList.add('hidden');
-}
+    function closeRulesModal() {
+        const modal = document.getElementById('rules-modal');
+        if (modal) modal.classList.add('hidden');
+    }
 
         function getUpdatedHistory(history, newScore) {
             let historyArr = Array.isArray(history) ? [...history] : [];

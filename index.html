@@ -471,6 +471,29 @@
     </div>
 
     <script>
+        // 문법 에러의 영향을 받지 않도록 최상단에 독립 배치하는 회칙 함수
+    async function openRulesModal() {
+        const modal = document.getElementById('rules-modal');
+        const contentDiv = document.getElementById('rules-content');
+        if (!modal || !contentDiv) return;
+        
+        modal.classList.remove('hidden');
+        contentDiv.innerHTML = "<p class='text-slate-400 text-center py-4'>회칙을 불러오는 중입니다...</p>";
+
+        try {
+            const response = await fetch('https://raw.githubusercontent.com/hansco80/tenfc_member/refs/heads/main/rules.md');
+            if (!response.ok) throw new Error();
+            const markdownText = await response.text();
+            contentDiv.innerHTML = marked.parse(markdownText);
+        } catch (error) {
+            contentDiv.innerHTML = "<p class='text-rose-400 text-center py-4'>회칙을 불러오는 데 실패했습니다.</p>";
+        }
+    }
+
+    function closeRulesModal() {
+        const modal = document.getElementById('rules-modal');
+        if (modal) modal.classList.add('hidden');
+    }
         const SUPABASE_URL = 'https://bxuiwomkpgqsbyaagmlp.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_mXkGsaxwwfnnAR3lpE8T1A_n0kiPdZj';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);

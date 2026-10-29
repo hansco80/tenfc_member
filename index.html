@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 풋살팀 통합 시스템 v2.24</title>
+    <title>TenFC 풋살팀 통합 시스템 v2.25</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
@@ -32,6 +32,14 @@
             </div>
             <button type="submit" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition duration-200 shadow-lg shadow-emerald-900/40">로그인</button>
         </form>
+        
+        <!-- 💡 로그인 창 하단 TenFC 회칙 보기 버튼 추가 (새 창에서 열림) -->
+        <div class="mt-3">
+            <a href="https://hansco80.github.io/tenfc_member/tenfc_rules.html" target="_blank" rel="noopener noreferrer" class="w-full py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold rounded-lg transition duration-200 flex items-center justify-center text-sm shadow">
+                📄 TenFC 팀 회칙 보기
+            </a>
+        </div>
+
         <p id="login-error" class="text-rose-400 text-sm text-center mt-4 hidden">이름 또는 비밀번호가 일치하지 않습니다.</p>
     </div>
 
@@ -756,23 +764,19 @@
 
             const regularPool = membersData.filter(m => !m.isWithdrawn && (m.role === 'member' || m.role === 'admin' || m.role === 'sub_admin'));
 
-            // 현재 레벨은 등급에 상관없이 모든 사람이 볼 수 있도록 수정
-           // 현재 레벨은 등급에 상관없이 모든 사람이 볼 수 있도록 수정
             const customLevel = getCustomLevelName(user.rating);
             const ratingEl = document.getElementById('stat-rating');
             ratingEl.innerText = customLevel;
 
-            // 하단 그래프 색상과 일치하도록 레벨별 색상 클래스 동적 적용
             ratingEl.className = "text-2xl font-extrabold mt-1 ";
             if (customLevel === "루키") {
-                ratingEl.classList.add("text-sky-400");     // 루키: 하늘색
+                ratingEl.classList.add("text-sky-400");
             } else if (customLevel === "아마추어") {
-                ratingEl.classList.add("text-emerald-400"); // 아마추어: 초록색
+                ratingEl.classList.add("text-emerald-400");
             } else if (customLevel === "세미프로") {
-                ratingEl.classList.add("text-amber-400");   // 세미프로: 주황/노란색
+                ratingEl.classList.add("text-amber-400");
             }
             
-            // 루키 레벨(F- ~ E+)인 경우 팀 내 순위를 '?' 로 표시
             const isRookieLevel = ["F-", "F", "F+", "E-", "E", "E+"].includes(user.rating);
 
             if (isRookieLevel) {
@@ -788,7 +792,7 @@
                 const percentile = Math.round((rank / sortedMembersForRating.length) * 100);
                 document.getElementById('stat-percentile').innerHTML = `공동 ${rank}위<br><span class="text-xs text-slate-400 font-normal">(상위 ${percentile}%)</span>`;
             }
-            // D- 부터 F- 까지는 그래프 영역만 블라인드 처리
+
             const isGraphBlind = graphBlindRatings.includes(user.rating);
             const blindNoticeBox = document.getElementById('blind-notice-box');
             const chartCardContainer = document.getElementById('chart-card-container');
@@ -1348,7 +1352,6 @@
             }
         });
 
-        // 역점 매핑 객체 (점수 -> 등급명 변환용)
         const reverseScoreMap = {
             10.0: "A+", 9.5: "A", 9.0: "A-",
             8.5: "B+", 8.0: "B", 7.5: "B-",
@@ -1358,7 +1361,6 @@
             2.5: "F+", 2.0: "F", 1.5: "F-"
         };
 
-        // 이전 버전 평점 변동 이력 그래프 복구
         function renderChart(history) {
             const ctx = document.getElementById('ratingChart').getContext('2d');
             if (myChart) myChart.destroy();
@@ -1420,7 +1422,6 @@
             });
         }
 
-        // 이전 버전 등급별 회원 수 현황 막대그래프 복구
         function renderGradeCountChart(regularPool) {
             const ctx = document.getElementById('gradeCountChart').getContext('2d');
             if (gradeCountChartInstance) gradeCountChartInstance.destroy();
@@ -1438,11 +1439,10 @@
                     datasets: [{
                         label: '회원 수',
                         data: counts,
-                        // 18개의 세부 등급(F- ~ A+) 순서에 맞춰 레벨별로 색상을 다르게 지정
                         backgroundColor: [
-                            '#38bdf8', '#38bdf8', '#38bdf8', '#38bdf8', '#38bdf8', '#38bdf8', // 루키 (F- ~ E+) : 하늘색 계열
-                            '#10b981', '#10b981', '#10b981', '#10b981', '#10b981', '#10b981', '#10b981', '#10b981', // 아마추어 (D- ~ B) : 초록색 계열
-                            '#f59e0b', '#f59e0b', '#f59e0b', '#f59e0b'  // 세미프로 (B+ ~ A+) : 주황/노란색 계열
+                            '#38bdf8', '#38bdf8', '#38bdf8', '#38bdf8', '#38bdf8', '#38bdf8',
+                            '#10b981', '#10b981', '#10b981', '#10b981', '#10b981', '#10b981', '#10b981', '#10b981',
+                            '#f59e0b', '#f59e0b', '#f59e0b', '#f59e0b'
                         ],
                         borderRadius: 4,
                     }]

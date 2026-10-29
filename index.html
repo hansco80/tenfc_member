@@ -1134,17 +1134,18 @@ async function openRulesModal() {
 
             if (totalCount === 0) {
                 let alertMsg = '인식 및 매칭된 회원(정회원/용병/지인)이 없습니다.\n\n';
-                if (unmappedList.length > 0) {
-                    alertMsg += `[DB 미등록 인원 목록]\n• ${unmappedList.join('\n• ')}\n\n신규 멤버 등록 후 다시 시도해 주세요.`;
+if (unmappedList.length > 0) {
+                    alertMsg += "[DB 미등록 인원 목록]\n• " + unmappedList.join('\n• ') + "\n\n신규 멤버 등록 후 다시 시도해 주세요.";
                 }
                 alert(alertMsg);
                 return;
             }
 
-            let confirmMsg = `📋 [당일 라인업 자동 출석체크 합계 리포트]\n`;
-            confirmMsg += `• 정회원: ${regularMatches.length}명\n`;
-            confirmMsg += `• 용병 & 지인: ${guestOrAcquaintanceMatches.length}명\n`;
-            confirmMsg += `👉 총 출석 반영 인원: ${totalCount}명\n\n위 멤버들에게 출석(+1회)을 일괄 반영하시겠습니까?`;
+            let confirmMsg = "📋 [당일 라인업 자동 출석체크 합계 리포트]\n" +
+                             "• 정회원: " + regularMatches.length + "명\n" +
+                             "• 용병 & 지인: " + guestOrAcquaintanceMatches.length + "명\n" +
+                             "👉 총 출석 반영 인원: " + totalCount + "명\n\n" +
+                             "위 멤버들에게 출석(+1회)을 일괄 반영하시겠습니까?";
 
             if (!confirm(confirmMsg)) return;
 
@@ -1155,7 +1156,7 @@ async function openRulesModal() {
 
             await fetchMembersFromSupabase();
             closeLineupModal();
-            alert(`🎉 총 ${totalCount명의 출석이 성공적으로 반영되었습니다!`);
+            alert("🎉 총 " + totalCount + "명의 출석이 성공적으로 반영되었습니다!");
             loadAdminDashboard();
         }
 

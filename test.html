@@ -3,32 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 회칙 연동 테스트</title>
+    <title>TenFC 회칙 모달 테스트</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 마크다운 변환 라이브러리 CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.js"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-center p-4">
 
     <!-- 테스트용 메인 화면 -->
     <div class="bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700 text-center max-w-sm w-full">
         <h1 class="text-2xl font-bold text-emerald-400 mb-2">⚽ TenFC 회칙 테스트</h1>
-        <p class="text-slate-400 text-sm mb-6">아래 버튼을 눌러 깃허브 회칙이 잘 불러와지는지 확인해보세요.</p>
+        <p class="text-slate-400 text-sm mb-6">아래 버튼을 눌러 회칙 모달창이 즉시 뜨는지 확인해보세요.</p>
         
         <button type="button" onclick="openRulesModal()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition shadow-lg cursor-pointer">
             📄 TenFC 팀 회칙 보기
         </button>
     </div>
 
-    <!-- 팀 회칙 팝업 모달창 -->
+    <!-- 팀 회칙 팝업 모달창 (직접 탑재 방식) -->
     <div id="rules-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-slate-800 w-full max-w-lg p-6 rounded-2xl border border-slate-700 shadow-2xl flex flex-col max-h-[80vh]">
             <h3 class="text-xl font-bold text-emerald-400 mb-4">📜 TenFC 팀 회칙</h3>
             
-            <!-- 회칙 내용이 들어갈 공간 -->
+            <!-- 회칙 내용 (스크롤 가능) -->
             <div id="rules-content" class="bg-slate-900 p-4 rounded-lg text-slate-300 text-sm overflow-y-auto flex-1 space-y-3 leading-relaxed">
-                불러오는 중...
+                <h4 class="text-emerald-400 font-bold text-base mb-2">⚽ TenFC 풋살팀 회칙</h4>
+                <p><strong>제 1 조 (목적)</strong> 본 회는 축구를 통해 회원 간의 친목 도모 및 건강 증진을 목적으로 합니다.</p>
+                <p><strong>제 2 조 (구성)</strong> 본 회는 정회원, 부관리자, 주관리자로 구성되며 공정한 평점 및 출석 시스템을 운영합니다.</p>
+                <p><strong>제 3 조 (운동 규칙)</strong> 정기 운동 시 성실히 참석하여야 하며, 상호 존중과 배려를 원칙으로 합니다.</p>
+                <p class="text-slate-500 text-xs mt-3">* 회칙 내용은 운영진 회의를 통해 수시로 업데이트됩니다.</p>
             </div>
             
             <button type="button" onclick="closeRulesModal()" class="mt-4 w-full py-2 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg transition cursor-pointer">
@@ -37,32 +39,10 @@
         </div>
     </div>
 
-    <!-- 핵심 연동 자바스크립트 -->
+    <!-- 간단하고 확실한 자바스크립트 제어 -->
     <script>
-        async function openRulesModal() {
-            const modal = document.getElementById('rules-modal');
-            const contentDiv = document.getElementById('rules-content');
-            
-            modal.classList.remove('hidden');
-            contentDiv.innerHTML = "<p class='text-slate-400 text-center py-4'>회칙을 불러오는 중입니다...</p>";
-
-            try {
-                // 브라우저 CORS 제한을 완벽히 우회하기 위해 안정적인 퍼블릭 CORS 프록시 사용
-                const targetUrl = 'https://raw.githubusercontent.com/hansco80/tenfc_member/refs/heads/main/rules.md';
-                const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl);
-                
-                const response = await fetch(proxyUrl);
-                if (!response.ok) throw new Error('서버 응답 오류');
-                
-                const markdownText = await response.text();
-                
-                // marked.js를 이용해 마크다운을 예쁜 HTML로 변환
-                contentDiv.innerHTML = marked.parse(markdownText);
-
-            } catch (error) {
-                console.error(error);
-                contentDiv.innerHTML = "<p class='text-rose-400 text-center py-4'>회칙을 불러오는 데 실패했습니다. 인터넷 연결이나 주소를 확인해주세요.</p>";
-            }
+        function openRulesModal() {
+            document.getElementById('rules-modal').classList.remove('hidden');
         }
 
         function closeRulesModal() {

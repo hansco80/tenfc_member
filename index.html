@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 풋살팀 통합 시스템 v2.24</title>
+    <title>TenFC 풋살팀 통합 시스템 v2.25</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
@@ -12,6 +12,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     <!-- Supabase JS SDK CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- 마크다운 변환 라이브러리 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.js"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-center p-4">
 
@@ -19,7 +21,7 @@
     <div id="login-container" class="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
         <div class="text-center mb-6">
             <h1 class="text-3xl font-bold text-emerald-400">⚽ TenFC 풋살팀</h1>
-            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v2.24</span></p>
+            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v2.25</span></p>
         </div>
         <form id="login-form" class="space-y-4">
             <div>
@@ -33,6 +35,13 @@
             <button type="submit" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition duration-200 shadow-lg shadow-emerald-900/40">로그인</button>
         </form>
         <p id="login-error" class="text-rose-400 text-sm text-center mt-4 hidden">이름 또는 비밀번호가 일치하지 않습니다.</p>
+
+        <!-- 팀 회칙 보기 버튼 -->
+        <div class="mt-4 text-center">
+            <button type="button" onclick="openRulesModal()" class="text-sm text-slate-400 hover:text-emerald-400 underline transition">
+                📄 TenFC 팀 회칙 보기
+            </button>
+        </div>
     </div>
 
     <!-- 탈퇴 멤버 경고 알림 모달 -->
@@ -42,6 +51,22 @@
             <h3 class="text-lg font-bold text-rose-400 mb-2">알림</h3>
             <p id="withdrawn-msg" class="text-sm text-slate-300 mb-4">현재 탈퇴 처리된 멤버입니다.</p>
             <button onclick="closeWithdrawnModal()" class="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded">확인</button>
+        </div>
+    </div>
+
+    <!-- 팀 회칙 팝업 모달창 (깃허브 연동) -->
+    <div id="rules-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-slate-800 w-full max-w-lg p-6 rounded-2xl border border-slate-700 shadow-2xl flex flex-col max-h-[80vh]">
+            <h3 class="text-xl font-bold text-emerald-400 mb-4">📜 TenFC 팀 회칙</h3>
+            
+            <!-- 회칙 내용이 들어갈 공간 (스크롤 가능) -->
+            <div id="rules-content" class="bg-slate-900 p-4 rounded-lg text-slate-300 text-sm overflow-y-auto flex-1 space-y-3 leading-relaxed">
+                불러오는 중...
+            </div>
+            
+            <button type="button" onclick="closeRulesModal()" class="mt-4 w-full py-2 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg transition">
+                닫기
+            </button>
         </div>
     </div>
 
@@ -70,7 +95,7 @@
         <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <div>
                 <h2 id="user-welcome" class="text-2xl font-bold text-white"></h2>
-                <p class="text-xs text-slate-400 mt-1">정회원 총원: <span id="member-total-count" class="font-bold text-emerald-400">0명</span> | 팀 총 매치: <span id="team-total-matches-display" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.24</span></p>
+                <p class="text-xs text-slate-400 mt-1">정회원 총원: <span id="member-total-count" class="font-bold text-emerald-400">0명</span> | 팀 총 매치: <span id="team-total-matches-display" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.25</span></p>
             </div>
             <div class="flex gap-2">
                 <button onclick="openPwModal()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">비밀번호 변경</button>
@@ -124,7 +149,7 @@
             </div>
         </div>
 
-        <!-- D- 이하 등급 블라인드 안내 공지박스 (그래프 블라인드용) -->
+        <!-- D- 이하 등급 블라인드 안내 공지박스 -->
         <div id="blind-notice-box" class="hidden bg-rose-950/40 border border-rose-800/60 p-3 rounded-xl text-center mb-6">
             <p class="text-xs text-rose-300 font-semibold">⚠️ 아직 평점 데이터가 충분하지 않아 조회할 수 없습니다.</p>
         </div>
@@ -203,7 +228,7 @@
         <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <div>
                 <h2 id="admin-title" class="text-2xl font-bold text-emerald-400">🛡️ 관리자 대시보드</h2>
-                <p class="text-xs text-slate-400 mt-1">정회원 총원: <span id="admin-member-total-count" class="font-bold text-emerald-400">0명</span> | 팀 전체 총 매치: <span id="admin-team-matches" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.24</span></p>
+                <p class="text-xs text-slate-400 mt-1">정회원 총원: <span id="admin-member-total-count" class="font-bold text-emerald-400">0명</span> | 팀 전체 총 매치: <span id="admin-team-matches" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.25</span></p>
             </div>
             <div class="flex gap-2">
                 <button onclick="switchToMyPage()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">내 마이페이지 보기</button>
@@ -228,7 +253,7 @@
             </div>
         </div>
 
-        <!-- 멤버 관리 테이블 (관리자 전용 상세 관리) -->
+        <!-- 멤버 관리 테이블 -->
         <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700 overflow-x-auto">
             <h3 class="text-xs font-semibold text-emerald-400 mb-3 uppercase tracking-wider">🛠️ 관리자 멤버 상세 관리 테이블</h3>
             <table class="w-full text-left text-xs text-slate-300">
@@ -253,11 +278,7 @@
     <div id="lineup-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-slate-800 w-full max-w-lg p-6 rounded-2xl border border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
             <h3 class="text-lg font-bold text-indigo-400 mb-2">📋 당일 라인업 텍스트 자동 출석체크</h3>
-            <p class="text-xs text-slate-300 mb-3 leading-relaxed">
-                운동 당일 작성된 팀별 라인업 텍스트를 아래에 그대로 붙여넣으세요.<br>
-                <span class="text-emerald-400">💡 출생년도 `(80)`, 팀장 표시 `*` 등은 자동 제거되며, 정회원/용병/지인 모두 파싱하여 출석체크 대상에 포함합니다.</span>
-            </p>
-            <textarea id="lineup-textarea" rows="8" class="w-full p-3 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white font-mono focus:outline-none focus:border-indigo-500 mb-4" placeholder="⚽ 1팀 [레드]&#10;오한결(80)* / 박성복(81) / 최규환(82) / 김강현(95) / 김인섭(98) / 김현제 (98)&#10;&#10;⚽ 2팀 [블랙]&#10;장현호(93)* / 우희중 (83)/ 정권명(86) / 손연준(92) / 박형근(98)&#10;&#10;⚽ 3팀 [그린]&#10;이동윤(81)* / 용병-재현(79) / 박호희(91) / 박수균(96) / 남시헌(00) / 지인-임재균"></textarea>
+            <textarea id="lineup-textarea" rows="8" class="w-full p-3 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white font-mono focus:outline-none focus:border-indigo-500 mb-4" placeholder="⚽ 1팀 [레드]&#10;오한결(80)* / 박성복(81)"></textarea>
             <div class="flex gap-2">
                 <button type="button" onclick="closeLineupModal()" class="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold rounded">취소</button>
                 <button type="button" onclick="processLineupAttendance()" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded shadow">출석 일괄 반영하기</button>
@@ -272,21 +293,21 @@
             <form id="add-member-form" class="space-y-3">
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">성명 *</label>
-                    <input type="text" id="add-name" required class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white" placeholder="예: 홍길동">
+                    <input type="text" id="add-name" required class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-xs text-slate-400 mb-1">초기 비밀번호 *</label>
-                        <input type="password" id="add-pw" required class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white" placeholder="예: 1234">
+                        <input type="password" id="add-pw" required class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
                     </div>
                     <div>
                         <label class="block text-xs text-slate-400 mb-1">포지션</label>
-                        <input type="text" id="add-position" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white" placeholder="예: 공격">
+                        <input type="text" id="add-position" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="block text-xs text-slate-400 mb-1">출생년월일 (예: 1995.05.10)</label>
+                        <label class="block text-xs text-slate-400 mb-1">출생년월일</label>
                         <input type="text" id="add-birth" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
                     </div>
                     <div>
@@ -296,7 +317,7 @@
                 </div>
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">주소지</label>
-                    <input type="text" id="add-address" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white" placeholder="예: 서울시 마포구">
+                    <input type="text" id="add-address" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
@@ -316,7 +337,7 @@
                 </div>
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">연락처</label>
-                    <input type="text" id="add-phone" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white" placeholder="010-XXXX-XXXX">
+                    <input type="text" id="add-phone" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
                 </div>
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">카카오톡 닉네임</label>
@@ -465,7 +486,6 @@
             "F+": 2.5,  "F": 2.0,  "F-": 1.5 
         };
 
-        // 알파벳 평점을 개별 회원용 3개 레벨(루키, 아마추어, 세미프로) 명칭으로 변환하는 함수
         function getCustomLevelName(rating) {
             if (["F-", "F", "F+", "E-", "E", "E+"].includes(rating)) {
                 return "루키";
@@ -477,7 +497,6 @@
             return "루키";
         }
 
-        // 그래프 블라인드 대상 (D- 부터 F- 까지)
         const graphBlindRatings = ["D-", "E+", "E", "E-", "F+", "F", "F-"];
 
         let teamTotalMatches = 0;
@@ -492,6 +511,32 @@
 
         let restrictedSortField = 'birth';
         let restrictedSortOrder = 'asc';
+
+        // 깃허브 회칙 모달 열기 및 Raw 텍스트 불러오기
+        async function openRulesModal() {
+            const modal = document.getElementById('rules-modal');
+            const contentDiv = document.getElementById('rules-content');
+            
+            modal.classList.remove('hidden');
+            contentDiv.innerHTML = "<p class='text-slate-400 text-center py-4'>회칙을 불러오는 중입니다...</p>";
+
+            try {
+                const response = await fetch('https://raw.githubusercontent.com/hansco80/tenfc_member/refs/heads/main/rules.md');
+                if (!response.ok) throw new Error('회칙을 불러오지 못했습니다.');
+                
+                const markdownText = await response.text();
+                // 마크다운을 HTML 태그로 변환하여 삽입
+                contentDiv.innerHTML = marked.parse(markdownText);
+
+            } catch (error) {
+                contentDiv.innerHTML = "<p class='text-rose-400 text-center py-4'>회칙을 불러오는 데 실패했습니다. 잠시 후 다시 시도해주세요.</p>";
+            }
+        }
+
+        // 회칙 모달 닫기
+        function closeRulesModal() {
+            document.getElementById('rules-modal').classList.add('hidden');
+        }
 
         function getUpdatedHistory(history, newScore) {
             let historyArr = Array.isArray(history) ? [...history] : [];
@@ -756,23 +801,19 @@
 
             const regularPool = membersData.filter(m => !m.isWithdrawn && (m.role === 'member' || m.role === 'admin' || m.role === 'sub_admin'));
 
-            // 현재 레벨은 등급에 상관없이 모든 사람이 볼 수 있도록 수정
-           // 현재 레벨은 등급에 상관없이 모든 사람이 볼 수 있도록 수정
             const customLevel = getCustomLevelName(user.rating);
             const ratingEl = document.getElementById('stat-rating');
             ratingEl.innerText = customLevel;
 
-            // 하단 그래프 색상과 일치하도록 레벨별 색상 클래스 동적 적용
             ratingEl.className = "text-2xl font-extrabold mt-1 ";
             if (customLevel === "루키") {
-                ratingEl.classList.add("text-sky-400");     // 루키: 하늘색
+                ratingEl.classList.add("text-sky-400");
             } else if (customLevel === "아마추어") {
-                ratingEl.classList.add("text-emerald-400"); // 아마추어: 초록색
+                ratingEl.classList.add("text-emerald-400");
             } else if (customLevel === "세미프로") {
-                ratingEl.classList.add("text-amber-400");   // 세미프로: 주황/노란색
+                ratingEl.classList.add("text-amber-400");
             }
             
-            // 루키 레벨(F- ~ E+)인 경우 팀 내 순위를 '?' 로 표시
             const isRookieLevel = ["F-", "F", "F+", "E-", "E", "E+"].includes(user.rating);
 
             if (isRookieLevel) {
@@ -788,7 +829,7 @@
                 const percentile = Math.round((rank / sortedMembersForRating.length) * 100);
                 document.getElementById('stat-percentile').innerHTML = `공동 ${rank}위<br><span class="text-xs text-slate-400 font-normal">(상위 ${percentile}%)</span>`;
             }
-            // D- 부터 F- 까지는 그래프 영역만 블라인드 처리
+
             const isGraphBlind = graphBlindRatings.includes(user.rating);
             const blindNoticeBox = document.getElementById('blind-notice-box');
             const chartCardContainer = document.getElementById('chart-card-container');
@@ -1074,23 +1115,9 @@
             }
 
             let confirmMsg = `📋 [당일 라인업 자동 출석체크 합계 리포트]\n`;
-            confirmMsg += `-------------------------------------------\n`;
             confirmMsg += `• 정회원: ${regularMatches.length}명\n`;
             confirmMsg += `• 용병 & 지인: ${guestOrAcquaintanceMatches.length}명\n`;
-            confirmMsg += `👉 총 출석 반영 인원: ${totalCount}명\n`;
-            confirmMsg += `-------------------------------------------\n\n`;
-
-            if (regularMatches.length > 0) {
-                confirmMsg += `[정회원 명단]\n${regularMatches.map(m => m.name).join(', ')}\n\n`;
-            }
-            if (guestOrAcquaintanceMatches.length > 0) {
-                confirmMsg += `[용병 & 지인 명단]\n${guestOrAcquaintanceMatches.map(m => `${m.name}(${m.role === 'guest' ? '용병' : '지인'})`).join(', ')}\n\n`;
-            }
-            if (unmappedList.length > 0) {
-                confirmMsg += `⚠️ [데이터베이스 미등록 인원 (${unmappedList.length}건)] - 출석 제외됨\n${unmappedList.join(', ')}\n\n`;
-            }
-
-            confirmMsg += `위 ${totalCount}명의 멤버에게 출석(+1회)을 일괄 반영하시겠습니까?`;
+            confirmMsg += `👉 총 출석 반영 인원: ${totalCount}명\n\n위 멤버들에게 출석(+1회)을 일괄 반영하시겠습니까?`;
 
             if (!confirm(confirmMsg)) return;
 
@@ -1101,7 +1128,7 @@
 
             await fetchMembersFromSupabase();
             closeLineupModal();
-            alert(`🎉 총 ${totalCount}명 (정회원 ${regularMatches.length}명, 용병&지인 ${guestOrAcquaintanceMatches.length}명)의 출석이 성공적으로 반영되었습니다!`);
+            alert(`🎉 총 ${totalCount명의 출석이 성공적으로 반영되었습니다!`);
             loadAdminDashboard();
         }
 
@@ -1222,7 +1249,7 @@
                 });
             }
 
-            navigator.clipboard.writeText(textOutput).then(() => alert(`전체 멤버 명단(${month}월 ${date}일 기준)이 클립보드에 복사되었습니다!`));
+            navigator.clipboard.writeText(textOutput).then(() => alert(`전체 멤버 명단이 클립보드에 복사되었습니다!`));
         }
 
         async function batchAdjustRating(direction) {
@@ -1251,11 +1278,7 @@
 
             for (let u of updates) {
                 let updatedHistory = getUpdatedHistory(u.member.history, u.newScore);
-
-                await supabaseClient.from('members').update({ 
-                    rating: u.newRating,
-                    history: updatedHistory 
-                }).eq('name', u.member.name);
+                await supabaseClient.from('members').update({ rating: u.newRating, history: updatedHistory }).eq('name', u.member.name);
             }
 
             await fetchMembersFromSupabase();
@@ -1348,7 +1371,6 @@
             }
         });
 
-        // 역점 매핑 객체 (점수 -> 등급명 변환용)
         const reverseScoreMap = {
             10.0: "A+", 9.5: "A", 9.0: "A-",
             8.5: "B+", 8.0: "B", 7.5: "B-",
@@ -1358,7 +1380,6 @@
             2.5: "F+", 2.0: "F", 1.5: "F-"
         };
 
-        // 이전 버전 평점 변동 이력 그래프 복구
         function renderChart(history) {
             const ctx = document.getElementById('ratingChart').getContext('2d');
             if (myChart) myChart.destroy();
@@ -1388,17 +1409,7 @@
                             ticks: { 
                                 color: '#94a3b8',
                                 stepSize: 0.5,
-                                callback: function(value) {
-                                    const labels = {
-                                        10.0: "A+", 9.5: "A", 9.0: "A-",
-                                        8.5: "B+", 8.0: "B", 7.5: "B-",
-                                        7.0: "C+", 6.5: "C", 6.0: "C-",
-                                        5.5: "D+", 5.0: "D", 4.5: "D-",
-                                        4.0: "E+", 3.5: "E", 3.0: "E-",
-                                        2.5: "F+", 2.0: "F", 1.5: "F-"
-                                    };
-                                    return labels[value] || ''; 
-                                }
+                                callback: function(value) { return reverseScoreMap[value] || ''; }
                             }, 
                             grid: { color: '#334155' } 
                         },
@@ -1420,29 +1431,24 @@
             });
         }
 
-        // 이전 버전 등급별 회원 수 현황 막대그래프 복구
         function renderGradeCountChart(regularPool) {
             const ctx = document.getElementById('gradeCountChart').getContext('2d');
             if (gradeCountChartInstance) gradeCountChartInstance.destroy();
 
-            const counts = ratingHierarchy.map(grade => {
-                return regularPool.filter(m => m.rating === grade).length;
-            });
-
+            const counts = ratingHierarchy.map(grade => regularPool.filter(m => m.rating === grade).length);
             document.getElementById('grade-chart-total-label').innerText = `총 정회원: ${regularPool.length}명`;
 
-           gradeCountChartInstance = new Chart(ctx, {
+            gradeCountChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: ratingHierarchy,
                     datasets: [{
                         label: '회원 수',
                         data: counts,
-                        // 18개의 세부 등급(F- ~ A+) 순서에 맞춰 레벨별로 색상을 다르게 지정
                         backgroundColor: [
-                            '#38bdf8', '#38bdf8', '#38bdf8', '#38bdf8', '#38bdf8', '#38bdf8', // 루키 (F- ~ E+) : 하늘색 계열
-                            '#10b981', '#10b981', '#10b981', '#10b981', '#10b981', '#10b981', '#10b981', '#10b981', // 아마추어 (D- ~ B) : 초록색 계열
-                            '#f59e0b', '#f59e0b', '#f59e0b', '#f59e0b'  // 세미프로 (B+ ~ A+) : 주황/노란색 계열
+                            '#38bdf8', '#38bdf8', '#38bdf8', '#38bdf8', '#38bdf8', '#38bdf8',
+                            '#10b981', '#10b981', '#10b981', '#10b981', '#10b981', '#10b981', '#10b981', '#10b981',
+                            '#f59e0b', '#f59e0b', '#f59e0b', '#f59e0b'
                         ],
                         borderRadius: 4,
                     }]
@@ -1450,24 +1456,10 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    layout: {
-                        padding: {
-                            top: 20
-                        }
-                    },
+                    layout: { padding: { top: 20 } },
                     scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: { 
-                                color: '#94a3b8',
-                                precision: 0 
-                            },
-                            grid: { color: '#334155' }
-                        },
-                        x: { 
-                            ticks: { color: '#94a3b8' }, 
-                            grid: { display: false } 
-                        }
+                        y: { beginAtZero: true, ticks: { color: '#94a3b8', precision: 0 }, grid: { color: '#334155' } },
+                        x: { ticks: { color: '#94a3b8' }, grid: { display: false } }
                     },
                     plugins: {
                         legend: { display: false },
@@ -1476,9 +1468,7 @@
                             align: 'top',
                             color: '#e2e8f0',
                             font: { size: 11, weight: 'bold' },
-                            formatter: function(value) {
-                                return value > 0 ? value : '';
-                            }
+                            formatter: function(value) { return value > 0 ? value : ''; }
                         }
                     }
                 },

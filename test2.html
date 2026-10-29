@@ -1,36 +1,1343 @@
+```html
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 회칙 마크다운 스타일 교정 테스트</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Tailwind Typography 플러그인 (제목, 목록, 굵기 등을 이쁘게 살려줌) -->
-    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
-    <!-- 마크다운 변환 라이브러리 (marked.js) -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-</head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-center p-4">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- 테스트용 메인 화면 -->
-    <div class="bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700 text-center max-w-sm w-full">
-        <h1 class="text-2xl font-bold text-emerald-400 mb-2">⚽ TenFC 회칙 테스트</h1>
-        <p class="text-slate-400 text-sm mb-6">마크다운 서식이 완벽하게 적용되는지 확인해보세요.</p>
-        
-        <button type="button" onclick="openRulesModal()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition shadow-lg cursor-pointer">
-            📄 TenFC 팀 회칙 보기
-        </button>
+  <title>TenFC 회칙</title>
+
+  <!-- GitHub 스타일 Markdown CSS -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.8.1/github-markdown.min.css"
+  >
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #f3f4f6;
+      color: #24292f;
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        "Noto Sans KR",
+        Arial,
+        sans-serif;
+    }
+
+    /* 전체 */
+    .page {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px 16px 60px;
+    }
+
+    /* 상단 */
+    .header {
+      background: #111827;
+      color: white;
+      border-radius: 18px;
+      padding: 26px 28px;
+      margin-bottom: 18px;
+      box-shadow: 0 8px 30px rgba(0,0,0,.08);
+    }
+
+    .header-title {
+      font-size: 26px;
+      font-weight: 800;
+      margin-bottom: 7px;
+    }
+
+    .header-subtitle {
+      font-size: 14px;
+      opacity: .75;
+    }
+
+    /* 탭 */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .tab {
+      border: 0;
+      background: white;
+      color: #4b5563;
+      padding: 12px 18px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,.05);
+    }
+
+    .tab.active {
+      background: #111827;
+      color: white;
+    }
+
+    /* 콘텐츠 카드 */
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 3px 15px rgba(0,0,0,.06);
+    }
+
+    /* 현재 버전 */
+    .version-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 20px;
+      margin-bottom: 25px;
+    }
+
+    .version-title {
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .version-date {
+      margin-top: 5px;
+      font-size: 13px;
+      color: #6b7280;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 12px;
+      background: #ecfdf5;
+      color: #047857;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    /* Markdown */
+    .markdown-body {
+      font-size: 16px;
+      line-height: 1.75;
+    }
+
+    .markdown-body h1 {
+      padding-bottom: .4em;
+      border-bottom: 1px solid #d8dee4;
+    }
+
+    .markdown-body h2 {
+      margin-top: 35px;
+    }
+
+    .markdown-body h3 {
+      margin-top: 28px;
+    }
+
+    .markdown-body table {
+      display: table;
+      width: 100%;
+    }
+
+    /* 이력 */
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .history-item {
+      border: 1px solid #e5e7eb;
+      border-radius: 13px;
+      padding: 17px;
+      transition: .15s;
+    }
+
+    .history-item:hover {
+      border-color: #9ca3af;
+      box-shadow: 0 3px 12px rgba(0,0,0,.05);
+    }
+
+    .history-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .history-date {
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .history-sha {
+      font-family: monospace;
+      color: #6b7280;
+      font-size: 12px;
+    }
+
+    .history-message {
+      margin-top: 8px;
+      color: #374151;
+      font-size: 14px;
+      white-space: pre-line;
+    }
+
+    .history-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 14px;
+    }
+
+    .small-btn {
+      border: 1px solid #d1d5db;
+      background: white;
+      padding: 7px 11px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .small-btn:hover {
+      background: #f3f4f6;
+    }
+
+    .small-btn.primary {
+      background: #111827;
+      color: white;
+      border-color: #111827;
+    }
+
+    /* 로딩 */
+    .loading {
+      text-align: center;
+      padding: 60px 20px;
+      color: #6b7280;
+    }
+
+    .spinner {
+      width: 28px;
+      height: 28px;
+      border: 3px solid #e5e7eb;
+      border-top-color: #111827;
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      margin: 0 auto 15px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* 모달 */
+    .modal-bg {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.55);
+      z-index: 1000;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .modal-bg.show {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+    }
+
+    .modal {
+      width: min(1000px, 100%);
+      background: white;
+      border-radius: 18px;
+      margin: 30px auto;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 22px;
+      background: #111827;
+      color: white;
+    }
+
+    .modal-title {
+      font-weight: 800;
+    }
+
+    .close {
+      border: 0;
+      background: transparent;
+      color: white;
+      font-size: 25px;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .modal-content {
+      padding: 25px;
+    }
+
+    /* Diff */
+    .diff {
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      overflow: hidden;
+      font-family: monospace;
+      font-size: 13px;
+    }
+
+    .diff-line {
+      padding: 7px 12px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      border-bottom: 1px solid rgba(0,0,0,.04);
+    }
+
+    .diff-add {
+      background: #e6ffec;
+      color: #116329;
+    }
+
+    .diff-remove {
+      background: #ffebe9;
+      color: #82071e;
+    }
+
+    .diff-context {
+      background: white;
+      color: #374151;
+    }
+
+    .diff-title {
+      padding: 12px;
+      background: #f3f4f6;
+      font-weight: 800;
+      font-family: sans-serif;
+    }
+
+    .error {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      border-radius: 10px;
+      padding: 15px;
+      line-height: 1.6;
+    }
+
+    /* 모바일 */
+    @media (max-width: 700px) {
+
+      .page {
+        padding: 12px 10px 40px;
+      }
+
+      .header {
+        border-radius: 14px;
+        padding: 20px;
+      }
+
+      .header-title {
+        font-size: 22px;
+      }
+
+      .card {
+        padding: 18px;
+        border-radius: 13px;
+      }
+
+      .version-info {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .markdown-body {
+        font-size: 15px;
+      }
+
+      .history-top {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 5px;
+      }
+
+      .modal-bg {
+        padding: 8px;
+      }
+
+      .modal {
+        margin: 10px auto;
+        border-radius: 13px;
+      }
+
+      .modal-content {
+        padding: 15px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="page">
+
+  <div class="header">
+    <div class="header-title">📘 TenFC 회칙</div>
+    <div class="header-subtitle">
+      TenFC 공식 회칙 및 개정 이력
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('current')">
+      📘 현재 회칙
+    </button>
+
+    <button class="tab" onclick="showTab('history')">
+      📜 개정 이력
+    </button>
+  </div>
+
+  <!-- 현재 회칙 -->
+  <div id="currentTab" class="card">
+
+    <div class="version-info">
+
+      <div>
+        <div class="version-title">
+          현재 시행 회칙
+        </div>
+
+        <div class="version-date" id="currentDate">
+          불러오는 중...
+        </div>
+      </div>
+
+      <div class="badge">
+        CURRENT
+      </div>
+
     </div>
 
-    <!-- 팀 회칙 팝업 모달창 -->
-    <div id="rules-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-slate-800 w-full max-w-xl p-6 rounded-2xl border border-slate-700 shadow-2xl flex flex-col max-h-[85vh]">
-            <h3 class="text-xl font-bold text-emerald-400 mb-4">📜 TenFC 팀 회칙</h3>
-            
-            <!-- 💡 prose prose-invert와 함께 리스트/제목 스타일이 명확히 보이도록 설정 -->
-            <div id="rules-content" class="bg-slate-900 p-5 rounded-lg text-slate-300 text-sm overflow-y-auto flex-1 leading-relaxed prose prose-invert max-w-none 
-                prose-headings:text-emerald-400 prose-headings:font-bold 
-                prose-strong:text-white prose-li:my-1">
-                불러오는 중...
+    <div id="rulesContent">
+
+      <div class="loading">
+        <div class="spinner"></div>
+        회칙을 불러오는 중입니다.
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- 개정 이력 -->
+  <div id="historyTab" class="card" style="display:none;">
+
+    <div class="version-info">
+
+      <div>
+        <div class="version-title">
+          📜 회칙 개정 이력
+        </div>
+
+        <div class="version-date">
+          GitHub에 기록된 rules.md의 변경 이력입니다.
+        </div>
+      </div>
+
+    </div>
+
+    <div id="historyContent">
+
+      <div class="loading">
+        <div class="spinner"></div>
+        개정 이력을 불러오는 중입니다.
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- 버전 보기 모달 -->
+<div id="versionModal" class="modal-bg">
+
+  <div class="modal">
+
+    <div class="modal-header">
+
+      <div class="modal-title" id="modalTitle">
+        회칙 버전
+      </div>
+
+      <button class="close" onclick="closeModal()">
+        ×
+      </button>
+
+    </div>
+
+    <div class="modal-content" id="modalContent">
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- Markdown parser -->
+<script src="https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js"></script>
+
+<!-- HTML sanitizer -->
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
+
+
+<script>
+
+/* =========================================================
+   설정
+========================================================= */
+
+const CONFIG = {
+
+  // GitHub 사용자
+  owner: "hansco80",
+
+  // 저장소
+  repo: "tenfc_member",
+
+  // 회칙 파일
+  path: "rules.md",
+
+  // 기본 브랜치
+  branch: "main",
+
+  // 최대 표시할 과거 버전
+  historyLimit: 30
+
+};
+
+
+/* =========================================================
+   GitHub API 주소
+========================================================= */
+
+const API_BASE =
+  `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}`;
+
+
+/* =========================================================
+   초기 실행
+========================================================= */
+
+document.addEventListener("DOMContentLoaded", () => {
+
+  loadCurrentRules();
+
+  loadHistory();
+
+});
+
+
+/* =========================================================
+   탭
+========================================================= */
+
+function showTab(tab) {
+
+  const current =
+    document.getElementById("currentTab");
+
+  const history =
+    document.getElementById("historyTab");
+
+  const buttons =
+    document.querySelectorAll(".tab");
+
+
+  if (tab === "current") {
+
+    current.style.display = "block";
+    history.style.display = "none";
+
+    buttons[0].classList.add("active");
+    buttons[1].classList.remove("active");
+
+  } else {
+
+    current.style.display = "none";
+    history.style.display = "block";
+
+    buttons[0].classList.remove("active");
+    buttons[1].classList.add("active");
+
+  }
+
+}
+
+
+/* =========================================================
+   현재 회칙
+========================================================= */
+
+async function loadCurrentRules() {
+
+  const content =
+    document.getElementById("rulesContent");
+
+  try {
+
+    const response = await fetch(
+      `${API_BASE}/contents/${CONFIG.path}?ref=${CONFIG.branch}`,
+      {
+        headers: {
+          "Accept": "application/vnd.github+json"
+        }
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        `GitHub API 오류: ${response.status}`
+      );
+    }
+
+    const data = await response.json();
+
+
+    // Base64 → UTF-8
+    const markdown =
+      decodeBase64UTF8(data.content);
+
+
+    // Markdown → HTML
+    const html =
+      marked.parse(markdown, {
+        gfm: true,
+        breaks: true
+      });
+
+
+    // DOMPurify로 정리
+    content.innerHTML =
+      DOMPurify.sanitize(html);
+
+
+    // 마지막 수정 정보
+    await loadLatestCommitDate();
+
+  } catch (error) {
+
+    console.error(error);
+
+    content.innerHTML = `
+      <div class="error">
+        회칙을 불러오지 못했습니다.<br><br>
+        ${escapeHtml(error.message)}
+      </div>
+    `;
+
+  }
+
+}
+
+
+/* =========================================================
+   마지막 수정 날짜
+========================================================= */
+
+async function loadLatestCommitDate() {
+
+  const element =
+    document.getElementById("currentDate");
+
+  try {
+
+    const response = await fetch(
+      `${API_BASE}/commits?path=${encodeURIComponent(CONFIG.path)}&per_page=1`,
+      {
+        headers: {
+          "Accept": "application/vnd.github+json"
+        }
+      }
+    );
+
+    const commits =
+      await response.json();
+
+    if (!commits.length) {
+
+      element.textContent =
+        "수정 이력을 찾을 수 없습니다.";
+
+      return;
+
+    }
+
+    const commit =
+      commits[0];
+
+    const date =
+      new Date(
+        commit.commit.author.date
+      );
+
+    element.textContent =
+      `최종 수정: ${formatDate(date)} · ${commit.commit.message.split("\n")[0]}`;
+
+  } catch (error) {
+
+    element.textContent =
+      "최종 수정일을 불러오지 못했습니다.";
+
+  }
+
+}
+
+
+/* =========================================================
+   개정 이력
+========================================================= */
+
+async function loadHistory() {
+
+  const container =
+    document.getElementById("historyContent");
+
+  try {
+
+    const response = await fetch(
+      `${API_BASE}/commits?path=${encodeURIComponent(CONFIG.path)}&per_page=${CONFIG.historyLimit}`,
+      {
+        headers: {
+          "Accept": "application/vnd.github+json"
+        }
+      }
+    );
+
+    if (!response.ok) {
+
+      throw new Error(
+        `GitHub API 오류: ${response.status}`
+      );
+
+    }
+
+    const commits =
+      await response.json();
+
+
+    if (!commits.length) {
+
+      container.innerHTML =
+        `<div class="error">개정 이력이 없습니다.</div>`;
+
+      return;
+
+    }
+
+
+    container.innerHTML = "";
+
+
+    commits.forEach((commit, index) => {
+
+      const date =
+        new Date(
+          commit.commit.author.date
+        );
+
+      const message =
+        commit.commit.message.split("\n")[0];
+
+      const sha =
+        commit.sha.substring(0, 7);
+
+
+      const item =
+        document.createElement("div");
+
+      item.className =
+        "history-item";
+
+
+      item.innerHTML = `
+
+        <div class="history-top">
+
+          <div>
+
+            <div class="history-date">
+              ${formatDate(date)}
             </div>
+
+            <div class="history-sha">
+              ${sha}
+            </div>
+
+          </div>
+
+        </div>
+
+        <div class="history-message">
+          ${escapeHtml(message)}
+        </div>
+
+        <div class="history-buttons">
+
+          <button
+            class="small-btn primary"
+            onclick="viewVersion('${commit.sha}')"
+          >
+            이 버전 보기
+          </button>
+
+          ${
+            index < commits.length - 1
+            ?
+            `
+            <button
+              class="small-btn"
+              onclick="compareVersions(
+                '${commits[index + 1].sha}',
+                '${commit.sha}'
+              )"
+            >
+              변경사항 보기
+            </button>
+            `
+            :
+            ""
+          }
+
+          <button
+            class="small-btn"
+            onclick="openGitHubCommit('${commit.html_url}')"
+          >
+            GitHub
+          </button>
+
+        </div>
+
+      `;
+
+      container.appendChild(item);
+
+    });
+
+
+  } catch (error) {
+
+    console.error(error);
+
+    container.innerHTML = `
+      <div class="error">
+        개정 이력을 불러오지 못했습니다.<br><br>
+        ${escapeHtml(error.message)}
+      </div>
+    `;
+
+  }
+
+}
+
+
+/* =========================================================
+   특정 버전 회칙 보기
+========================================================= */
+
+async function viewVersion(sha) {
+
+  openModal(
+    "회칙 버전 불러오는 중...",
+    `<div class="loading">
+      <div class="spinner"></div>
+      회칙을 불러오는 중입니다.
+    </div>`
+  );
+
+
+  try {
+
+    const response = await fetch(
+      `${API_BASE}/contents/${CONFIG.path}?ref=${sha}`,
+      {
+        headers: {
+          "Accept": "application/vnd.github+json"
+        }
+      }
+    );
+
+
+    if (!response.ok) {
+
+      throw new Error(
+        `GitHub API 오류: ${response.status}`
+      );
+
+    }
+
+
+    const data =
+      await response.json();
+
+
+    const markdown =
+      decodeBase64UTF8(data.content);
+
+
+    const html =
+      marked.parse(markdown, {
+        gfm: true,
+        breaks: true
+      });
+
+
+    const safeHtml =
+      DOMPurify.sanitize(html);
+
+
+    const commitResponse =
+      await fetch(
+        `${API_BASE}/commits/${sha}`,
+        {
+          headers: {
+            "Accept": "application/vnd.github+json"
+          }
+        }
+      );
+
+
+    const commit =
+      await commitResponse.json();
+
+
+    const date =
+      new Date(
+        commit.commit.author.date
+      );
+
+
+    document.getElementById("modalTitle").textContent =
+      `회칙 · ${formatDate(date)}`;
+
+
+    document.getElementById("modalContent").innerHTML = `
+
+      <div style="
+        margin-bottom:20px;
+        padding:12px 15px;
+        background:#f3f4f6;
+        border-radius:10px;
+        font-size:13px;
+      ">
+
+        <strong>Commit</strong>
+        <span style="font-family:monospace;">
+          ${sha.substring(0,7)}
+        </span>
+
+        <br>
+
+        <strong>수정 내용</strong>
+        ${escapeHtml(commit.commit.message.split("\n")[0])}
+
+      </div>
+
+      <article class="markdown-body">
+        ${safeHtml}
+      </article>
+
+    `;
+
+
+  } catch (error) {
+
+    document.getElementById("modalTitle").textContent =
+      "오류";
+
+    document.getElementById("modalContent").innerHTML = `
+
+      <div class="error">
+        ${escapeHtml(error.message)}
+      </div>
+
+    `;
+
+  }
+
+}
+
+
+/* =========================================================
+   두 버전 비교
+========================================================= */
+
+async function compareVersions(baseSha, headSha) {
+
+  openModal(
+    "변경사항 불러오는 중...",
+    `<div class="loading">
+      <div class="spinner"></div>
+      이전 버전과 비교하는 중입니다.
+    </div>`
+  );
+
+
+  try {
+
+    const response = await fetch(
+      `${API_BASE}/compare/${baseSha}...${headSha}`,
+      {
+        headers: {
+          "Accept": "application/vnd.github+json"
+        }
+      }
+    );
+
+
+    if (!response.ok) {
+
+      throw new Error(
+        `GitHub 비교 API 오류: ${response.status}`
+      );
+
+    }
+
+
+    const data =
+      await response.json();
+
+
+    document.getElementById("modalTitle").textContent =
+      "📋 회칙 변경사항";
+
+
+    let html = `
+
+      <div style="
+        margin-bottom:18px;
+        padding:13px 15px;
+        background:#f3f4f6;
+        border-radius:10px;
+        font-size:13px;
+      ">
+
+        <strong>
+          ${baseSha.substring(0,7)}
+        </strong>
+
+        →
+
+        <strong>
+          ${headSha.substring(0,7)}
+        </strong>
+
+        <br><br>
+
+        총 변경 커밋:
+        <strong>${data.total_commits}</strong>
+
+      </div>
+
+    `;
+
+
+    /*
+      GitHub Compare API가 제공하는
+      patch 정보를 사용
+    */
+
+    if (!data.files || !data.files.length) {
+
+      html += `
+        <div class="error">
+          변경된 파일을 찾을 수 없습니다.
+        </div>
+      `;
+
+    } else {
+
+      data.files.forEach(file => {
+
+        if (
+          file.filename !== CONFIG.path
+        ) {
+          return;
+        }
+
+
+        html += `
+
+          <div class="diff">
+
+            <div class="diff-title">
+              ${escapeHtml(file.filename)}
+            </div>
+
+        `;
+
+
+        if (!file.patch) {
+
+          html += `
+            <div class="diff-line diff-context">
+              이 변경사항은 텍스트 diff를 제공하지 않습니다.
+            </div>
+          `;
+
+        } else {
+
+          const lines =
+            file.patch.split("\n");
+
+
+          lines.forEach(line => {
+
+            let className =
+              "diff-context";
+
+
+            if (line.startsWith("+") &&
+                !line.startsWith("+++")) {
+
+              className =
+                "diff-add";
+
+            } else if (
+              line.startsWith("-") &&
+              !line.startsWith("---")
+            ) {
+
+              className =
+                "diff-remove";
+
+            }
+
+
+            html += `
+
+              <div class="diff-line ${className}">
+                ${escapeHtml(line)}
+              </div>
+
+            `;
+
+          });
+
+        }
+
+
+        html += `
+          </div>
+        `;
+
+      });
+
+    }
+
+
+    /*
+      GitHub 웹 비교 페이지 링크
+    */
+
+    html += `
+
+      <div style="
+        margin-top:20px;
+        text-align:right;
+      ">
+
+        <a
+          href="https://github.com/${CONFIG.owner}/${CONFIG.repo}/compare/${baseSha}...${headSha}"
+          target="_blank"
+          rel="noopener noreferrer"
+          style="
+            color:#0969da;
+            font-size:13px;
+            font-weight:700;
+          "
+        >
+          GitHub에서 전체 비교 보기 →
+        </a>
+
+      </div>
+
+    `;
+
+
+    document.getElementById("modalContent").innerHTML =
+      html;
+
+
+  } catch (error) {
+
+    document.getElementById("modalTitle").textContent =
+      "변경사항 비교 오류";
+
+
+    document.getElementById("modalContent").innerHTML = `
+
+      <div class="error">
+        ${escapeHtml(error.message)}
+      </div>
+
+    `;
+
+  }
+
+}
+
+
+/* =========================================================
+   모달
+========================================================= */
+
+function openModal(title, content) {
+
+  document.getElementById("modalTitle").textContent =
+    title;
+
+  document.getElementById("modalContent").innerHTML =
+    content;
+
+  document.getElementById("versionModal")
+    .classList.add("show");
+
+}
+
+
+function closeModal() {
+
+  document.getElementById("versionModal")
+    .classList.remove("show");
+
+}
+
+
+/* 모달 바깥 클릭 */
+
+document.getElementById("versionModal")
+  .addEventListener("click", function(event) {
+
+    if (event.target === this) {
+      closeModal();
+    }
+
+  });
+
+
+/* ESC */
+
+document.addEventListener("keydown", function(event) {
+
+  if (event.key === "Escape") {
+    closeModal();
+  }
+
+});
+
+
+/* =========================================================
+   GitHub URL
+========================================================= */
+
+function openGitHubCommit(url) {
+
+  window.open(
+    url,
+    "_blank",
+    "noopener,noreferrer"
+  );
+
+}
+
+
+/* =========================================================
+   Base64 UTF-8 디코딩
+========================================================= */
+
+function decodeBase64UTF8(base64) {
+
+  // GitHub API 응답에 포함된 줄바꿈 제거
+  const clean =
+    base64.replace(/\n/g, "");
+
+  const binary =
+    atob(clean);
+
+  const bytes =
+    Uint8Array.from(
+      binary,
+      char => char.charCodeAt(0)
+    );
+
+  return new TextDecoder("utf-8")
+    .decode(bytes);
+
+}
+
+
+/* =========================================================
+   날짜
+========================================================= */
+
+function formatDate(date) {
+
+  const y =
+    date.getFullYear();
+
+  const m =
+    String(date.getMonth() + 1)
+      .padStart(2, "0");
+
+  const d =
+    String(date.getDate())
+      .padStart(2, "0");
+
+  return `${y}.${m}.${d}`;
+
+}
+
+
+/* =========================================================
+   HTML Escape
+========================================================= */
+
+function escapeHtml(value) {
+
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+
+}
+
+</script>
+
+</body>
+</html>
+```

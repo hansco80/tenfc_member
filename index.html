@@ -1390,8 +1390,11 @@
                 else if (level === "세미프로") return '#f59e0b'; // 앰버/골드 (상위 등급: B+ ~ A+)
                 return '#10b981';
             });
+           // 💡 가장 높은 막대 인원수보다 여유 있게 Y축 최댓값 설정 (숫자가 안 잘리도록 함)
+            const maxCount = Math.max(...counts, 0);
+            const suggestedYMax = Math.max(maxCount + 1, 6); // 최소 6 이상이면서 최고 인원보다 1~2 크게 설정
 
-           gradeCountChartInstance = new Chart(ctx, {
+            gradeCountChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: ratingHierarchy,
@@ -1408,6 +1411,7 @@
                     scales: {
                         y: { 
                             beginAtZero: true, 
+                            max: suggestedYMax, // 💡 Y축 상단 여유 공간 확보 (숫자 잘림 방지)
                             ticks: { color: '#94a3b8', precision: 0 }, 
                             grid: { color: '#334155' } 
                         },
@@ -1418,7 +1422,6 @@
                     },
                     plugins: { 
                         legend: { display: false },
-                        // 💡 막대 위 인원수 숫자 표시 설정 추가
                         datalabels: {
                             color: '#e2e8f0',
                             anchor: 'end',
@@ -1428,12 +1431,12 @@
                                 weight: 'bold'
                             },
                             formatter: function(value) {
-                                return value > 0 ? value : ''; // 0명이면 표시 안 함
+                                return value > 0 ? value : ''; 
                             }
                         }
                     }
                 },
-                plugins: [ChartDataLabels] // 💡 플러그인 활성화
+                plugins: [ChartDataLabels]
             });
         }
 

@@ -1382,6 +1382,15 @@
             const counts = ratingHierarchy.map(grade => regularPool.filter(m => m.rating === grade).length);
             document.getElementById('grade-chart-total-label').innerText = `총 정회원: ${regularPool.length}명`;
 
+            // 💡 등급별 색상 매핑 로직 (레벨 카드 기준과 동일)
+            const backgroundColors = ratingHierarchy.map(grade => {
+                const level = getCustomLevelName(grade);
+                if (level === "루키") return '#38bdf8';      // 스카이블루 (하위 등급: F- ~ E+)
+                else if (level === "아마추어") return '#10b981'; // 에메랄드 (중위 등급: D- ~ B)
+                else if (level === "세미프로") return '#f59e0b'; // 앰버/골드 (상위 등급: B+ ~ A+)
+                return '#10b981';
+            });
+
             gradeCountChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -1389,7 +1398,7 @@
                     datasets: [{
                         label: '회원 수',
                         data: counts,
-                        backgroundColor: '#10b981',
+                        backgroundColor: backgroundColors, // 💡 등급별 컬러 배열 적용
                         borderRadius: 4,
                     }]
                 },

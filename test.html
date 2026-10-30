@@ -302,7 +302,7 @@
                 </div>
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">주소지</label>
-                    <input type="text" id="add-address" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white">
+                    <input type="text" id="add-address" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white" placeholder="예: 서울시 마포구">
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
@@ -1091,7 +1091,7 @@
             const totalCount = regularMatches.length + guestOrAcquaintanceMatches.length;
             if (totalCount === 0) { alert('인식 및 매칭된 회원이 없습니다.'); return; }
 
-            if (!confirm(`위 ${totalCount명에게 출석(+1회)을 반영하시겠습니까?`)) return;
+            if (!confirm(`위 ${totalCount}명에게 출석(+1회)을 반영하시겠습니까?`)) return;
 
             const allTargetMembers = [...regularMatches, ...guestOrAcquaintanceMatches];
             for (let m of allTargetMembers) {
@@ -1173,7 +1173,6 @@
         function toggleAllCheckboxes(status) { document.querySelectorAll('.member-checkbox').forEach(cb => cb.checked = status); }
 
         function exportMemberTextData() {
-            const now = new Date();
             let textOutput = `== TenFC 명단 ==\n`;
             membersData.filter(m => !m.isWithdrawn && m.role !== 'guest' && m.role !== 'acquaintance').forEach(m => {
                 textOutput += `${m.name} / ${m.birth || '-'} / ${m.rating}\n`;

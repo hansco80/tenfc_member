@@ -1391,14 +1391,14 @@
                 return '#10b981';
             });
 
-            gradeCountChartInstance = new Chart(ctx, {
+           gradeCountChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: ratingHierarchy,
                     datasets: [{
                         label: '회원 수',
                         data: counts,
-                        backgroundColor: backgroundColors, // 💡 등급별 컬러 배열 적용
+                        backgroundColor: backgroundColors,
                         borderRadius: 4,
                     }]
                 },
@@ -1406,11 +1406,34 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        y: { beginAtZero: true, ticks: { color: '#94a3b8', precision: 0 }, grid: { color: '#334155' } },
-                        x: { ticks: { color: '#94a3b8' }, grid: { display: false } }
+                        y: { 
+                            beginAtZero: true, 
+                            ticks: { color: '#94a3b8', precision: 0 }, 
+                            grid: { color: '#334155' } 
+                        },
+                        x: { 
+                            ticks: { color: '#94a3b8' }, 
+                            grid: { display: false } 
+                        }
                     },
-                    plugins: { legend: { display: false } }
-                }
+                    plugins: { 
+                        legend: { display: false },
+                        // 💡 막대 위 인원수 숫자 표시 설정 추가
+                        datalabels: {
+                            color: '#e2e8f0',
+                            anchor: 'end',
+                            align: 'top',
+                            font: {
+                                size: 10,
+                                weight: 'bold'
+                            },
+                            formatter: function(value) {
+                                return value > 0 ? value : ''; // 0명이면 표시 안 함
+                            }
+                        }
+                    }
+                },
+                plugins: [ChartDataLabels] // 💡 플러그인 활성화
             });
         }
 

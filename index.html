@@ -250,7 +250,9 @@
                         <th class="p-3 cursor-pointer hover:text-emerald-400 transition" onclick="changeSort('attendance')">출석 횟수 / 참석률 <span id="sort-icon-attendance" class="text-slate-500">↕</span></th>
                         <th class="p-3">연락처 / 카톡 닉네임</th>
                         <!-- 최상위 주관리자 전용 로그인 이력 컬럼 -->
-                        <th id="th-login-tracking" class="p-3 text-center hidden">로그인 이력</th>
+                       <th id="th-login-tracking" class="p-3 text-center cursor-pointer hover:text-emerald-400 transition hidden" onclick="changeSort('loginCount')">
+    로그인 이력 <span id="sort-icon-loginCount" class="text-slate-500">↕</span>
+</th>
                         <th id="th-action" class="p-3 text-center">관리</th>
                     </tr>
                 </thead>

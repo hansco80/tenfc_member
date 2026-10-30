@@ -551,6 +551,30 @@
             }
         }
 
+        // 💡 공통 로그인 기록 업데이트 함수 (직접 로그인 & 자동 로그인 시 모두 사용)
+     async function recordLoginSession(user) {
+    const todayStr = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD"
+    const lastDateStr = user.lastLoginAt ? user.lastLoginAt.split('T')[0] : "";
+
+    // 오늘 이미 로그인한 기록이 있으면 카운트 증가 없이 최종 시간만 갱신하거나 스킵
+    if (lastDateStr === todayStr) {
+        return; 
+    }
+
+    const updatedLoginCount = (user.loginCount || 0) + 1;
+    const currentIsoTime = new Date().toISOString();
+
+    const { error: updateError } = await supabaseClient.from('members').update({
+        login_count: updatedLoginCount,
+        last_login_at: currentIsoTime
+    }).eq('name', user.name);
+
+    if (!updateError) {
+        user.loginCount = updatedLoginCount;
+        user.lastLoginAt = currentIsoTime;
+    }
+}
+
         async function initApp() {
             const success = await fetchMembersFromSupabase();
             if (!success) {
@@ -584,6 +608,7 @@
             if (savedUserName) {
                 const foundUser = membersData.find(m => m.name === savedUserName);
                 if (foundUser && !foundUser.isWithdrawn) {
+                    await recordLoginSession(foundUser); // 💡 하루 1회 체크 함수 실행
                     currentUser = foundUser;
                     document.getElementById('login-container').classList.add('hidden');
                     if (currentUser.role === 'admin' || currentUser.role === 'sub_admin') {
@@ -675,7 +700,7 @@
             document.getElementById('photo-preview-modal').classList.add('hidden');
         }
 
-        // 로그인 이벤트 및 누적 로그인/최종 로그인 시간 업데이트 로직
+        // 직접 로그인 제출 이벤트 및 누적 로그인/최종 로그인 시간 업데이트 로직
         document.getElementById('login-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const inputName = document.getElementById('name-input').value.trim();
@@ -690,20 +715,8 @@
                     return;
                 }
 
-                // 로그인 성공 시 누적 로그인 횟수 및 최종 로그인 시간 계산 및 업데이트
-                const updatedLoginCount = (user.loginCount || 0) + 1;
-                const currentIsoTime = new Date().toISOString();
-
-                const { error: updateError } = await supabaseClient.from('members').update({
-                    login_count: updatedLoginCount,
-                    last_login_at: currentIsoTime
-                }).eq('name', user.name);
-
-                if (!updateError) {
-                    user.loginCount = updatedLoginCount;
-                    user.lastLoginAt = currentIsoTime;
-                }
-
+                // 💡 로그인 성공 시 누적 로그인 기록 반영
+                await recordLoginSession(user); // 💡 하루 1회 체크 함수 실행
                 currentUser = user;
                 localStorage.setItem('tenfc_logged_user', user.name); 
                 document.getElementById('login-container').classList.add('hidden');

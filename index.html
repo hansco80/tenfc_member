@@ -1331,7 +1331,7 @@
             2.5: "F+", 2.0: "F", 1.5: "F-"
         };
 
-        function renderChart(history) {
+       function renderChart(history) {
             const ctx = document.getElementById('ratingChart').getContext('2d');
             if (myChart) myChart.destroy();
             myChart = new Chart(ctx, {
@@ -1369,7 +1369,17 @@
                         x: { ticks: { color: '#94a3b8' }, grid: { display: false } }
                     },
                     plugins: { 
-                        legend: { display: false }
+                        legend: { display: false },
+                        // 💡 마우스 오버(툴팁) 시 점수 대신 등급 문자가 나오도록 설정 추가
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const scoreValue = context.raw;
+                                    const gradeLabel = reverseScoreMap[scoreValue] || scoreValue;
+                                    return ` 평점: ${gradeLabel} (${scoreValue}점)`;
+                                }
+                            }
+                        }
                     }
                 }
             });

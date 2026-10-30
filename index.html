@@ -552,7 +552,7 @@
         }
 
         // 💡 공통 로그인 기록 업데이트 함수 (직접 로그인 & 자동 로그인 시 모두 사용)
-     async function recordLoginSession(user) {
+   async function recordLoginSession(user) {
     const todayStr = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD"
     const lastDateStr = user.lastLoginAt ? user.lastLoginAt.split('T')[0] : "";
     
@@ -564,7 +564,7 @@
         updatedLoginCount += 1;
     }
 
-    // 💡 날짜가 같든 다르든 최종 로그인 시간은 항상 현재 시간으로 업데이트
+    // 날짜가 같든 다르든 최종 로그인 시간은 항상 현재 시간으로 업데이트
     const { error: updateError } = await supabaseClient.from('members').update({
         login_count: updatedLoginCount,
         last_login_at: currentIsoTime

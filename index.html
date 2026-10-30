@@ -555,11 +555,26 @@
      async function recordLoginSession(user) {
     const todayStr = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD"
     const lastDateStr = user.lastLoginAt ? user.lastLoginAt.split('T')[0] : "";
+    
+    const currentIsoTime = new Date().toISOString();
+    let updatedLoginCount = user.loginCount || 0;
 
-    // 오늘 이미 로그인한 기록이 있으면 카운트 증가 없이 최종 시간만 갱신하거나 스킵
-    if (lastDateStr === todayStr) {
-        return; 
+    // 오늘 첫 로그인인 경우에만 누적 횟수 1증가
+    if (lastDateStr !== todayStr) {
+        updatedLoginCount += 1;
     }
+
+    // 💡 날짜가 같든 다르든 최종 로그인 시간은 항상 현재 시간으로 업데이트
+    const { error: updateError } = await supabaseClient.from('members').update({
+        login_count: updatedLoginCount,
+        last_login_at: currentIsoTime
+    }).eq('name', user.name);
+
+    if (!updateError) {
+        user.loginCount = updatedLoginCount;
+        user.lastLoginAt = currentIsoTime;
+    }
+}
 
     const updatedLoginCount = (user.loginCount || 0) + 1;
     const currentIsoTime = new Date().toISOString();

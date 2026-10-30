@@ -980,24 +980,30 @@
                     valA = scoreMap[a.rating] || 0; valB = scoreMap[b.rating] || 0;
                     return currentSortOrder === 'asc' ? valB - valA : valA - valB;
                 } else if (currentSortField === 'attendance') {
-                    valA = teamTotalMatches > 0 ? (a.attendedMatches / teamTotalMatches) : 0;
-                    valB = teamTotalMatches > 0 ? (b.attendedMatches / teamTotalMatches) : 0;
-                    return currentSortOrder === 'asc' ? valA - valB : valB - valA;
-                }
+                valA = teamTotalMatches > 0 ? (a.attendedMatches / teamTotalMatches) : 0;
+                valB = teamTotalMatches > 0 ? (b.attendedMatches / teamTotalMatches) : 0;
+                return currentSortOrder === 'asc' ? valA - valB : valB - valA;
+            } 
+            // 💡 아래 코드를 추가해 주세요 (로그인 횟수 기준 정렬)
+            else if (currentSortField === 'loginCount') {
+                valA = a.loginCount || 0;
+                valB = b.loginCount || 0;
+                return currentSortOrder === 'asc' ? valA - valB : valB - valA;
+            }
             });
 
-            ['name', 'birth', 'rating', 'attendance'].forEach(f => {
-                const iconEl = document.getElementById(`sort-icon-${f}`);
-                if (iconEl) {
-                    if (currentSortField === f) {
-                        iconEl.innerText = currentSortOrder === 'asc' ? '▲' : '▼';
-                        iconEl.className = 'text-emerald-400 font-bold';
-                    } else {
-                        iconEl.innerText = '↕';
-                        iconEl.className = 'text-slate-500';
-                    }
-                }
-            });
+            ['name', 'birth', 'rating', 'attendance', 'loginCount'].forEach(f => {
+    const iconEl = document.getElementById(`sort-icon-${f}`);
+    if (iconEl) {
+        if (currentSortField === f) {
+            iconEl.innerText = currentSortOrder === 'asc' ? '▲' : '▼';
+            iconEl.className = 'text-emerald-400 font-bold';
+        } else {
+            iconEl.innerText = '↕';
+            iconEl.className = 'text-slate-500';
+        }
+    }
+});
 
             const tbody = document.getElementById('admin-member-list');
             tbody.innerHTML = '';

@@ -534,7 +534,12 @@
         async function fetchMembersFromSupabase() {
             try {
                 const { data, error } = await supabaseClient.from('members').select('*');
-                if (error) { console.error("Supabase 조회 에러:", error); return false; }
+                if (error) { 
+                    console.error("Supabase 조회 에러:", error); 
+                    alert("데이터베이스 연결 중 오류가 발생했습니다: " + error.message);
+                    return false; 
+                }
+                
                 if (data && data.length > 0) {
                     membersData = data.map(m => ({
                         id: m.id,
@@ -553,8 +558,8 @@
                         attendedMatches: m.attended_matches || 0,
                         history: m.history ? (typeof m.history === 'string' ? JSON.parse(m.history) : m.history) : [],
                         feedback: m.feedback || "",
-                        loginCount: m.login_count || 0,
-                        lastLoginAt: m.last_login_at || null
+                        login_count: m.login_count || 0,
+                        last_login_at: m.last_login_at || null
                     }));
 
                     let maxAtt = membersData.length > 0 ? Math.max(...membersData.map(m => m.attendedMatches)) : 0;
@@ -563,8 +568,10 @@
                     activeRegularMemberCount = membersData.filter(m => !m.isWithdrawn && (m.role === 'member' || m.role === 'admin' || m.role === 'sub_admin')).length;
 
                     return true;
+                } else {
+                    console.warn("데이터가 비어있습니다.");
+                    return false;
                 }
-                return false;
             } catch (err) { 
                 console.error("데이터 로딩 실패:", err); 
                 return false; 

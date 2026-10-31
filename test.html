@@ -211,7 +211,7 @@
         <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <div>
                 <h2 id="admin-title" class="text-2xl font-bold text-emerald-400">🛡️ 관리자 대시보드</h2>
-                <p class="text-xs text-slate-400 mt-1">정회원 총원: <span id="admin-member-total-count" class="font-bold text-emerald-400">0명</span> | 팀 전체 총 매치: <span id="admin-team-matches" class="font-bold text-amber-400">0회</span> <button onclick="openEditTotalMatchesModal()" class="ml-1.5 px-1.5 py-0.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-[10px] rounded">⚙️ 수정</button> | 버전: <span class="text-emerald-400 font-bold">v2.26</span></p>
+                <p class="text-xs text-slate-400 mt-1">정회원 총원: <span id="admin-member-total-count" class="font-bold text-emerald-400">0명</span> | 팀 전체 총 매치: <span id="admin-team-matches" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.26</span></p>
             </div>
             <div class="flex gap-2">
                 <button onclick="switchToMyPage()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">내 마이페이지 보기</button>
@@ -250,9 +250,9 @@
                         <th class="p-3 cursor-pointer hover:text-emerald-400 transition" onclick="changeSort('attendance')">출석 횟수 / 참석률 <span id="sort-icon-attendance" class="text-slate-500">↕</span></th>
                         <th class="p-3">연락처 / 카톡 닉네임</th>
                         <!-- 최상위 주관리자 전용 로그인 이력 컬럼 -->
-                        <th id="th-login-tracking" class="p-3 text-center cursor-pointer hover:text-emerald-400 transition hidden" onclick="changeSort('loginCount')">
-                            로그인 이력 <span id="sort-icon-loginCount" class="text-slate-500">↕</span>
-                        </th>
+                       <th id="th-login-tracking" class="p-3 text-center cursor-pointer hover:text-emerald-400 transition hidden" onclick="changeSort('loginCount')">
+    로그인 이력 <span id="sort-icon-loginCount" class="text-slate-500">↕</span>
+</th>
                         <th id="th-action" class="p-3 text-center">관리</th>
                     </tr>
                 </thead>
@@ -269,23 +269,6 @@
             <div class="flex gap-2">
                 <button type="button" onclick="closeLineupModal()" class="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold rounded">취소</button>
                 <button type="button" onclick="processLineupAttendance()" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded shadow">출석 일괄 반영하기</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 팀 총 매치 수 강제 수정 모달 -->
-    <div id="team-matches-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-slate-800 w-full max-w-xs p-6 rounded-2xl border border-slate-700 shadow-2xl text-center">
-            <h3 class="text-lg font-bold text-amber-400 mb-2">⚽ 팀 총 매치 수 보정</h3>
-            <p class="text-xs text-slate-300 mb-4">현재 자동 계산된 값에 오차가 있거나 수동 조절이 필요한 경우 값을 변경하세요.</p>
-            <div class="flex items-center justify-center gap-2 mb-4">
-                <button type="button" onclick="adjustTeamMatches(-1)" class="w-10 h-10 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg text-lg">-</button>
-                <input type="number" id="manual-team-matches-input" class="w-20 text-center px-2 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white font-bold text-lg" value="0">
-                <button type="button" onclick="adjustTeamMatches(1)" class="w-10 h-10 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg text-lg">+</button>
-            </div>
-            <div class="flex gap-2">
-                <button type="button" onclick="closeTeamMatchesModal()" class="flex-1 py-2 bg-slate-700 text-slate-300 text-xs rounded">취소</button>
-                <button type="button" onclick="saveTeamMatchesOverride()" class="flex-1 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded">저장</button>
             </div>
         </div>
     </div>
@@ -504,6 +487,13 @@
         const graphBlindRatings = ["D-", "E+", "E", "E-", "F+", "F", "F-"];
 
         let teamTotalMatches = 0;
+
+        // 총 진행 횟수 수동 보정값(최소 기준)
+        // 예: 실제 진행 횟수가 21회인데 자동 계산값이 20회라면 21로 변경
+        // 자동 계산값이 이 숫자보다 커지면 자동 계산값을 우선 적용합니다.
+        // 별도 보정이 필요 없으면 0으로 둡니다.
+        let manualTeamTotalFloor = 0;
+
         let activeRegularMemberCount = 0;
         let membersData = [];
         let currentUser = null;
@@ -534,12 +524,7 @@
         async function fetchMembersFromSupabase() {
             try {
                 const { data, error } = await supabaseClient.from('members').select('*');
-                if (error) { 
-                    console.error("Supabase 조회 에러:", error); 
-                    alert("데이터베이스 연결 중 오류가 발생했습니다: " + error.message);
-                    return false; 
-                }
-                
+                if (error) { console.error("Supabase 조회 에러:", error); return false; }
                 if (data && data.length > 0) {
                     membersData = data.map(m => ({
                         id: m.id,
@@ -558,38 +543,42 @@
                         attendedMatches: m.attended_matches || 0,
                         history: m.history ? (typeof m.history === 'string' ? JSON.parse(m.history) : m.history) : [],
                         feedback: m.feedback || "",
-                        login_count: m.login_count || 0,
-                        last_login_at: m.last_login_at || null
+                        loginCount: m.login_count || 0,
+                        lastLoginAt: m.last_login_at || null
                     }));
 
-                    let maxAtt = membersData.length > 0 ? Math.max(...membersData.map(m => m.attendedMatches)) : 0;
-                    let manualMatchOffset = parseInt(localStorage.getItem('tenfc_match_offset') || '0', 10);
-                    teamTotalMatches = Math.max(0, (maxAtt > 0 ? maxAtt : 0) + manualMatchOffset);
+                    // 기존 방식대로 최고 개인 출석 횟수를 자동 계산하되,
+                    // 수동 보정값보다 작으면 수동 보정값을 총 진행 횟수로 사용합니다.
+                    const maxAtt = Math.max(
+                        0,
+                        ...membersData.map(m => Number(m.attendedMatches) || 0)
+                    );
+                    teamTotalMatches = Math.max(maxAtt, Number(manualTeamTotalFloor) || 0);
                     activeRegularMemberCount = membersData.filter(m => !m.isWithdrawn && (m.role === 'member' || m.role === 'admin' || m.role === 'sub_admin')).length;
 
                     return true;
-                } else {
-                    console.warn("데이터가 비어있습니다.");
-                    return false;
                 }
+                return false;
             } catch (err) { 
                 console.error("데이터 로딩 실패:", err); 
                 return false; 
             }
         }
 
-        // 로그인 기록 함수
+        // 💡 로그인 기록 함수 (async가 확실히 선언되어 있습니다)
         async function recordLoginSession(user) {
-            const todayStr = new Date().toISOString().split('T')[0]; 
+            const todayStr = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD"
             const lastDateStr = user.lastLoginAt ? user.lastLoginAt.split('T')[0] : "";
             
             const currentIsoTime = new Date().toISOString();
             let updatedLoginCount = user.loginCount || 0;
 
+            // 오늘 첫 로그인인 경우에만 누적 횟수 1증가
             if (lastDateStr !== todayStr) {
                 updatedLoginCount += 1;
             }
 
+            // 날짜 상관없이 최종 로그인 시간은 항상 현재 시간으로 업데이트
             const { error: updateError } = await supabaseClient.from('members').update({
                 login_count: updatedLoginCount,
                 last_login_at: currentIsoTime
@@ -634,6 +623,7 @@
             if (savedUserName) {
                 const foundUser = membersData.find(m => m.name === savedUserName);
                 if (foundUser && !foundUser.isWithdrawn) {
+                    // 💡 async 함수 내부이므로 await 사용 가능
                     await recordLoginSession(foundUser);
 
                     currentUser = foundUser;
@@ -727,6 +717,7 @@
             document.getElementById('photo-preview-modal').classList.add('hidden');
         }
 
+        // 직접 로그인 제출 이벤트 (async 함수로 선언되어 있어 await 사용 가능)
         document.getElementById('login-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const inputName = document.getElementById('name-input').value.trim();
@@ -741,6 +732,7 @@
                     return;
                 }
 
+                // 💡 로그인 기록 반영
                 await recordLoginSession(user);
 
                 currentUser = user;
@@ -970,7 +962,7 @@
                 if (thCheckbox) thCheckbox.style.display = '';
                 if (thRatingHeader) thRatingHeader.style.display = '';
                 if (thAction) thAction.style.display = '';
-                if (thLoginTracking) thLoginTracking.classList.remove('hidden'); 
+                if (thLoginTracking) thLoginTracking.classList.remove('hidden'); // 주관리자에게만 로그인 이력 컬럼 표시
             } else {
                 if (actionBar) actionBar.classList.add('hidden');
                 if (thCheckbox) thCheckbox.style.display = 'none';
@@ -1000,28 +992,30 @@
                     valA = scoreMap[a.rating] || 0; valB = scoreMap[b.rating] || 0;
                     return currentSortOrder === 'asc' ? valB - valA : valA - valB;
                 } else if (currentSortField === 'attendance') {
-                    valA = teamTotalMatches > 0 ? (a.attendedMatches / teamTotalMatches) : 0;
-                    valB = teamTotalMatches > 0 ? (b.attendedMatches / teamTotalMatches) : 0;
-                    return currentSortOrder === 'asc' ? valA - valB : valB - valA;
-                } else if (currentSortField === 'loginCount') {
-                    valA = a.loginCount || 0;
-                    valB = b.loginCount || 0;
-                    return currentSortOrder === 'asc' ? valA - valB : valB - valA;
-                }
+                valA = teamTotalMatches > 0 ? (a.attendedMatches / teamTotalMatches) : 0;
+                valB = teamTotalMatches > 0 ? (b.attendedMatches / teamTotalMatches) : 0;
+                return currentSortOrder === 'asc' ? valA - valB : valB - valA;
+            } 
+            // 💡 아래 코드를 추가해 주세요 (로그인 횟수 기준 정렬)
+            else if (currentSortField === 'loginCount') {
+                valA = a.loginCount || 0;
+                valB = b.loginCount || 0;
+                return currentSortOrder === 'asc' ? valA - valB : valB - valA;
+            }
             });
 
             ['name', 'birth', 'rating', 'attendance', 'loginCount'].forEach(f => {
-                const iconEl = document.getElementById(`sort-icon-${f}`);
-                if (iconEl) {
-                    if (currentSortField === f) {
-                        iconEl.innerText = currentSortOrder === 'asc' ? '▲' : '▼';
-                        iconEl.className = 'text-emerald-400 font-bold';
-                    } else {
-                        iconEl.innerText = '↕';
-                        iconEl.className = 'text-slate-500';
-                    }
-                }
-            });
+    const iconEl = document.getElementById(`sort-icon-${f}`);
+    if (iconEl) {
+        if (currentSortField === f) {
+            iconEl.innerText = currentSortOrder === 'asc' ? '▲' : '▼';
+            iconEl.className = 'text-emerald-400 font-bold';
+        } else {
+            iconEl.innerText = '↕';
+            iconEl.className = 'text-slate-500';
+        }
+    }
+});
 
             const tbody = document.getElementById('admin-member-list');
             tbody.innerHTML = '';
@@ -1067,6 +1061,7 @@
                     <td class="p-3 text-slate-300">${m.fullPhone}<br><span class="text-amber-300">${m.kakaoId || '-'}</span></td>
                 `;
 
+                // 최상위 주관리자에게만 누적 로그인 횟수 및 최종 로그인 시간 표시
                 if (isAdmin) {
                     let formattedLastLogin = '기록 없음';
                     if (m.lastLoginAt) {
@@ -1089,42 +1084,6 @@
 
                 tr.innerHTML = rowHtml;
                 tbody.appendChild(tr);
-            });
-        }
-
-        // 팀 총 매치 수 수동 보정 관련 함수들
-        function openEditTotalMatchesModal() {
-            let maxAtt = membersData.length > 0 ? Math.max(...membersData.map(m => m.attendedMatches)) : 0;
-            let manualMatchOffset = parseInt(localStorage.getItem('tenfc_match_offset') || '0', 10);
-            let currentTotal = Math.max(0, maxAtt + manualMatchOffset);
-            
-            document.getElementById('manual-team-matches-input').value = currentTotal;
-            document.getElementById('team-matches-modal').classList.remove('hidden');
-        }
-
-        function closeTeamMatchesModal() {
-            document.getElementById('team-matches-modal').classList.add('hidden');
-        }
-
-        function adjustTeamMatches(amount) {
-            const inputEl = document.getElementById('manual-team-matches-input');
-            let val = parseInt(inputEl.value || '0', 10) + amount;
-            if (val < 0) val = 0;
-            inputEl.value = val;
-        }
-
-        function saveTeamMatchesOverride() {
-            let targetTotal = parseInt(document.getElementById('manual-team-matches-input').value || '0', 10);
-            let maxAtt = membersData.length > 0 ? Math.max(...membersData.map(m => m.attendedMatches)) : 0;
-            
-            let manualMatchOffset = targetTotal - maxAtt;
-            localStorage.setItem('tenfc_match_offset', manualMatchOffset);
-
-            closeTeamMatchesModal();
-            
-            fetchMembersFromSupabase().then(() => {
-                loadAdminDashboard();
-                alert(`팀 총 매치 수가 ${targetTotal}회로 조정되었습니다!`);
             });
         }
 
@@ -1384,7 +1343,7 @@
             2.5: "F+", 2.0: "F", 1.5: "F-"
         };
 
-        function renderChart(history) {
+       function renderChart(history) {
             const ctx = document.getElementById('ratingChart').getContext('2d');
             if (myChart) myChart.destroy();
             myChart = new Chart(ctx, {
@@ -1423,6 +1382,7 @@
                     },
                     plugins: { 
                         legend: { display: false },
+                        // 💡 마우스 오버(툴팁) 시 점수 대신 등급 문자가 나오도록 설정 추가
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
@@ -1444,15 +1404,17 @@
             const counts = ratingHierarchy.map(grade => regularPool.filter(m => m.rating === grade).length);
             document.getElementById('grade-chart-total-label').innerText = `총 정회원: ${regularPool.length}명`;
 
+            // 💡 등급별 색상 매핑 로직 (레벨 카드 기준과 동일)
             const backgroundColors = ratingHierarchy.map(grade => {
                 const level = getCustomLevelName(grade);
-                if (level === "루키") return '#38bdf8';      
-                else if (level === "아마추어") return '#10b981'; 
-                else if (level === "세미프로") return '#f59e0b'; 
+                if (level === "루키") return '#38bdf8';      // 스카이블루 (하위 등급: F- ~ E+)
+                else if (level === "아마추어") return '#10b981'; // 에메랄드 (중위 등급: D- ~ B)
+                else if (level === "세미프로") return '#f59e0b'; // 앰버/골드 (상위 등급: B+ ~ A+)
                 return '#10b981';
             });
+           // 💡 가장 높은 막대 인원수보다 여유 있게 Y축 최댓값 설정 (숫자가 안 잘리도록 함)
             const maxCount = Math.max(...counts, 0);
-            const suggestedYMax = Math.max(maxCount + 1, 6); 
+            const suggestedYMax = Math.max(maxCount + 1, 6); // 최소 6 이상이면서 최고 인원보다 1~2 크게 설정
 
             gradeCountChartInstance = new Chart(ctx, {
                 type: 'bar',
@@ -1471,7 +1433,7 @@
                     scales: {
                         y: { 
                             beginAtZero: true, 
-                            max: suggestedYMax, 
+                            max: suggestedYMax, // 💡 Y축 상단 여유 공간 확보 (숫자 잘림 방지)
                             ticks: { color: '#94a3b8', precision: 0 }, 
                             grid: { color: '#334155' } 
                         },

@@ -830,13 +830,6 @@ async function loadHistory() {
             ""
           }
 
-          <button
-            class="small-btn"
-            onclick="openGitHubCommit('${commit.html_url}')"
-          >
-            GitHub
-          </button>
-
         </div>
 
       `;
@@ -1158,7 +1151,7 @@ async function compareVersions(baseSha, headSha) {
 
 
     /*
-      GitHub 웹 비교 페이지 링크
+      GitHub 웹 비교 페이지 링크 (선택사항으로 유지하되 필요시 삭제 가능)
     */
 
     html += `
@@ -1259,21 +1252,6 @@ document.addEventListener("keydown", function(event) {
 
 
 /* =========================================================
-   GitHub URL
-========================================================= */
-
-function openGitHubCommit(url) {
-
-  window.open(
-    url,
-    "_blank",
-    "noopener,noreferrer"
-  );
-
-}
-
-
-/* =========================================================
    Base64 UTF-8 디코딩
 ========================================================= */
 
@@ -1339,4 +1317,3 @@ function escapeHtml(value) {
 
 </body>
 </html>
-```

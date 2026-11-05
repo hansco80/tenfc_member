@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 풋살팀 통합 시스템 v2.26</title>
+    <title>TenFC 풋살팀 통합 시스템 v2.27 [TEST SANDBOX]</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
@@ -13,24 +13,29 @@
     <!-- Supabase JS SDK CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-center p-4">
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-center p-4 pt-12">
+
+    <!-- ⚠️ 테스트 페이지 안내 고정 배너 -->
+    <div class="fixed top-0 left-0 right-0 bg-amber-500 text-slate-950 font-bold text-center py-2 px-4 text-xs z-50 shadow-md">
+        ⚠️ 현재 보는 화면은 개인정보가 보호되는 <span class="underline">테스트 전용 페이지(test.html)</span>입니다. (이름/연락처/주소 일부 마스킹 처리됨)
+    </div>
 
     <!-- 로그인 화면 -->
-    <div id="login-container" class="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
+    <div id="login-container" class="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-xl border border-amber-500/60 mt-4">
         <div class="text-center mb-6">
-            <h1 class="text-3xl font-bold text-emerald-400">⚽ TenFC 풋살팀</h1>
-            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v2.26</span></p>
+            <h1 class="text-3xl font-bold text-amber-400">⚽ TenFC [TEST]</h1>
+            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-amber-400 font-bold">v2.27 (테스트)</span></p>
         </div>
         <form id="login-form" class="space-y-4">
             <div>
                 <label class="block text-sm font-medium text-slate-300 mb-1">성명</label>
-                <input type="text" id="name-input" required placeholder="예: 성명 또는 테스트" class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-500 text-white">
+                <input type="text" id="name-input" required placeholder="예: 테스트관리자" class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-amber-500 text-white">
             </div>
             <div>
-                <label class="block text-sm font-medium text-slate-300 mb-1">비밀번호 (초기값: 핸드폰 뒷 4자리 로그인 후 변경 가능)</label>
-                <input type="password" id="phone-input" required placeholder="예: 테스트 계정 비번은 0000" class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-500 text-white">
+                <label class="block text-sm font-medium text-slate-300 mb-1">비밀번호</label>
+                <input type="password" id="phone-input" required placeholder="예: 0000" class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-amber-500 text-white">
             </div>
-            <button type="submit" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition duration-200 shadow-lg shadow-emerald-900/40">로그인</button>
+            <button type="submit" class="w-full py-3 bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold rounded-lg transition duration-200 shadow-lg shadow-amber-900/40">테스트 로그인</button>
         </form>
         
         <!-- TenFC 회칙 보기 버튼 -->
@@ -57,10 +62,10 @@
     <div id="photo-preview-modal" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 hidden z-50 cursor-pointer" onclick="closePhotoPreview()">
         <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-2xl max-w-xs w-full text-center" onclick="event.stopPropagation()">
             <div class="flex justify-between items-center mb-3">
-                <h3 id="preview-member-name" class="text-sm font-bold text-emerald-400">멤버 프로필 사진</h3>
+                <h3 id="preview-member-name" class="text-sm font-bold text-amber-400">멤버 프로필 사진</h3>
                 <button onclick="closePhotoPreview()" class="text-slate-400 hover:text-white text-base font-bold">&times;</button>
             </div>
-            <div class="w-56 h-56 mx-auto rounded-xl overflow-hidden bg-slate-900 border-2 border-emerald-500 flex items-center justify-center text-6xl text-slate-600 mb-3 shadow-inner">
+            <div class="w-56 h-56 mx-auto rounded-xl overflow-hidden bg-slate-900 border-2 border-amber-500 flex items-center justify-center text-6xl text-slate-600 mb-3 shadow-inner">
                 <img id="preview-member-img" src="" alt="프로필 사진" class="w-full h-full object-cover hidden">
                 <span id="preview-member-fallback">⚽</span>
             </div>
@@ -69,16 +74,16 @@
     </div>
 
     <!-- 대시보드 화면 -->
-    <div id="dashboard-container" class="w-full max-w-2xl bg-slate-800 p-6 md:p-8 rounded-2xl shadow-xl border border-slate-700 hidden">
-        <div id="admin-switch-bar" class="hidden mb-4 p-2 bg-slate-900/80 rounded-lg border border-emerald-500/40 flex justify-between items-center">
-            <span id="admin-badge-text" class="text-xs text-emerald-400 font-semibold px-2">🛡️ 관리자 권한 보유 계정</span>
-            <button onclick="switchToAdmin()" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded transition">관리자 대시보드로 이동하기 ➡️</button>
+    <div id="dashboard-container" class="w-full max-w-2xl bg-slate-800 p-6 md:p-8 rounded-2xl shadow-xl border border-slate-700 hidden mt-4">
+        <div id="admin-switch-bar" class="hidden mb-4 p-2 bg-slate-900/80 rounded-lg border border-amber-500/40 flex justify-between items-center">
+            <span id="admin-badge-text" class="text-xs text-amber-400 font-semibold px-2">🛡️ 테스트 관리자 권한 보유 계정</span>
+            <button onclick="switchToAdmin()" class="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-xs rounded transition">관리자 대시보드로 이동하기 ➡️</button>
         </div>
 
         <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <div>
                 <h2 id="user-welcome" class="text-2xl font-bold text-white"></h2>
-                <p class="text-xs text-slate-400 mt-1">정회원 총원: <span id="member-total-count" class="font-bold text-emerald-400">0명</span> | 팀 총 매치: <span id="team-total-matches-display" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.26</span></p>
+                <p class="text-xs text-slate-400 mt-1">정회원 총원: <span id="member-total-count" class="font-bold text-amber-400">0명</span> | 팀 총 매치: <span id="team-total-matches-display" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-amber-400 font-bold">v2.27 (TEST)</span></p>
             </div>
             <div class="flex gap-2">
                 <button onclick="openPwModal()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">비밀번호 변경</button>
@@ -88,13 +93,13 @@
 
         <!-- 프로필 카드 -->
         <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700 mb-6 flex flex-col sm:flex-row items-center gap-4">
-            <div class="w-20 h-20 rounded-full overflow-hidden border-2 border-emerald-500 bg-slate-800 flex-shrink-0 flex items-center justify-center text-2xl font-bold text-emerald-400">
+            <div class="w-20 h-20 rounded-full overflow-hidden border-2 border-amber-500 bg-slate-800 flex-shrink-0 flex items-center justify-center text-2xl font-bold text-amber-400">
                 <img id="user-photo" src="" alt="프로필 사진" class="w-full h-full object-cover hidden">
                 <span id="user-photo-fallback">⚽</span>
             </div>
             <div class="flex-1 grid grid-cols-2 gap-2 text-xs text-slate-300 w-full">
                 <div><span class="text-slate-500">생년월일(만나이):</span> <span id="prof-birth" class="font-medium text-white">-</span></div>
-                <div><span class="text-slate-500">포지션:</span> <span id="prof-position" class="font-medium text-emerald-400">-</span></div>
+                <div><span class="text-slate-500">포지션:</span> <span id="prof-position" class="font-medium text-amber-400">-</span></div>
                 <div><span class="text-slate-500">연락처:</span> <span id="prof-phone" class="font-medium text-white">-</span></div>
                 <div><span class="text-slate-500">카카오톡 닉네임:</span> <span id="prof-kakao" class="font-medium text-amber-300">-</span></div>
                 <div><span class="text-slate-500">가입일:</span> <span id="prof-joindate" class="font-medium text-white">-</span></div>
@@ -109,14 +114,14 @@
                 <div class="flex items-center justify-center gap-1.5">
                     <p class="text-xs text-slate-400">현재 레벨</p>
                     <div class="relative group cursor-pointer inline-flex items-center">
-                        <span class="w-4 h-4 rounded-full bg-slate-700 text-slate-300 text-[10px] font-bold flex items-center justify-center hover:bg-emerald-600 hover:text-white transition">i</span>
+                        <span class="w-4 h-4 rounded-full bg-slate-700 text-slate-300 text-[10px] font-bold flex items-center justify-center hover:bg-amber-600 hover:text-white transition">i</span>
                         <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-900 text-slate-200 text-[11px] rounded-lg shadow-2xl border border-slate-700 opacity-0 group-hover:opacity-100 transition pointer-events-none z-30 text-left">
-                            <p class="font-bold text-emerald-400 mb-1.5 border-b border-slate-800 pb-1">📌 평점 산정 및 반영 기준</p>
+                            <p class="font-bold text-amber-400 mb-1.5 border-b border-slate-800 pb-1">📌 평점 산정 및 반영 기준</p>
                             <p class="text-slate-300 leading-relaxed">평점은 팀 밸런스를 위해 필요한 기준으로, 정기 운동 시 감코진이 각 멤버의 실력과 활동량을 종합적으로 판단하여 상대평가로 결정합니다.<br><span class="text-slate-400 mt-1 block">범위 (A+ ~ F-)</span></p>
                         </div>
                     </div>
                 </div>
-                <p id="stat-rating" class="text-2xl font-extrabold text-emerald-400 mt-1">-</p>
+                <p id="stat-rating" class="text-2xl font-extrabold text-amber-400 mt-1">-</p>
             </div>
             <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-700 text-center">
                 <p class="text-xs text-slate-400">팀 내 순위</p>
@@ -148,11 +153,11 @@
             <h3 class="text-xs font-semibold text-slate-300 mb-3 uppercase tracking-wider">👥 팀 내 출석 비교</h3>
             <div class="space-y-2 text-xs">
                 <div class="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
-                    <span class="text-emerald-400 font-semibold">⬆️ 나보다 출석 수가 많은 회원</span>
+                    <span class="text-amber-400 font-semibold">⬆️ 나보다 출석 수가 많은 회원</span>
                     <span id="rank-above" class="text-slate-200 font-medium">-</span>
                 </div>
-                <div class="flex justify-between items-center bg-emerald-950/40 p-2.5 rounded-lg border border-emerald-800/50">
-                    <span class="text-emerald-300 font-bold">🎯 나와 출석 수가 같은 회원</span>
+                <div class="flex justify-between items-center bg-amber-950/40 p-2.5 rounded-lg border border-amber-800/50">
+                    <span class="text-amber-300 font-bold">🎯 나와 출석 수가 같은 회원</span>
                     <span id="rank-same" class="text-slate-200 font-medium">-</span>
                 </div>
                 <div class="flex justify-between items-center bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
@@ -187,16 +192,16 @@
         <!-- 일반회원 전용 팀 멤버 현황 (제한 보기) 테이블 카드 -->
         <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700">
             <div class="flex justify-between items-center mb-3">
-                <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">👥 팀 멤버 현황 (제한 보기)</h3>
+                <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">👥 팀 멤버 현황 (제한 보기 - 마스킹 적용)</h3>
                 <span class="text-[11px] text-slate-400">정회원 전용 / 사진 클릭시 확대</span>
             </div>
             <div class="overflow-x-auto max-h-72 overflow-y-auto">
                 <table class="w-full text-left text-xs text-slate-300">
                     <thead class="bg-slate-800 text-slate-400 uppercase select-none sticky top-0">
                         <tr>
-                            <th class="p-2.5 cursor-pointer hover:text-emerald-400 transition" onclick="changeRestrictedSort('name')">성명 <span id="r-sort-name" class="text-slate-500">↕</span></th>
-                            <th class="p-2.5 cursor-pointer hover:text-emerald-400 transition" onclick="changeRestrictedSort('birth')">출생년도 <span id="r-sort-birth" class="text-emerald-400">▼</span></th>
-                            <th class="p-2.5 cursor-pointer hover:text-emerald-400 transition" onclick="changeRestrictedSort('attendance')">출석 횟수 / 참석률 <span id="r-sort-attendance" class="text-slate-500">↕</span></th>
+                            <th class="p-2.5 cursor-pointer hover:text-amber-400 transition" onclick="changeRestrictedSort('name')">성명 <span id="r-sort-name" class="text-slate-500">↕</span></th>
+                            <th class="p-2.5 cursor-pointer hover:text-amber-400 transition" onclick="changeRestrictedSort('birth')">출생년도 <span id="r-sort-birth" class="text-amber-400">▼</span></th>
+                            <th class="p-2.5 cursor-pointer hover:text-amber-400 transition" onclick="changeRestrictedSort('attendance')">출석 횟수 / 참석률 <span id="r-sort-attendance" class="text-slate-500">↕</span></th>
                             <th class="p-2.5">카카오톡 닉네임</th>
                         </tr>
                     </thead>
@@ -207,11 +212,11 @@
     </div>
 
     <!-- 관리자 대시보드 화면 -->
-    <div id="admin-container" class="w-full max-w-5xl bg-slate-800 p-6 md:p-8 rounded-2xl shadow-xl border border-slate-700 hidden">
+    <div id="admin-container" class="w-full max-w-5xl bg-slate-800 p-6 md:p-8 rounded-2xl shadow-xl border border-slate-700 hidden mt-4">
         <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <div>
-                <h2 id="admin-title" class="text-2xl font-bold text-emerald-400">🛡️ 관리자 대시보드</h2>
-                <p class="text-xs text-slate-400 mt-1">정회원 총원: <span id="admin-member-total-count" class="font-bold text-emerald-400">0명</span> | 팀 전체 총 매치: <span id="admin-team-matches" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.26</span></p>
+                <h2 id="admin-title" class="text-2xl font-bold text-amber-400">🛡️ 테스트 관리자 대시보드</h2>
+                <p class="text-xs text-slate-400 mt-1">정회원 총: <span id="admin-member-total-count" class="font-bold text-amber-400">0명</span> | 총 매치: <span id="admin-team-matches" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-amber-400 font-bold">v2.27 (TEST)</span></p>
             </div>
             <div class="flex gap-2">
                 <button onclick="switchToMyPage()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">내 마이페이지 보기</button>
@@ -224,10 +229,10 @@
             <div class="flex gap-2 w-full md:w-auto flex-wrap">
                 <button onclick="toggleAllCheckboxes(true)" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded transition">전체 선택</button>
                 <button onclick="toggleAllCheckboxes(false)" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded transition">선택 해제</button>
-                <button onclick="openAddMemberModal()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded shadow transition">+ 신규 멤버 등록</button>
+                <button onclick="openAddMemberModal()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-xs rounded shadow transition">+ 신규 멤버 등록</button>
                 <button onclick="openSubAdminManageModal()" id="sub-admin-manage-btn" class="px-3 py-1.5 bg-sky-700 hover:bg-sky-600 text-white font-bold text-xs rounded shadow transition">🛡️ 부관리자 관리</button>
                 <button onclick="openLineupModal()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded shadow transition">📋 당일 라인업 자동 출석</button>
-                <button onclick="exportMemberTextData()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded shadow transition">전체 멤버 텍스트 복사</button>
+                <button onclick="exportMemberTextData()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-xs rounded shadow transition">전체 멤버 텍스트 복사</button>
             </div>
             <div id="admin-action-buttons" class="flex gap-2 w-full md:w-auto justify-end flex-wrap">
                 <button onclick="batchAdjustRating('up')" class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs rounded shadow transition">선택 평점 일괄 상향 (▲)</button>
@@ -236,23 +241,22 @@
             </div>
         </div>
 
-        <!-- 멤버 관리 테이블 -->
+        <!-- 멤버 관리 테이블 (마스킹 적용) -->
         <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700 overflow-x-auto">
-            <h3 class="text-xs font-semibold text-emerald-400 mb-3 uppercase tracking-wider">🛠️ 관리자 멤버 상세 관리 테이블</h3>
+            <h3 class="text-xs font-semibold text-amber-400 mb-3 uppercase tracking-wider">🛠️ 관리자 멤버 상세 관리 테이블 (개인정보 보호 마스킹 적용)</h3>
             <table class="w-full text-left text-xs text-slate-300">
                 <thead class="bg-slate-800 text-slate-400 uppercase select-none">
                     <tr>
                         <th id="th-checkbox" class="p-3 w-10 text-center"><input type="checkbox" id="select-all-main" onclick="toggleSelectAll(this)"></th>
-                        <th class="p-3 cursor-pointer hover:text-emerald-400 transition" onclick="changeSort('name')">성명 <span id="sort-icon-name" class="text-slate-500">↕</span></th>
-                        <th class="p-3 cursor-pointer hover:text-emerald-400 transition" onclick="changeSort('birth')">출생년도 <span id="sort-icon-birth" class="text-emerald-400">▼</span></th>
+                        <th class="p-3 cursor-pointer hover:text-amber-400 transition" onclick="changeSort('name')">성명 <span id="sort-icon-name" class="text-slate-500">↕</span></th>
+                        <th class="p-3 cursor-pointer hover:text-amber-400 transition" onclick="changeSort('birth')">출생년도 <span id="sort-icon-birth" class="text-amber-400">▼</span></th>
                         <th class="p-3">포지션</th>
-                        <th id="th-rating-header" class="p-3 cursor-pointer hover:text-emerald-400 transition" onclick="changeSort('rating')">현재 평점 <span id="sort-icon-rating" class="text-slate-500">↕</span></th>
-                        <th class="p-3 cursor-pointer hover:text-emerald-400 transition" onclick="changeSort('attendance')">출석 횟수 / 참석률 <span id="sort-icon-attendance" class="text-slate-500">↕</span></th>
+                        <th id="th-rating-header" class="p-3 cursor-pointer hover:text-amber-400 transition" onclick="changeSort('rating')">현재 평점 <span id="sort-icon-rating" class="text-slate-500">↕</span></th>
+                        <th class="p-3 cursor-pointer hover:text-amber-400 transition" onclick="changeSort('attendance')">출석 횟수 / 참석률 <span id="sort-icon-attendance" class="text-slate-500">↕</span></th>
                         <th class="p-3">연락처 / 카톡 닉네임</th>
-                        <!-- 최상위 주관리자 전용 로그인 이력 컬럼 -->
-                       <th id="th-login-tracking" class="p-3 text-center cursor-pointer hover:text-emerald-400 transition hidden" onclick="changeSort('loginCount')">
-    로그인 이력 <span id="sort-icon-loginCount" class="text-slate-500">↕</span>
-</th>
+                        <th id="th-login-tracking" class="p-3 text-center cursor-pointer hover:text-amber-400 transition hidden" onclick="changeSort('loginCount')">
+                            로그인 이력 <span id="sort-icon-loginCount" class="text-slate-500">↕</span>
+                        </th>
                         <th id="th-action" class="p-3 text-center">관리</th>
                     </tr>
                 </thead>
@@ -336,7 +340,7 @@
                 </div>
                 <div class="flex gap-2 pt-2">
                     <button type="button" onclick="closeAddMemberModal()" class="flex-1 py-2 bg-slate-700 text-slate-300 text-xs rounded">취소</button>
-                    <button type="submit" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded">등록 완료</button>
+                    <button type="submit" class="flex-1 py-2 bg-amber-600 hover:bg-amber-500 text-slate-950 text-xs font-bold rounded">등록 완료</button>
                 </div>
             </form>
         </div>
@@ -345,7 +349,7 @@
     <!-- 부관리자 관리 모달 -->
     <div id="sub-admin-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-slate-800 w-full max-w-md p-6 rounded-2xl border border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <h3 class="text-lg font-bold text-emerald-400 mb-2">🛡️ 부관리자 임명 및 해제</h3>
+            <h3 class="text-lg font-bold text-amber-400 mb-2">🛡️ 부관리자 임명 및 해제</h3>
             <div id="sub-admin-list-container" class="space-y-2 mb-4 max-h-60 overflow-y-auto pr-1"></div>
             <button onclick="closeSubAdminModal()" class="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded">닫기</button>
         </div>
@@ -426,7 +430,7 @@
                 </div>
                 <div class="flex gap-2 pt-2">
                     <button type="button" onclick="closeAdminModal()" class="flex-1 py-2 bg-slate-700 text-slate-300 text-xs rounded">취소</button>
-                    <button type="submit" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded">저장하기</button>
+                    <button type="submit" class="flex-1 py-2 bg-amber-600 hover:bg-amber-500 text-slate-950 text-xs font-bold rounded">저장하기</button>
                 </div>
             </form>
         </div>
@@ -451,7 +455,7 @@
                 </div>
                 <div class="flex gap-2 pt-2">
                     <button type="button" onclick="closePwModal()" class="flex-1 py-2 bg-slate-700 text-slate-300 text-xs rounded">취소</button>
-                    <button type="submit" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded">변경 완료</button>
+                    <button type="submit" class="flex-1 py-2 bg-amber-600 hover:bg-amber-500 text-slate-950 text-xs font-bold rounded">변경 완료</button>
                 </div>
             </form>
         </div>
@@ -473,6 +477,28 @@
             "F+": 2.5,  "F": 2.0,  "F-": 1.5 
         };
 
+        // 🔒 개인정보 마스킹 유틸리티 함수
+        function maskName(name) {
+            if (!name || name.length <= 1) return name;
+            if (name.length === 2) return name[0] + '*';
+            let middle = '*'.repeat(name.length - 2);
+            return name[0] + middle + name[name.length - 1];
+        }
+
+        function maskPhone(phone) {
+            if (!phone) return "-";
+            return phone.replace(/(\d{4})$/, '****');
+        }
+
+        function maskAddress(address) {
+            if (!address) return "-";
+            let parts = address.split(' ');
+            if (parts.length > 1) {
+                parts[parts.length - 1] = '***';
+            }
+            return parts.join(' ');
+        }
+
         function getCustomLevelName(rating) {
             if (["F-", "F", "F+", "E-", "E", "E+"].includes(rating)) {
                 return "루키";
@@ -487,11 +513,6 @@
         const graphBlindRatings = ["D-", "E+", "E", "E-", "F+", "F", "F-"];
 
         let teamTotalMatches = 0;
-
-        // 총 진행 횟수 수동 보정값(최소 기준)
-        // 예: 실제 진행 횟수가 21회인데 자동 계산값이 20회라면 21로 변경
-        // 자동 계산값이 이 숫자보다 커지면 자동 계산값을 우선 적용합니다.
-        // 별도 보정이 필요 없으면 0으로 둡니다.
         let manualTeamTotalFloor = 0;
 
         let activeRegularMemberCount = 0;
@@ -520,10 +541,10 @@
             return historyArr;
         }
 
-        // members 테이블 연동
         async function fetchMembersFromSupabase() {
             try {
-                const { data, error } = await supabaseClient.from('members').select('*');
+                // 💡 test_members 테이블 연동
+                const { data, error } = await supabaseClient.from('test_members').select('*');
                 if (error) { console.error("Supabase 조회 에러:", error); return false; }
                 if (data && data.length > 0) {
                     membersData = data.map(m => ({
@@ -547,8 +568,6 @@
                         lastLoginAt: m.last_login_at || null
                     }));
 
-                    // 기존 방식대로 최고 개인 출석 횟수를 자동 계산하되,
-                    // 수동 보정값보다 작으면 수동 보정값을 총 진행 횟수로 사용합니다.
                     const maxAtt = Math.max(
                         0,
                         ...membersData.map(m => Number(m.attendedMatches) || 0)
@@ -565,21 +584,18 @@
             }
         }
 
-        // 💡 로그인 기록 함수 (async가 확실히 선언되어 있습니다)
         async function recordLoginSession(user) {
-            const todayStr = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD"
+            const todayStr = new Date().toISOString().split('T')[0];
             const lastDateStr = user.lastLoginAt ? user.lastLoginAt.split('T')[0] : "";
             
             const currentIsoTime = new Date().toISOString();
             let updatedLoginCount = user.loginCount || 0;
 
-            // 오늘 첫 로그인인 경우에만 누적 횟수 1증가
             if (lastDateStr !== todayStr) {
                 updatedLoginCount += 1;
             }
 
-            // 날짜 상관없이 최종 로그인 시간은 항상 현재 시간으로 업데이트
-            const { error: updateError } = await supabaseClient.from('members').update({
+            const { error: updateError } = await supabaseClient.from('test_members').update({
                 login_count: updatedLoginCount,
                 last_login_at: currentIsoTime
             }).eq('name', user.name);
@@ -600,7 +616,7 @@
             const urlParams = new URLSearchParams(window.location.search);
             const viewUserName = urlParams.get('view');
             if (viewUserName) {
-                const savedUserName = localStorage.getItem('tenfc_logged_user');
+                const savedUserName = localStorage.getItem('tenfc_test_logged_user');
                 const loggedUser = membersData.find(m => m.name === savedUserName);
                 
                 if (!loggedUser || loggedUser.role !== 'admin') {
@@ -619,11 +635,10 @@
                 }
             }
 
-            const savedUserName = localStorage.getItem('tenfc_logged_user');
+            const savedUserName = localStorage.getItem('tenfc_test_logged_user');
             if (savedUserName) {
                 const foundUser = membersData.find(m => m.name === savedUserName);
                 if (foundUser && !foundUser.isWithdrawn) {
-                    // 💡 async 함수 내부이므로 await 사용 가능
                     await recordLoginSession(foundUser);
 
                     currentUser = foundUser;
@@ -636,7 +651,7 @@
                         loadMemberDashboard(currentUser);
                     }
                 } else {
-                    localStorage.removeItem('tenfc_logged_user');
+                    localStorage.removeItem('tenfc_test_logged_user');
                 }
             }
         }
@@ -698,7 +713,7 @@
             const m = membersData.find(item => item.name === name);
             if (!m) return;
             
-            document.getElementById('preview-member-name').innerText = `${m.name} 님 프로필 사진`;
+            document.getElementById('preview-member-name').innerText = `${maskName(m.name)} 님 프로필 사진`;
             const imgEl = document.getElementById('preview-member-img');
             const fallbackEl = document.getElementById('preview-member-fallback');
             
@@ -717,7 +732,6 @@
             document.getElementById('photo-preview-modal').classList.add('hidden');
         }
 
-        // 직접 로그인 제출 이벤트 (async 함수로 선언되어 있어 await 사용 가능)
         document.getElementById('login-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const inputName = document.getElementById('name-input').value.trim();
@@ -727,16 +741,15 @@
 
             if (user) {
                 if (user.isWithdrawn) {
-                    document.getElementById('withdrawn-msg').innerText = `${user.name} 님은 현재 탈퇴 처리된 멤버입니다.`;
+                    document.getElementById('withdrawn-msg').innerText = `${maskName(user.name)} 님은 현재 탈퇴 처리된 멤버입니다.`;
                     document.getElementById('withdrawn-modal').classList.remove('hidden');
                     return;
                 }
 
-                // 💡 로그인 기록 반영
                 await recordLoginSession(user);
 
                 currentUser = user;
-                localStorage.setItem('tenfc_logged_user', user.name); 
+                localStorage.setItem('tenfc_test_logged_user', user.name); 
                 document.getElementById('login-container').classList.add('hidden');
                 document.getElementById('login-error').classList.add('hidden');
                 
@@ -759,14 +772,15 @@
             const leadMember = memberList[0];
             const restCount = memberList.length - 1;
             if (restCount > 0) {
-                return `${leadMember.name} 외 ${restCount}명 (${leadMember.attendedMatches}회)`;
+                return `${maskName(leadMember.name)} 외 ${restCount}명 (${leadMember.attendedMatches}회)`;
             } else {
-                return `${leadMember.name} (${leadMember.attendedMatches}회)`;
+                return `${maskName(leadMember.name)} (${leadMember.attendedMatches}회)`;
             }
         }
 
         function loadMemberDashboard(user) {
-            document.getElementById('user-welcome').innerHTML = `<span class="text-white">${user.name} 님</span>`;
+            // 🔒 개인정보 마스킹 적용
+            document.getElementById('user-welcome').innerHTML = `<span class="text-white">${maskName(user.name)} 님 (테스트)</span>`;
             document.getElementById('team-total-matches-display').innerText = `${teamTotalMatches}회`;
             document.getElementById('member-total-count').innerText = `${activeRegularMemberCount}명`;
             
@@ -783,10 +797,10 @@
 
             document.getElementById('prof-birth').innerText = calculateInternationalAge(user.birth);
             document.getElementById('prof-position').innerText = user.position;
-            document.getElementById('prof-phone').innerText = user.fullPhone;
-            document.getElementById('prof-kakao').innerText = user.kakaoId || "-";
+            document.getElementById('prof-phone').innerText = maskPhone(user.fullPhone);
+            document.getElementById('prof-kakao').innerText = maskName(user.kakaoId) || "-";
             document.getElementById('prof-joindate').innerText = user.joinDate || "-";
-            document.getElementById('prof-address').innerText = user.address || "-";
+            document.getElementById('prof-address').innerText = maskAddress(user.address);
             
             let roleText = '정회원';
             if (user.role === 'admin') roleText = '주관리자 (운영진)';
@@ -802,7 +816,7 @@
 
             if (currentUser.role === 'admin' || currentUser.role === 'sub_admin') {
                 document.getElementById('admin-switch-bar').classList.remove('hidden');
-                document.getElementById('admin-badge-text').innerText = currentUser.role === 'admin' ? '🛡️ 주관리자 권한 보유 계정' : '👁️ 부관리자 권한 보유 계정';
+                document.getElementById('admin-badge-text').innerText = currentUser.role === 'admin' ? '🛡️ 테스트 주관리자 권한 보유 계정' : '👁️ 테스트 부관리자 권한 보유 계정';
             } else {
                 document.getElementById('admin-switch-bar').classList.add('hidden');
             }
@@ -815,7 +829,7 @@
 
             ratingEl.className = "text-2xl font-extrabold mt-1 ";
             if (customLevel === "루키") ratingEl.classList.add("text-sky-400");
-            else if (customLevel === "아마추어") ratingEl.classList.add("text-emerald-400");
+            else if (customLevel === "아마추어") ratingEl.classList.add("text-amber-400");
             else if (customLevel === "세미프로") ratingEl.classList.add("text-amber-400");
             
             const isRookieLevel = ["F-", "F", "F+", "E-", "E", "E+"].includes(user.rating);
@@ -887,7 +901,7 @@
                 if (iconEl) {
                     if (restrictedSortField === f) {
                         iconEl.innerText = restrictedSortOrder === 'asc' ? '▲' : '▼';
-                        iconEl.className = 'text-emerald-400 font-bold';
+                        iconEl.className = 'text-amber-400 font-bold';
                     } else {
                         iconEl.innerText = '↕';
                         iconEl.className = 'text-slate-500';
@@ -898,19 +912,19 @@
             const rowsHtml = displayList.map(m => {
                 const attRate = teamTotalMatches > 0 ? Math.round((m.attendedMatches / teamTotalMatches) * 100) : 0;
                 let roleBadge = '';
-                if (m.role === 'admin' || m.role === 'sub_admin') roleBadge = '<span class="text-emerald-400 text-[10px] ml-1">(운영진)</span>';
+                if (m.role === 'admin' || m.role === 'sub_admin') roleBadge = '<span class="text-amber-400 text-[10px] ml-1">(운영진)</span>';
 
                 return `
                     <tr class="hover:bg-slate-700/35 transition">
                         <td class="p-2.5 font-bold text-white flex items-center gap-2">
-                            <div onclick="openPhotoPreview('${m.name}')" class="w-7 h-7 rounded-full overflow-hidden bg-slate-700 flex-shrink-0 flex items-center justify-center text-xs cursor-pointer hover:ring-2 hover:ring-emerald-400 transition">
+                            <div onclick="openPhotoPreview('${m.name}')" class="w-7 h-7 rounded-full overflow-hidden bg-slate-700 flex-shrink-0 flex items-center justify-center text-xs cursor-pointer hover:ring-2 hover:ring-amber-400 transition">
                                 ${m.photo && m.photo.trim() !== "" ? `<img src="${m.photo}" class="w-full h-full object-cover">` : '⚽'}
                             </div>
-                            <span onclick="openPhotoPreview('${m.name}')" class="text-white font-bold cursor-pointer hover:text-emerald-400 transition">${m.name}</span> ${roleBadge}
+                            <span onclick="openPhotoPreview('${m.name}')" class="text-white font-bold cursor-pointer hover:text-amber-400 transition">${maskName(m.name)}</span> ${roleBadge}
                         </td>
                         <td class="p-2.5 text-slate-300">${formatShortBirthAge(m.birth)}</td>
                         <td class="p-2.5 text-slate-300">${m.attendedMatches}회 / ${teamTotalMatches}회 <span class="text-indigo-400 font-bold">(${attRate}%)</span></td>
-                        <td class="p-2.5 text-amber-300 font-medium">${m.kakaoId || '-'}</td>
+                        <td class="p-2.5 text-amber-300 font-medium">${maskName(m.kakaoId) || '-'}</td>
                     </tr>
                 `;
             }).join('');
@@ -949,7 +963,7 @@
             document.getElementById('admin-member-total-count').innerText = `${activeRegularMemberCount}명`;
             
             const isAdmin = currentUser.role === 'admin';
-            document.getElementById('admin-title').innerText = isAdmin ? '🛡️ 주관리자 대시보드' : '👁️ 부관리자 대시보드 (등급 조회 제한)';
+            document.getElementById('admin-title').innerText = isAdmin ? '🛡️ 테스트 주관리자 대시보드' : '👁️ 테스트 부관리자 대시보드 (등급 조회 제한)';
             
             const actionBar = document.getElementById('admin-action-bar');
             const thCheckbox = document.getElementById('th-checkbox');
@@ -962,7 +976,7 @@
                 if (thCheckbox) thCheckbox.style.display = '';
                 if (thRatingHeader) thRatingHeader.style.display = '';
                 if (thAction) thAction.style.display = '';
-                if (thLoginTracking) thLoginTracking.classList.remove('hidden'); // 주관리자에게만 로그인 이력 컬럼 표시
+                if (thLoginTracking) thLoginTracking.classList.remove('hidden');
             } else {
                 if (actionBar) actionBar.classList.add('hidden');
                 if (thCheckbox) thCheckbox.style.display = 'none';
@@ -992,30 +1006,28 @@
                     valA = scoreMap[a.rating] || 0; valB = scoreMap[b.rating] || 0;
                     return currentSortOrder === 'asc' ? valB - valA : valA - valB;
                 } else if (currentSortField === 'attendance') {
-                valA = teamTotalMatches > 0 ? (a.attendedMatches / teamTotalMatches) : 0;
-                valB = teamTotalMatches > 0 ? (b.attendedMatches / teamTotalMatches) : 0;
-                return currentSortOrder === 'asc' ? valA - valB : valB - valA;
-            } 
-            // 💡 아래 코드를 추가해 주세요 (로그인 횟수 기준 정렬)
-            else if (currentSortField === 'loginCount') {
-                valA = a.loginCount || 0;
-                valB = b.loginCount || 0;
-                return currentSortOrder === 'asc' ? valA - valB : valB - valA;
-            }
+                    valA = teamTotalMatches > 0 ? (a.attendedMatches / teamTotalMatches) : 0;
+                    valB = teamTotalMatches > 0 ? (b.attendedMatches / teamTotalMatches) : 0;
+                    return currentSortOrder === 'asc' ? valA - valB : valB - valA;
+                } else if (currentSortField === 'loginCount') {
+                    valA = a.loginCount || 0;
+                    valB = b.loginCount || 0;
+                    return currentSortOrder === 'asc' ? valA - valB : valB - valA;
+                }
             });
 
             ['name', 'birth', 'rating', 'attendance', 'loginCount'].forEach(f => {
-    const iconEl = document.getElementById(`sort-icon-${f}`);
-    if (iconEl) {
-        if (currentSortField === f) {
-            iconEl.innerText = currentSortOrder === 'asc' ? '▲' : '▼';
-            iconEl.className = 'text-emerald-400 font-bold';
-        } else {
-            iconEl.innerText = '↕';
-            iconEl.className = 'text-slate-500';
-        }
-    }
-});
+                const iconEl = document.getElementById(`sort-icon-${f}`);
+                if (iconEl) {
+                    if (currentSortField === f) {
+                        iconEl.innerText = currentSortOrder === 'asc' ? '▲' : '▼';
+                        iconEl.className = 'text-amber-400 font-bold';
+                    } else {
+                        iconEl.innerText = '↕';
+                        iconEl.className = 'text-slate-500';
+                    }
+                }
+            });
 
             const tbody = document.getElementById('admin-member-list');
             tbody.innerHTML = '';
@@ -1024,7 +1036,7 @@
                 const attRate = teamTotalMatches > 0 ? Math.round((m.attendedMatches / teamTotalMatches) * 100) : 0;
                 let roleBadge = '';
                 if (m.isWithdrawn) roleBadge = '<span class="text-rose-400 text-[10px] ml-1 font-bold">(탈퇴)</span>';
-                else if (m.role === 'admin' || m.role === 'sub_admin') roleBadge = '<span class="text-emerald-400 text-[10px] ml-1">(운영진)</span>';
+                else if (m.role === 'admin' || m.role === 'sub_admin') roleBadge = '<span class="text-amber-400 text-[10px] ml-1">(운영진)</span>';
                 else if (m.role === 'guest') roleBadge = '<span class="text-amber-400 text-[10px] ml-1">(용병)</span>';
                 else if (m.role === 'acquaintance') roleBadge = '<span class="text-purple-400 text-[10px] ml-1">(지인)</span>';
 
@@ -1039,7 +1051,8 @@
                     rowHtml += `<td class="p-3 text-center"><input type="checkbox" class="member-checkbox" value="${m.name}"></td>`;
                 }
                 
-                let nameCellContent = isAdmin ? `<span onclick="openMemberPageInNewTab('${m.name}')" class="cursor-pointer hover:underline text-white font-bold" title="새 창에서 마이페이지 보기">${m.name}</span>` : `<span class="text-white font-bold">${m.name}</span>`;
+                let maskedNameStr = maskName(m.name);
+                let nameCellContent = isAdmin ? `<span onclick="openMemberPageInNewTab('${m.name}')" class="cursor-pointer hover:underline text-white font-bold" title="새 창에서 마이페이지 보기">${maskedNameStr}</span>` : `<span class="text-white font-bold">${maskedNameStr}</span>`;
 
                 rowHtml += `
                     <td class="p-3 font-bold text-white flex items-center gap-2">
@@ -1053,15 +1066,15 @@
                 `;
 
                 if (isAdmin) {
-                    rowHtml += `<td class="p-3 font-extrabold text-emerald-400">${ratingDisplay}</td>`;
+                    rowHtml += `<td class="p-3 font-extrabold text-amber-400">${ratingDisplay}</td>`;
                 }
 
+                // 🔒 관리자 테이블 목록에서도 연락처/카톡 마스킹 적용
                 rowHtml += `
-                    <td class="p-3 text-slate-300">${m.attendedMatches}회 / ${teamTotalMatches}회 <span class="text-indigo-400 font-bold">(${attRate}%)</span></td>
-                    <td class="p-3 text-slate-300">${m.fullPhone}<br><span class="text-amber-300">${m.kakaoId || '-'}</span></td>
+                    <td class="p-3 text-slate-300">${maskPhone(m.fullPhone)}회 / ${teamTotalMatches}회 <span class="text-indigo-400 font-bold">(${attRate}%)</span></td>
+                    <td class="p-3 text-slate-300">${maskPhone(m.fullPhone)}<br><span class="text-amber-300">${maskName(m.kakaoId) || '-'}</span></td>
                 `;
 
-                // 최상위 주관리자에게만 누적 로그인 횟수 및 최종 로그인 시간 표시
                 if (isAdmin) {
                     let formattedLastLogin = '기록 없음';
                     if (m.lastLoginAt) {
@@ -1075,11 +1088,11 @@
                     }
                     rowHtml += `
                         <td class="p-3 text-center text-slate-300">
-                            <span class="font-bold text-emerald-400">${m.loginCount || 0}회</span><br>
+                            <span class="font-bold text-amber-400">${m.loginCount || 0}회</span><br>
                             <span class="text-[10px] text-slate-400">${formattedLastLogin}</span>
                         </td>
                     `;
-                    rowHtml += `<td class="p-3 text-center"><button onclick="openAdminEdit('${m.name}')" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold">수정</button></td>`;
+                    rowHtml += `<td class="p-3 text-center"><button onclick="openAdminEdit('${m.name}')" class="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-slate-950 rounded text-xs font-semibold">수정</button></td>`;
                 }
 
                 tr.innerHTML = rowHtml;
@@ -1132,7 +1145,7 @@
 
             const allTargetMembers = [...regularMatches, ...guestOrAcquaintanceMatches];
             for (let m of allTargetMembers) {
-                await supabaseClient.from('members').update({ attended_matches: m.attendedMatches + 1 }).eq('name', m.name);
+                await supabaseClient.from('test_members').update({ attended_matches: m.attendedMatches + 1 }).eq('name', m.name);
             }
 
             await fetchMembersFromSupabase();
@@ -1172,10 +1185,10 @@
                 last_login_at: null
             };
 
-            const { error } = await supabaseClient.from('members').insert([newMember]);
+            const { error } = await supabaseClient.from('test_members').insert([newMember]);
             if (error) { alert('등록 실패: ' + error.message); return; }
 
-            alert(`[${newMember.name}] 님 등록 완료!`);
+            alert(`[${maskName(newMember.name)}] 님 등록 완료!`);
             closeAddMemberModal();
             await fetchMembersFromSupabase();
             loadAdminDashboard();
@@ -1189,8 +1202,8 @@
                 const div = document.createElement('div');
                 div.className = "flex justify-between items-center bg-slate-900/60 p-2.5 rounded-lg border border-slate-700 text-xs";
                 div.innerHTML = `
-                    <div><span class="font-bold text-white">${m.name}</span> <span class="text-slate-400">(${m.position})</span></div>
-                    <button onclick="toggleSubAdminRole('${m.name}', ${!isSub})" class="px-2.5 py-1 ${isSub ? 'bg-rose-800' : 'bg-emerald-600'} text-white font-semibold rounded">${isSub ? '해제' : '임명'}</button>
+                    <div><span class="font-bold text-white">${maskName(m.name)}</span> <span class="text-slate-400">(${m.position})</span></div>
+                    <button onclick="toggleSubAdminRole('${m.name}', ${!isSub})" class="px-2.5 py-1 ${isSub ? 'bg-rose-800' : 'bg-amber-600 text-slate-950 font-bold'} rounded">${isSub ? '해제' : '임명'}</button>
                 `;
                 container.appendChild(div);
             });
@@ -1200,7 +1213,7 @@
 
         async function toggleSubAdminRole(name, makeSub) {
             const newRole = makeSub ? 'sub_admin' : 'member';
-            const { error } = await supabaseClient.from('members').update({ role: newRole }).eq('name', name);
+            const { error } = await supabaseClient.from('test_members').update({ role: newRole }).eq('name', name);
             if (error) { alert('권한 변경 실패'); return; }
             await fetchMembersFromSupabase();
             openSubAdminManageModal();
@@ -1210,11 +1223,36 @@
         function toggleAllCheckboxes(status) { document.querySelectorAll('.member-checkbox').forEach(cb => cb.checked = status); }
 
         function exportMemberTextData() {
-            let textOutput = `== TenFC 명단 ==\n`;
-            membersData.filter(m => !m.isWithdrawn && m.role !== 'guest' && m.role !== 'acquaintance').forEach(m => {
-                textOutput += `${m.name} / ${m.birth || '-'} / ${m.rating}\n`;
+            const now = new Date();
+            const dateStr = `${now.getMonth() + 1}월 ${now.getDate()}일`;
+            let textOutput = `== TenFC 테스트 명단 (${dateStr} 업데이트) ==\n`;
+
+            const formatLine = (m, customName) => {
+                const nameStr = customName || maskName(m.name);
+                const birthStr = m.birth ? m.birth.trim() : '-';
+                const score = scoreMap[m.rating] !== undefined ? scoreMap[m.rating].toFixed(1) : '0.0';
+                return `${nameStr} / ${birthStr} / ${m.rating} (${score}점)\n`;
+            };
+
+            const sortByBirthAsc = (a, b) => {
+                let bA = a.birth ? a.birth.trim() : "";
+                let bB = b.birth ? b.birth.trim() : "";
+                if (bA === "" && bB !== "") return 1;
+                if (bA !== "" && bB === "") return -1;
+                return bA.localeCompare(bB);
+            };
+
+            const regularList = membersData
+                .filter(m => !m.isWithdrawn && (m.role === 'member' || m.role === 'admin' || m.role === 'sub_admin'))
+                .sort(sortByBirthAsc);
+
+            regularList.forEach(m => {
+                const isOp = m.role === 'admin' || m.role === 'sub_admin';
+                const displayName = isOp ? `${maskName(m.name)} *` : maskName(m.name);
+                textOutput += formatLine(m, displayName);
             });
-            navigator.clipboard.writeText(textOutput).then(() => alert(`멤버 명단이 클립보드에 복사되었습니다!`));
+
+            navigator.clipboard.writeText(textOutput).then(() => alert(`마스킹된 테스트 멤버 명단이 클립보드에 복사되었습니다!`));
         }
 
         async function batchAdjustRating(direction) {
@@ -1222,6 +1260,8 @@
             if (checkedBoxes.length === 0) { alert('평점을 조정할 멤버를 체크해주세요.'); return; }
             
             let updates = [];
+            let confirmLines = [];
+
             checkedBoxes.forEach(cb => {
                 const m = membersData.find(item => item.name === cb.value);
                 if (m) {
@@ -1232,14 +1272,18 @@
                     const newRating = ratingHierarchy[idx];
                     const newScore = scoreMap[newRating] || 6.5;
                     updates.push({ member: m, newRating: newRating, newScore: newScore });
+                    confirmLines.push(`- ${maskName(m.name)}: ${m.rating} -> ${newRating}`);
                 }
             });
 
-            if (!confirm(`선택한 멤버들의 평점을 변경하시겠습니까?`)) return;
+            const actionText = direction === 'up' ? '상향' : '하향';
+            const confirmMsg = `선택한 ${updates.length}명의 평점을 일괄 ${actionText}하시겠습니까?\n\n` + confirmLines.join('\n');
+
+            if (!confirm(confirmMsg)) return;
 
             for (let u of updates) {
                 let updatedHistory = getUpdatedHistory(u.member.history, u.newScore);
-                await supabaseClient.from('members').update({ 
+                await supabaseClient.from('test_members').update({ 
                     rating: u.newRating,
                     history: updatedHistory 
                 }).eq('name', u.member.name);
@@ -1259,7 +1303,7 @@
             for (let cb of checkedBoxes) {
                 const m = membersData.find(item => item.name === cb.value);
                 if (m) {
-                    await supabaseClient.from('members').update({ attended_matches: m.attendedMatches + 1 }).eq('name', m.name);
+                    await supabaseClient.from('test_members').update({ attended_matches: m.attendedMatches + 1 }).eq('name', m.name);
                 }
             }
             await fetchMembersFromSupabase();
@@ -1271,8 +1315,8 @@
             const m = membersData.find(item => item.name === name);
             if (!m) return;
             document.getElementById('edit-member-name').value = m.name;
-            document.getElementById('edit-name').value = m.name;
-            document.getElementById('edit-modal-title').innerText = `${m.name} 정보 수정`;
+            document.getElementById('edit-name').value = maskName(m.name);
+            document.getElementById('edit-modal-title').innerText = `${maskName(m.name)} 정보 수정`;
             document.getElementById('edit-rating').value = m.rating;
             document.getElementById('edit-position').value = m.position;
             document.getElementById('edit-birth').value = m.birth || '';
@@ -1317,7 +1361,7 @@
 
             async function saveToSupabase(photoUrl) {
                 if (photoUrl !== undefined) updatedFields.photo = photoUrl;
-                const { error } = await supabaseClient.from('members').update(updatedFields).eq('name', name);
+                const { error } = await supabaseClient.from('test_members').update(updatedFields).eq('name', name);
                 if (error) { alert('수정 실패: ' + error.message); return; }
                 alert('업데이트 완료!');
                 closeAdminModal();
@@ -1343,7 +1387,7 @@
             2.5: "F+", 2.0: "F", 1.5: "F-"
         };
 
-       function renderChart(history) {
+        function renderChart(history) {
             const ctx = document.getElementById('ratingChart').getContext('2d');
             if (myChart) myChart.destroy();
             myChart = new Chart(ctx, {
@@ -1353,13 +1397,13 @@
                     datasets: [{
                         label: '평점 추이',
                         data: history.map(h => h.score),
-                        borderColor: '#10b981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.15)',
                         borderWidth: 3,
                         fill: true,
                         tension: 0.3,
                         pointRadius: 5,
-                        pointBackgroundColor: '#10b981'
+                        pointBackgroundColor: '#f59e0b'
                     }]
                 },
                 options: {
@@ -1382,7 +1426,6 @@
                     },
                     plugins: { 
                         legend: { display: false },
-                        // 💡 마우스 오버(툴팁) 시 점수 대신 등급 문자가 나오도록 설정 추가
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
@@ -1404,17 +1447,15 @@
             const counts = ratingHierarchy.map(grade => regularPool.filter(m => m.rating === grade).length);
             document.getElementById('grade-chart-total-label').innerText = `총 정회원: ${regularPool.length}명`;
 
-            // 💡 등급별 색상 매핑 로직 (레벨 카드 기준과 동일)
             const backgroundColors = ratingHierarchy.map(grade => {
                 const level = getCustomLevelName(grade);
-                if (level === "루키") return '#38bdf8';      // 스카이블루 (하위 등급: F- ~ E+)
-                else if (level === "아마추어") return '#10b981'; // 에메랄드 (중위 등급: D- ~ B)
-                else if (level === "세미프로") return '#f59e0b'; // 앰버/골드 (상위 등급: B+ ~ A+)
+                if (level === "루키") return '#38bdf8';
+                else if (level === "아마추어") return '#10b981';
+                else if (level === "세미프로") return '#f59e0b';
                 return '#10b981';
             });
-           // 💡 가장 높은 막대 인원수보다 여유 있게 Y축 최댓값 설정 (숫자가 안 잘리도록 함)
             const maxCount = Math.max(...counts, 0);
-            const suggestedYMax = Math.max(maxCount + 1, 6); // 최소 6 이상이면서 최고 인원보다 1~2 크게 설정
+            const suggestedYMax = Math.max(maxCount + 1, 6);
 
             gradeCountChartInstance = new Chart(ctx, {
                 type: 'bar',
@@ -1433,7 +1474,7 @@
                     scales: {
                         y: { 
                             beginAtZero: true, 
-                            max: suggestedYMax, // 💡 Y축 상단 여유 공간 확보 (숫자 잘림 방지)
+                            max: suggestedYMax,
                             ticks: { color: '#94a3b8', precision: 0 }, 
                             grid: { color: '#334155' } 
                         },
@@ -1474,7 +1515,7 @@
             if (currentPw !== currentUser.password) { alert('현재 비밀번호가 일치하지 않습니다.'); return; }
             if (newPw !== newPwConfirm) { alert('새 비밀번호가 서로 일치하지 않습니다.'); return; }
 
-            const { error } = await supabaseClient.from('members').update({ password: newPw }).eq('name', currentUser.name);
+            const { error } = await supabaseClient.from('test_members').update({ password: newPw }).eq('name', currentUser.name);
             if (error) { alert('변경 실패'); return; }
 
             currentUser.password = newPw;
@@ -1484,7 +1525,7 @@
 
         function logout() {
             currentUser = null;
-            localStorage.removeItem('tenfc_logged_user');
+            localStorage.removeItem('tenfc_test_logged_user');
             document.getElementById('dashboard-container').classList.add('hidden');
             document.getElementById('admin-container').classList.add('hidden');
             document.getElementById('login-container').classList.remove('hidden');

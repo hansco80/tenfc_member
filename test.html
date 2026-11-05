@@ -527,6 +527,11 @@
         let restrictedSortField = 'birth';
         let restrictedSortOrder = 'asc';
 
+        // 💡 테스트 관리자 계정 판별용 헬퍼 함수 (이름이 '테스트관리자'이거나 role이 admin인 계정 중 테스트용)
+        function isTestAdmin(m) {
+            return m.name === '테스트관리자';
+        }
+
         function getUpdatedHistory(history, newScore) {
             let historyArr = Array.isArray(history) ? [...history] : [];
             const now = new Date();
@@ -543,7 +548,6 @@
 
         async function fetchMembersFromSupabase() {
             try {
-                // 💡 test_members 테이블 연동
                 const { data, error } = await supabaseClient.from('test_members').select('*');
                 if (error) { console.error("Supabase 조회 에러:", error); return false; }
                 if (data && data.length > 0) {
@@ -573,7 +577,9 @@
                         ...membersData.map(m => Number(m.attendedMatches) || 0)
                     );
                     teamTotalMatches = Math.max(maxAtt, Number(manualTeamTotalFloor) || 0);
-                    activeRegularMemberCount = membersData.filter(m => !m.isWithdrawn && (m.role === 'member' || m.role === 'admin' || m.role === 'sub_admin')).length;
+                    
+                    // 💡 정회원 총원 및 통계 산출 시 '테스트관리자' 계정 제외
+                    activeRegularMemberCount = membersData.filter(m => !m.isWithdrawn && !isTestAdmin(m) && (m.role === 'member' || m.role === 'admin' || m.role === 'sub_admin')).length;
 
                     return true;
                 }
@@ -779,7 +785,6 @@
         }
 
         function loadMemberDashboard(user) {
-            // 🔒 개인정보 마스킹 적용
             document.getElementById('user-welcome').innerHTML = `<span class="text-white">${maskName(user.name)} 님 (테스트)</span>`;
             document.getElementById('team-total-matches-display').innerText = `${teamTotalMatches}회`;
             document.getElementById('member-total-count').innerText = `${activeRegularMemberCount}명`;
@@ -821,7 +826,8 @@
                 document.getElementById('admin-switch-bar').classList.add('hidden');
             }
 
-            const regularPool = membersData.filter(m => !m.isWithdrawn && (m.role === 'member' || m.role === 'admin' || m.role === 'sub_admin'));
+            // 💡 정회원 분석 풀에서 테스트 관리자 제외
+            const regularPool = membersData.filter(m => !m.isWithdrawn && !isTestAdmin(m) && (m.role === 'member' || m.role === 'admin' || m.role === 'sub_admin'));
 
             const customLevel = getCustomLevelName(user.rating);
             const ratingEl = document.getElementById('stat-rating');
@@ -859,7 +865,7 @@
             }
 
             const myAtt = user.attendedMatches;
-            const attendancePool = membersData.filter(m => !m.isWithdrawn && m.role !== 'guest' && m.role !== 'acquaintance');
+            const attendancePool = membersData.filter(m => !m.isWithdrawn && !isTestAdmin(m) && m.role !== 'guest' && m.role !== 'acquaintance');
 
             const aboveAttList = attendancePool.filter(m => m.attendedMatches > myAtt).sort((a, b) => b.attendedMatches - a.attendedMatches);
             document.getElementById('rank-above').innerText = aboveAttList.length > 0 ? formatGroupText(aboveAttList) : "정회원 내 최다 출석입니다 🏆";
@@ -875,7 +881,8 @@
         }
 
         function renderRestrictedMemberList() {
-            let displayList = membersData.filter(m => !m.isWithdrawn && m.role !== 'guest' && m.role !== 'acquaintance');
+            // 💡 제한 보기 멤버 현황에서도 테스트 관리자 제외
+            let displayList = membersData.filter(m => !m.isWithdrawn && !isTestAdmin(m) && m.role !== 'guest' && m.role !== 'acquaintance');
 
             displayList.sort((a, b) => {
                 let valA, valB;
@@ -1069,7 +1076,6 @@
                     rowHtml += `<td class="p-3 font-extrabold text-amber-400">${ratingDisplay}</td>`;
                 }
 
-                // 💡 수정 완료: 출석 횟수와 연락처/카톡 마스킹이 올바른 위치에 각각 출력되도록 수정
                 rowHtml += `
                     <td class="p-3 text-slate-300">${m.attendedMatches}회 / ${teamTotalMatches}회 <span class="text-indigo-400 font-bold">(${attRate}%)</span></td>
                     <td class="p-3 text-slate-300">${maskPhone(m.fullPhone)}<br><span class="text-amber-300">${maskName(m.kakaoId) || '-'}</span></td>
@@ -1243,7 +1249,7 @@
             };
 
             const regularList = membersData
-                .filter(m => !m.isWithdrawn && (m.role === 'member' || m.role === 'admin' || m.role === 'sub_admin'))
+                .filter(m => !m.isWithdrawn && !isTestAdmin(m) && (m.role === 'member' || m.role === 'admin' || m.role === 'sub_admin'))
                 .sort(sortByBirthAsc);
 
             regularList.forEach(m => {
@@ -1326,7 +1332,6 @@
             document.getElementById('edit-role-type').value = m.role || 'member';
             document.getElementById('edit-withdrawn').checked = m.isWithdrawn || false;
             document.getElementById('edit-photo-file').value = "";
-            // 수정 모달에서도 연락처를 마스킹 처리하여 노출 (원하시면 m.fullPhone으로 변경 가능하지만 개인정보 보호를 위해 maskPhone 적용)
             document.getElementById('edit-phone').value = maskPhone(m.fullPhone);
             document.getElementById('edit-kakao').value = m.kakaoId || '';
             document.getElementById('edit-feedback').value = m.feedback || '';
@@ -1354,8 +1359,6 @@
                 attended_matches: parseInt(document.getElementById('edit-attended').value) || 0,
                 role: document.getElementById('edit-role-type').value,
                 is_withdrawn: document.getElementById('edit-withdrawn').checked,
-                // 만약 관리자가 마스킹된 상태로 저장하는 것을 방지하고 싶다면 원래 fullPhone을 유지하거나 처리할 수 있습니다.
-                // 여기서는 입력창 값이 마스킹된 상태('****')가 아니라면 새 값으로 갱신하도록 처리
                 full_phone: document.getElementById('edit-phone').value.includes('*') ? m.fullPhone : document.getElementById('edit-phone').value.trim(),
                 kakao_id: document.getElementById('edit-kakao').value.trim(),
                 feedback: document.getElementById('edit-feedback').value.trim(),
@@ -1447,6 +1450,7 @@
             const ctx = document.getElementById('gradeCountChart').getContext('2d');
             if (gradeCountChartInstance) gradeCountChartInstance.destroy();
 
+            // 💡 평점 등급별 회원 수 집계 시에도 정회원 풀(regularPool - 테스트관리자 제외됨)만 사용
             const counts = ratingHierarchy.map(grade => regularPool.filter(m => m.rating === grade).length);
             document.getElementById('grade-chart-total-label').innerText = `총 정회원: ${regularPool.length}명`;
 

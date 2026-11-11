@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<!-- TenFC 팀 집계 v1.25 -->
+<!-- TenFC 팀 집계 v1.26 -->
 <html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TenFC 팀 집계 v1.25</title>
+<title>TenFC 팀 집계 v1.26</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style type="text/tailwindcss">
@@ -16,7 +16,7 @@ th{@apply text-slate-400 text-xs border-b border-slate-700}
 <body class="bg-slate-900 text-slate-100 min-h-screen p-4 text-sm">
 
 <div id="login" class="max-w-sm mx-auto mt-20 card space-y-3">
-  <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.25</span></h1>
+  <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.26</span></h1>
   <p class="text-xs text-slate-400">정회원·운영진 전용 · 멤버 사이트에서 로그인하셨다면 자동으로 들어옵니다.</p>
   <input id="em" type="text" placeholder="성명" class="inp w-full">
   <input id="pw" type="password" placeholder="비밀번호 (멤버 사이트와 동일)" class="inp w-full" onkeydown="if(event.key==='Enter')login()">
@@ -28,7 +28,7 @@ th{@apply text-slate-400 text-xs border-b border-slate-700}
 <div id="app" class="hidden max-w-4xl mx-auto">
   <div id="demo-bar" class="hidden mb-3 p-2 rounded bg-amber-900/40 border border-amber-700/50 text-amber-300 text-xs">🧪 데모 모드 — 샘플 데이터이며 DB에는 아무것도 저장되지 않습니다. 새로고침하면 초기화됩니다.</div>
   <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
-    <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.25</span></h1>
+    <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.26</span></h1>
     <div class="flex gap-2 items-center">
       <span id="me" class="text-xs text-slate-400"></span>
       <a href="../" class="text-xs text-slate-400 underline">← 멤버 관리</a>
@@ -107,12 +107,19 @@ async function boot() {
   if (!tok()) return;
   const { data: me } = await sb.rpc('stat_me', { p_token: tok() });
   if (!me) { localStorage.removeItem('tenfc_stat_token'); return; }
-  IS_ADMIN = me.role === 'admin';
+  // ?view=이름 : 최고관리자가 멤버 페이지에서 넘어온 경우, 해당 멤버가 보는 화면(입력 탭 없음, 본인 케미 선택)으로 표시
+  const VIEW = me.role === 'admin' ? norm(new URLSearchParams(location.search).get('view') || '') : '';
+  IS_ADMIN = me.role === 'admin' && !VIEW;
   $('t-in').classList.toggle('hidden', !IS_ADMIN);
-  $('me').textContent = `${me.name} (${{ admin: '최고관리자', sub_admin: '부관리자' }[me.role] || '정회원'})`;
+  $('me').textContent = VIEW ? `${VIEW} 님 화면 (최고관리자 ${me.name} 미리보기)` : `${me.name} (${{ admin: '최고관리자', sub_admin: '부관리자' }[me.role] || '정회원'})`;
   $('login').classList.add('hidden'); $('app').classList.remove('hidden');
   $('dt').valueAsDate = new Date();
-  await load(); tab(IS_ADMIN ? 'in' : 'cap');
+  await load();
+  if (VIEW) {
+    if (![...$('who').options].some(o => o.value === VIEW)) $('who').insertAdjacentHTML('beforeend', `<option value="${esc(VIEW)}">${esc(VIEW)}</option>`);
+    $('who').value = VIEW;
+  }
+  tab(VIEW ? 'chem' : IS_ADMIN ? 'in' : 'cap');
 }
 async function logout() {
   if (!DEMO) await sb.rpc('stat_logout', { p_token: tok() });

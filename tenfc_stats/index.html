@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<!-- TenFC 팀 집계 v1.26 -->
+<!-- TenFC 팀 집계 v1.27 -->
 <html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TenFC 팀 집계 v1.26</title>
+<title>TenFC 팀 집계 v1.27</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style type="text/tailwindcss">
@@ -16,7 +16,7 @@ th{@apply text-slate-400 text-xs border-b border-slate-700}
 <body class="bg-slate-900 text-slate-100 min-h-screen p-4 text-sm">
 
 <div id="login" class="max-w-sm mx-auto mt-20 card space-y-3">
-  <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.26</span></h1>
+  <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.27</span></h1>
   <p class="text-xs text-slate-400">정회원·운영진 전용 · 멤버 사이트에서 로그인하셨다면 자동으로 들어옵니다.</p>
   <input id="em" type="text" placeholder="성명" class="inp w-full">
   <input id="pw" type="password" placeholder="비밀번호 (멤버 사이트와 동일)" class="inp w-full" onkeydown="if(event.key==='Enter')login()">
@@ -28,7 +28,7 @@ th{@apply text-slate-400 text-xs border-b border-slate-700}
 <div id="app" class="hidden max-w-4xl mx-auto">
   <div id="demo-bar" class="hidden mb-3 p-2 rounded bg-amber-900/40 border border-amber-700/50 text-amber-300 text-xs">🧪 데모 모드 — 샘플 데이터이며 DB에는 아무것도 저장되지 않습니다. 새로고침하면 초기화됩니다.</div>
   <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
-    <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.26</span></h1>
+    <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.27</span></h1>
     <div class="flex gap-2 items-center">
       <span id="me" class="text-xs text-slate-400"></span>
       <a href="../" class="text-xs text-slate-400 underline">← 멤버 관리</a>
@@ -81,7 +81,8 @@ const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;
 // members.role 값 → 구분: member=정회원, admin=최고관리자, sub_admin=부관리자, 아래 두 값이 용병/지인
 // (기존 멤버 사이트 드롭다운 기준: guest=용병, acquaintance=지인. DB와 반대라면 두 값을 서로 바꾸세요)
 const ROLE_GUEST = 'guest', ROLE_ACQ = 'acquaintance';
-let INFO = {};
+let INFO = {}, SELF = '';
+const setWho = n => { if (!n) return; if (![...$('who').options].some(o => o.value === n)) $('who').insertAdjacentHTML('beforeend', `<option value="${esc(n)}">${esc(n)}</option>`); $('who').value = n; };
 const kind = n => { if (!MEMBERS.length) return ['', 0]; const m = INFO[n]; if (!m) return ['미등록', 4]; if (m.withdrawn) return ['탈퇴', 3]; if (m.role === ROLE_GUEST) return ['용병', 1]; if (m.role === ROLE_ACQ) return ['지인', 2]; return ['', 0]; };
 const norm = n => String(n).replace(/^(용병|지인)[-\s]*/, '');
 const pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '-';
@@ -110,15 +111,13 @@ async function boot() {
   // ?view=이름 : 최고관리자가 멤버 페이지에서 넘어온 경우, 해당 멤버가 보는 화면(입력 탭 없음, 본인 케미 선택)으로 표시
   const VIEW = me.role === 'admin' ? norm(new URLSearchParams(location.search).get('view') || '') : '';
   IS_ADMIN = me.role === 'admin' && !VIEW;
+  SELF = VIEW || norm(me.name);
   $('t-in').classList.toggle('hidden', !IS_ADMIN);
   $('me').textContent = VIEW ? `${VIEW} 님 화면 (최고관리자 ${me.name} 미리보기)` : `${me.name} (${{ admin: '최고관리자', sub_admin: '부관리자' }[me.role] || '정회원'})`;
   $('login').classList.add('hidden'); $('app').classList.remove('hidden');
   $('dt').valueAsDate = new Date();
   await load();
-  if (VIEW) {
-    if (![...$('who').options].some(o => o.value === VIEW)) $('who').insertAdjacentHTML('beforeend', `<option value="${esc(VIEW)}">${esc(VIEW)}</option>`);
-    $('who').value = VIEW;
-  }
+  setWho(SELF);
   tab(VIEW ? 'chem' : IS_ADMIN ? 'in' : 'cap');
 }
 async function logout() {
@@ -184,11 +183,12 @@ function demoData() {
   return out;
 }
 async function demo() {
-  DEMO = true; IS_ADMIN = true; D = demoData();
+  DEMO = true; IS_ADMIN = true; D = demoData(); 
   const dn = [...new Set(D.flatMap(r => r.round_teams.flatMap(t => t.round_players.map(p => p.player))))].sort();
   MEMBERS = dn.map((n, i) => ({ withdrawn: i === 2, name: n, role: i === 0 ? 'admin' : i === 1 ? 'sub_admin' : i >= dn.length - 2 ? 'guest' : i === dn.length - 3 ? 'acquaintance' : 'member' }));
   $('login').classList.add('hidden'); $('app').classList.remove('hidden'); $('demo-bar').classList.remove('hidden');
   $('dt').valueAsDate = new Date();
+  setWho(MEMBERS[0].name);
   $('txt').value = '⚽ 1팀 [레드]\n오한결(80)*\n김민수(85)\n이준호(90)\n\n⚽ 2팀 [블랙]\n박지훈(82)*\n최성민(88)\n정우진(79)\n\n⚽ 3팀 [그린]\n한동현(81)*\n강태영(83)\n윤재호(86)';
   $('res').value = '1경기 (오후 8:10): 그린 3 vs 0 레드 (그린 승)\n2경기 (오후 8:24): 그린 3 vs 3 블랙 (무승부)\n3경기 (오후 8:37): 블랙 3 vs 2 레드 (블랙 승)\n4경기 (오후 8:45): 그린 3 vs 0 블랙 (그린 승)\n5경기 (오후 8:59): 그린 3 vs 2 레드 (그린 승)\n6경기 (오후 9:12): 블랙 1 vs 0 그린 (블랙 승)\n7경기 (오후 9:25): 레드 2 vs 1 블랙 (레드 승)\n8경기 (오후 9:38): 레드 2 vs 0 그린 (레드 승)\n9경기 (오후 9:50): 레드 1 vs 0 블랙 (레드 승)\n10경기 (오후 10:00): 블랙 1 vs 1 그린 (무승부)';
   await load(); tab('cap');

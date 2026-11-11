@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 풋살팀 통합 시스템 v2.38</title>
+    <title>TenFC 풋살팀 통합 시스템 v2.39</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -30,7 +30,7 @@
     <div id="login-container" class="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
         <div class="text-center mb-6">
             <h1 class="text-3xl font-bold text-emerald-400">⚽ TenFC 풋살팀</h1>
-            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v2.38</span></p>
+            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v2.39</span></p>
         </div>
         <form id="login-form" class="space-y-4">
             <div>
@@ -92,7 +92,7 @@
         <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <div>
                 <h2 id="user-welcome" class="text-2xl font-bold text-white"></h2>
-                <p class="text-xs text-slate-400 mt-1">정회원 총원: <span id="member-total-count" class="font-bold text-emerald-400">0명</span> | 팀 총 매치: <span id="team-total-matches-display" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.38</span></p>
+                <p class="text-xs text-slate-400 mt-1">정회원 총원: <span id="member-total-count" class="font-bold text-emerald-400">0명</span> | 팀 총 매치: <span id="team-total-matches-display" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.39</span></p>
             </div>
             <div class="flex gap-2">
                 <a href="#" target="_blank" rel="noopener noreferrer" class="stats-link stats-link-member hidden px-3 py-1.5 bg-sky-700 hover:bg-sky-600 text-white text-xs font-bold rounded-lg transition">📊 팀 집계</a>
@@ -226,7 +226,7 @@
         <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <div>
                 <h2 id="admin-title" class="text-2xl font-bold text-emerald-400">🛡️ 관리자 대시보드</h2>
-                <p class="text-xs text-slate-400 mt-1">정회원 총: <span id="admin-member-total-count" class="font-bold text-emerald-400">0명</span> | 총 매치: <span id="admin-team-matches" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.38</span></p>
+                <p class="text-xs text-slate-400 mt-1">정회원 총: <span id="admin-member-total-count" class="font-bold text-emerald-400">0명</span> | 총 매치: <span id="admin-team-matches" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.39</span></p>
             </div>
             <div class="flex gap-2">
                 <a href="#" target="_blank" rel="noopener noreferrer" class="stats-link px-3 py-1.5 bg-sky-700 hover:bg-sky-600 text-white text-xs font-bold rounded-lg transition">📊 팀 집계</a>
@@ -620,6 +620,7 @@
                 const foundUser = membersData.find(m => m.name === viewUserName);
                 if (foundUser) {
                     currentUser = foundUser;
+                    document.querySelectorAll('.stats-link').forEach(el => el.href = STATS_URL + '?view=' + encodeURIComponent(viewUserName));
                     document.getElementById('login-container').classList.add('hidden');
                     document.getElementById('dashboard-container').classList.remove('hidden');
                     loadMemberDashboard(currentUser);

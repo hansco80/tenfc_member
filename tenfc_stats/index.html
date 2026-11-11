@@ -110,17 +110,21 @@ async function logout() {
   localStorage.removeItem('tenfc_stat_token'); location.reload();
 }
 
-let DEMO = false;
+let DEMO = false, STAFF = [];
 async function load() {
   if (!DEMO) {
     const data = await rpc('stat_list', {});
     if (!data) return;
     D = data;
+    const st = await sb.rpc('stat_staff', { p_token: tok() });
+    STAFF = st.data || [];
   }
   T = [];
   D.forEach((r, i) => r.round_teams.forEach(t => T.push({ ...t, ri: i, date: r.played_on, pl: t.round_players.map(p => p.player) })));
-  const names = [...new Set(T.flatMap(t => t.pl))].sort();
-  $('names').innerHTML = names.map(n => `<option value="${esc(n)}">`).join('');
+  const staffSet = new Set(STAFF.map(m => m.name));
+  const names = [...new Set(T.flatMap(t => t.pl))].filter(n => !staffSet.has(n)).sort();
+  $('names').innerHTML = STAFF.map(m => `<option value="${esc(m.name)}" label="🛡️ ${m.role === 'admin' ? '최고관리자' : '부관리자'}">`).join('')
+    + names.map(n => `<option value="${esc(n)}">`).join('');
   recList();
 }
 
@@ -152,7 +156,7 @@ function demoData() {
   return out;
 }
 async function demo() {
-  DEMO = true; D = demoData();
+  DEMO = true; D = demoData(); STAFF = [{ name: '오한결', role: 'admin' }, { name: '김민수', role: 'sub_admin' }];
   $('login').classList.add('hidden'); $('app').classList.remove('hidden'); $('demo-bar').classList.remove('hidden');
   $('dt').valueAsDate = new Date();
   $('txt').value = '⚽ 1팀 [레드]\n오한결(80)*\n김민수(85)\n이준호(90)\n\n⚽ 2팀 [블랙]\n박지훈(82)*\n최성민(88)\n정우진(79)\n\n⚽ 3팀 [그린]\n한동현(81)*\n강태영(83)\n윤재호(86)';
@@ -198,7 +202,7 @@ function showCard(teams, date) {
       x.fillStyle = '#fff'; x.font = FONT(Math.round(h * .3)); x.fillText(String(vals[k]), px, y + h * .72);
     });
   });
-  x.fillStyle = '#f5deb3'; x.font = FONT(38); x.fillText((date || '').replace('-', '.'), W / 2, 740);
+  x.fillStyle = '#f5deb3'; x.font = FONT(38); x.fillText((date || '').replace(/-/g, '.'), W / 2, 740);
   $('cardm').classList.remove('hidden');
 }
 function dl() { const a = document.createElement('a'); a.download = `tenfc-${cardDate || 'result'}.png`; a.href = $('cv').toDataURL('image/png'); a.click(); }
@@ -255,11 +259,13 @@ function applyRes(redraw) {
   msg.textContent = `${n}경기 반영` + (tie ? ' · ⚠ 동률이라 우승팀을 직접 확인하세요' : '') + (bad.length ? ` · 인식 실패 ${bad.length}줄: ${bad.join(' / ')} · 라인업에서 인식된 팀: ${draft.map(d => d.name).join(', ')}` : '');
   if (redraw) drawDraft();
 }
+function setv(i, k, v) { draft[i][k] = +v || 0; const e = $('gm' + i), d = draft[i]; if (e) e.textContent = d.w + d.d + d.l; }
 function drawDraft() {
   $('draft').innerHTML = draft.map((d, i) => `<div class="card"><b>${esc(d.name)}</b> <span class="text-slate-400">${d.pl.length}명</span>
     <div class="flex flex-wrap gap-2 mt-2 items-center">👑
       <select class="inp" onchange="draft[${i}].cap=this.value">${d.pl.map(p => `<option ${p === d.cap ? 'selected' : ''}>${esc(p)}</option>`).join('')}</select>
-      ${[['w', '승'], ['d', '무'], ['l', '패'], ['gf', '득점'], ['ga', '실점']].map(([k, n]) => `<label class="text-xs">${n} <input type="number" min="0" value="${d[k]}" class="inp w-16" onchange="draft[${i}].${k}=+this.value"></label>`).join('')}
+      ${[['w', '승'], ['d', '무'], ['l', '패'], ['gf', '득점'], ['ga', '실점']].map(([k, n]) => `<label class="text-xs">${n} <input type="number" min="0" value="${d[k]}" class="inp w-16" onchange="setv(${i},'${k}',this.value)"></label>`).join('')}
+      <span class="text-xs text-slate-300">경기수 <b id="gm${i}" class="text-emerald-400 text-base">${d.w + d.d + d.l}</b></span>
       <label class="text-xs"><input type="checkbox" ${d.ch ? 'checked' : ''} onchange="draft[${i}].ch=this.checked"> 🏆 우승</label>
     </div></div>`).join('') + (draft.length ? '<button class="btn" onclick="save()">저장</button> <button class="inp" onclick="cardFromDraft()">🖼 결과 이미지 생성</button> <span class="text-xs text-slate-400">우승 미체크 시 승점(승3·무1) 단독 1위를 자동 우승 처리</span>' : '');
 }
@@ -299,8 +305,8 @@ function capTab() {
   const m = {};
   T.forEach(t => add(m[t.captain] ??= { n: 0, c: 0, w: 0, d: 0, l: 0 }, t));
   const rows = Object.entries(m).sort((a, b) => b[1].c - a[1].c || b[1].n - a[1].n);
-  $('cap').innerHTML = rows.length ? `<table class="w-full"><tr><th>팀장</th><th>팀장 횟수</th><th>🏆 우승</th><th>우승률</th><th>승-무-패</th><th>승률</th><th>득점</th><th>실점</th><th>득실</th></tr>` +
-    rows.map(([k, o]) => `<tr class="border-b border-slate-800"><td class="font-bold">${esc(k)}</td><td>${o.n}</td><td>${o.c}</td><td>${pct(o.c, o.n)}</td><td>${o.w}-${o.d}-${o.l}</td><td>${pct(o.w, o.w + o.d + o.l)}</td><td>${o.gf}</td><td>${o.ga}</td><td class="${o.gf - o.ga >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${o.gf - o.ga > 0 ? '+' : ''}${o.gf - o.ga}</td></tr>`).join('') + '</table>'
+  $('cap').innerHTML = rows.length ? `<table class="w-full"><tr><th>팀장</th><th>팀장 횟수</th><th>누적 경기수</th><th>🏆 우승</th><th>우승률</th><th>승-무-패</th><th>승률</th><th>득점</th><th>실점</th><th>득실</th></tr>` +
+    rows.map(([k, o]) => `<tr class="border-b border-slate-800"><td class="font-bold">${esc(k)}</td><td>${o.n}</td><td class="font-bold text-sky-400">${o.w + o.d + o.l}</td><td>${o.c}</td><td>${pct(o.c, o.n)}</td><td>${o.w}-${o.d}-${o.l}</td><td>${pct(o.w, o.w + o.d + o.l)}</td><td>${o.gf}</td><td>${o.ga}</td><td class="${o.gf - o.ga >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${o.gf - o.ga > 0 ? '+' : ''}${o.gf - o.ga}</td></tr>`).join('') + '</table>'
     : '<p class="text-slate-400">데이터가 없습니다.</p>';
 }
 function chem() {
@@ -311,10 +317,10 @@ function chem() {
   const m = {}, me = { n: 0, c: 0, w: 0, d: 0, l: 0 };
   ts.forEach(t => { add(me, t); t.pl.forEach(q => { if (q === p) return; const o = m[q] ??= { n: 0, c: 0, w: 0, d: 0, l: 0, k: 0 }; add(o, t); if (t.captain === q) o.k++; }); });
   const rows = Object.entries(m).sort((a, b) => b[1].n - a[1].n || b[1].c - a[1].c);
-  $('chem').innerHTML = `<p class="mb-3"><b class="text-emerald-400">${esc(p)}</b> ${cap ? '팀장 ' : '출전 '}${me.n}회 · 🏆 ${me.c}회 (${pct(me.c, me.n)}) · ${me.w}-${me.d}-${me.l}
+  $('chem').innerHTML = `<p class="mb-3"><b class="text-emerald-400">${esc(p)}</b> ${cap ? '팀장 ' : '출전 '}${me.n}회 · 🏆 ${me.c}회 (${pct(me.c, me.n)}) · ${me.w + me.d + me.l}경기 ${me.w}-${me.d}-${me.l}
     ${N ? `<span class="text-slate-400">(최근 ${N}회 라운드 기준)</span>` : ''}</p>
-    <table class="w-full"><tr><th>같은 팀 멤버</th><th>같이 한 횟수</th><th>🏆 우승</th><th>우승률</th><th>승-무-패</th><th>그 사람이 팀장</th></tr>` +
-    rows.map(([k, o]) => `<tr class="border-b border-slate-800"><td class="font-bold">${esc(k)}</td><td>${o.n}</td><td>${o.c}</td><td>${pct(o.c, o.n)}</td><td>${o.w}-${o.d}-${o.l}</td><td>${o.k || '-'}</td></tr>`).join('') +
+    <table class="w-full"><tr><th>같은 팀 멤버</th><th>같이 한 횟수</th><th>경기수</th><th>🏆 우승</th><th>우승률</th><th>승-무-패</th><th>그 사람이 팀장</th></tr>` +
+    rows.map(([k, o]) => `<tr class="border-b border-slate-800"><td class="font-bold">${esc(k)}</td><td>${o.n}</td><td>${o.w + o.d + o.l}</td><td>${o.c}</td><td>${pct(o.c, o.n)}</td><td>${o.w}-${o.d}-${o.l}</td><td>${o.k || '-'}</td></tr>`).join('') +
     '</table><p class="text-[11px] text-slate-500 mt-2">※ 같이 한 횟수가 3회 미만이면 우승률은 참고용입니다.</p>';
 }
 

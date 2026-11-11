@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<!-- TenFC 팀 집계 v1.0 -->
+<!-- TenFC 팀 집계 v1.1 -->
 <html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TenFC 팀 집계 v1.0</title>
+<title>TenFC 팀 집계 v1.1</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style type="text/tailwindcss">
@@ -16,7 +16,7 @@ th{@apply text-slate-400 text-xs border-b border-slate-700}
 <body class="bg-slate-900 text-slate-100 min-h-screen p-4 text-sm">
 
 <div id="login" class="max-w-sm mx-auto mt-20 card space-y-3">
-  <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.0</span></h1>
+  <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.1</span></h1>
   <p class="text-xs text-slate-400">운영진 전용 (최고관리자·부관리자)</p>
   <input id="em" type="text" placeholder="성명" class="inp w-full">
   <input id="pw" type="password" placeholder="비밀번호 (멤버 사이트와 동일)" class="inp w-full" onkeydown="if(event.key==='Enter')login()">
@@ -28,7 +28,7 @@ th{@apply text-slate-400 text-xs border-b border-slate-700}
 <div id="app" class="hidden max-w-4xl mx-auto">
   <div id="demo-bar" class="hidden mb-3 p-2 rounded bg-amber-900/40 border border-amber-700/50 text-amber-300 text-xs">🧪 데모 모드 — 샘플 데이터이며 DB에는 아무것도 저장되지 않습니다. 새로고침하면 초기화됩니다.</div>
   <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
-    <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.0</span></h1>
+    <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.1</span></h1>
     <div class="flex gap-2 items-center">
       <span id="me" class="text-xs text-slate-400"></span>
       <a href="../tenfc_member/" class="text-xs text-slate-400 underline">← 멤버 관리</a>
@@ -46,7 +46,7 @@ th{@apply text-slate-400 text-xs border-b border-slate-700}
       <p class="text-xs text-slate-400 mb-2">라인업 텍스트를 붙여넣으세요. <code>⚽ 1팀 [레드]</code> 헤더 아래 이름을 줄바꿈/쉼표로 구분하고, 팀장 이름 뒤에 <code>*</code>를 붙입니다.</p>
       <div class="flex gap-2 mb-2"><input id="dt" type="date" class="inp"><input id="rno" type="number" placeholder="회차(선택)" class="inp w-28"></div>
       <textarea id="txt" rows="8" class="inp w-full font-mono text-xs" placeholder="⚽ 1팀 [레드]&#10;오한결(80)*&#10;홍길동(85)&#10;&#10;⚽ 2팀 [블랙]&#10;..."></textarea>
-      <p class="text-xs text-slate-400 mt-3 mb-1">경기 결과 (선택) — <code>그린 3 vs 0 레드 (그린 승)</code> 형식의 줄을 붙여넣으면 팀별 승/무/패와 우승이 자동 계산됩니다. 팀 이름은 헤더의 <code>[레드]</code> 색상과 맞춰 인식합니다.</p>
+      <p class="text-xs text-slate-400 mt-3 mb-1">경기 결과 (선택) — <code>그린 3 vs 0 레드</code>, <code>그린 3 - 0 레드</code> 형식이나 카톡 대화를 그대로 복사한 <code>[이름] [오후 8:12] 그3 레2</code> (그·레·블 줄임말 가능) 형식을 붙여넣으면 팀별 승/무/패와 우승이 자동 계산됩니다. 팀은 헤더의 <code>[레드]</code> 색상과 맞춰 인식합니다.</p>
       <textarea id="res" rows="6" class="inp w-full font-mono text-xs" placeholder="1경기 (오후 8:10): 그린 3 vs 0 레드 (그린 승)&#10;2경기 (오후 8:24): 그린 3 vs 3 블랙 (무승부)"></textarea>
       <div class="flex gap-2 mt-2"><button class="btn" onclick="parse()">라인업 + 결과 인식</button><button class="inp text-xs" onclick="applyRes(true)">결과만 다시 반영</button></div>
       <p id="resmsg" class="text-xs text-amber-300 mt-2"></p>
@@ -243,15 +243,25 @@ function applyRes(redraw) {
   const text = $('res').value.trim(); if (!text || !draft.length) { if (redraw) drawDraft(); return; }
   const find = k => { const c = canon(k); return draft.find(d => c ? canon(d.name) === c : d.name.includes(k)); };
   draft.forEach(d => { d.w = d.d = d.l = 0; d.gf = d.ga = 0; d.ch = false; });
-  let n = 0; const bad = [], nums = new Set();
+  let n = 0, seq = 0; const bad = [], nums = new Set();
+  const AB = { 레: '레드', 래: '레드', 레드: '레드', 그: '그린', 그린: '그린', 블: '블랙', 블랙: '블랙' };
+  const SEP = '(?:vs|VS|:|：|대|-|–|—|~)';
+  const P1 = new RegExp('(\\S+?)\\s*(\\d+)\\s*' + SEP + '\\s*(\\d+)\\s*(\\S+)', 'i');
+  const P2 = new RegExp('(레드|레|래|그린|그|블랙|블)\\s*(\\d+)\\s*' + SEP + '?\\s*(레드|레|래|그린|그|블랙|블)\\s*(\\d+)');
   text.split('\n').forEach(raw => {
-    let l = raw.replace(/^[\s*\-•]+/, '').replace(/^\d+\s*경기\s*(\([^)]*\))?\s*:?\s*/, '').replace(/\([^)]*\)/g, '').trim();
-    if (!l || !/\d\s*(vs|VS|:|：|대|-|–|—|~)\s*\d/i.test(l)) return;
-    const m = l.match(/(\S+?)\s*(\d+)\s*(?:vs|VS|:|：|대|-|–|—|~)\s*(\d+)\s*(\S+)/i);
-    if (!m) { bad.push(raw.trim()); return; }
-    const A = find(m[1]), B = find(m[4]), a = +m[2], b = +m[3];
+    let l = raw.trim(); if (!l) return;
+    const chat = /^\[[^\]]*\]\s*\[[^\]]*\]/.test(l);
+    l = l.replace(/^\[[^\]]*\]\s*\[[^\]]*\]\s*/, '').replace(/^[\s*\-•]+/, '');
+    const gn = l.match(/^(\d+)\s*(?:경기|[.)])/);
+    l = l.replace(/^\d+\s*경기\s*(\([^)]*\))?\s*:?\s*/, '').replace(/^\d+\s*[.)]\s*/, '').replace(/\([^)]*\)/g, '').trim();
+    if (!l) return;
+    const looks = new RegExp('\\d\\s*' + SEP + '\\s*\\d', 'i').test(l) || P2.test(l);
+    if (!looks) return;
+    let A, B, a, b, m;
+    if ((m = l.match(P1)) && (A = find(m[1])) && (B = find(m[4]))) { a = +m[2]; b = +m[3]; }
+    else if ((m = l.match(P2))) { A = find(AB[m[1]]); B = find(AB[m[3]]); a = +m[2]; b = +m[4]; }
     if (!A || !B) { bad.push(raw.trim()); return; }
-    const gn = raw.match(/^[\s*\-•]*(\d+)\s*경기/); if (gn) nums.add(+gn[1]);
+    nums.add(gn ? +gn[1] : ++seq);
     A.gf += a; A.ga += b; B.gf += b; B.ga += a;
     if (a > b) { A.w++; B.l++; } else if (a < b) { B.w++; A.l++; } else { A.d++; B.d++; }
     n++;

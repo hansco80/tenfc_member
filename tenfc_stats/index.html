@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<!-- TenFC 팀 집계 v1.24 -->
+<!-- TenFC 팀 집계 v1.25 -->
 <html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TenFC 팀 집계 v1.24</title>
+<title>TenFC 팀 집계 v1.25</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style type="text/tailwindcss">
@@ -16,7 +16,7 @@ th{@apply text-slate-400 text-xs border-b border-slate-700}
 <body class="bg-slate-900 text-slate-100 min-h-screen p-4 text-sm">
 
 <div id="login" class="max-w-sm mx-auto mt-20 card space-y-3">
-  <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.24</span></h1>
+  <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.25</span></h1>
   <p class="text-xs text-slate-400">정회원·운영진 전용 · 멤버 사이트에서 로그인하셨다면 자동으로 들어옵니다.</p>
   <input id="em" type="text" placeholder="성명" class="inp w-full">
   <input id="pw" type="password" placeholder="비밀번호 (멤버 사이트와 동일)" class="inp w-full" onkeydown="if(event.key==='Enter')login()">
@@ -28,7 +28,7 @@ th{@apply text-slate-400 text-xs border-b border-slate-700}
 <div id="app" class="hidden max-w-4xl mx-auto">
   <div id="demo-bar" class="hidden mb-3 p-2 rounded bg-amber-900/40 border border-amber-700/50 text-amber-300 text-xs">🧪 데모 모드 — 샘플 데이터이며 DB에는 아무것도 저장되지 않습니다. 새로고침하면 초기화됩니다.</div>
   <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
-    <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.24</span></h1>
+    <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.25</span></h1>
     <div class="flex gap-2 items-center">
       <span id="me" class="text-xs text-slate-400"></span>
       <a href="../" class="text-xs text-slate-400 underline">← 멤버 관리</a>
@@ -81,6 +81,8 @@ const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;
 // members.role 값 → 구분: member=정회원, admin=최고관리자, sub_admin=부관리자, 아래 두 값이 용병/지인
 // (기존 멤버 사이트 드롭다운 기준: guest=용병, acquaintance=지인. DB와 반대라면 두 값을 서로 바꾸세요)
 const ROLE_GUEST = 'guest', ROLE_ACQ = 'acquaintance';
+let INFO = {};
+const kind = n => { if (!MEMBERS.length) return ['', 0]; const m = INFO[n]; if (!m) return ['미등록', 4]; if (m.withdrawn) return ['탈퇴', 3]; if (m.role === ROLE_GUEST) return ['용병', 1]; if (m.role === ROLE_ACQ) return ['지인', 2]; return ['', 0]; };
 const norm = n => String(n).replace(/^(용병|지인)[-\s]*/, '');
 const pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '-';
 let D = [], T = [], draft = [];
@@ -127,6 +129,7 @@ async function load() {
     MEMBERS = (st.data || []).map(m => ({ ...m, role: m.role || 'member' }));
     $('memwarn').textContent = MEMBERS.length ? '' : `⚠ 멤버 구분 정보를 불러오지 못했습니다${st.error ? ' (' + st.error.message + ')' : ''}. Supabase에서 schema.sql을 다시 실행했는지 확인해 주세요.`;
   }
+  INFO = {}; MEMBERS.forEach(m => { const k = norm(m.name); if (!INFO[k] || INFO[k].withdrawn) INFO[k] = m; });
   T = [];
   D.forEach((r, i) => r.round_teams.forEach(t => T.push({ ...t, ri: i, date: r.played_on, pl: t.round_players.map(p => p.player) })));
   const cur = $('who').value;
@@ -339,14 +342,14 @@ function sortBy(t, k) {
   t === 'cap' ? capTab() : chem();
 }
 const th = (t, k, label) => { const on = SORT[t].k === k; return `<th class="cursor-pointer select-none hover:text-emerald-400" onclick="sortBy('${t}','${k}')">${label} <span class="${on ? 'text-emerald-400' : 'text-slate-600'}">${on ? (SORT[t].d < 0 ? '▼' : '▲') : '↕'}</span></th>`; };
-const srt = (t, rows) => { const o = SORT[t]; return rows.sort((a, b) => { const x = a[o.k], y = b[o.k]; const c = typeof x === 'string' ? x.localeCompare(y, 'ko') : x - y; return c * o.d || b.n - a.n || b.c - a.c || a.name.localeCompare(b.name, 'ko'); }); };
-const stat = (name, o) => { const g = o.w + o.d + o.l; return { ...o, name, g, cr: o.n ? o.c / o.n : 0, wr: g ? o.w / g : 0, gd: (o.gf || 0) - (o.ga || 0) }; };
+const srt = (t, rows) => { const o = SORT[t]; return rows.sort((a, b) => { const x = a[o.k], y = b[o.k]; const c = typeof x === 'string' ? x.localeCompare(y, 'ko') : x - y; return a.rk - b.rk || c * o.d || b.n - a.n || b.c - a.c || a.name.localeCompare(b.name, 'ko'); }); };
+const stat = (name, o) => { const g = o.w + o.d + o.l, [tag, rk] = kind(name); return { ...o, name, tag, rk, g, cr: o.n ? o.c / o.n : 0, wr: g ? o.w / g : 0, gd: (o.gf || 0) - (o.ga || 0) }; };
 function capTab() {
   const m = {};
   T.forEach(t => add(m[t.captain] ??= { n: 0, c: 0, w: 0, d: 0, l: 0 }, t));
   const rows = srt('cap', Object.entries(m).map(([k, o]) => stat(k, o)));
   $('cap').innerHTML = rows.length ? `<table class="w-full"><tr>${th('cap', 'name', '팀장')}${th('cap', 'n', '팀장 횟수')}${th('cap', 'g', '누적 경기수')}${th('cap', 'c', '🏆 우승')}${th('cap', 'cr', '우승률')}${th('cap', 'w', '승-무-패')}${th('cap', 'wr', '승률')}${th('cap', 'gf', '득점')}${th('cap', 'ga', '실점')}${th('cap', 'gd', '득실')}</tr>` +
-    rows.map(o => `<tr class="border-b border-slate-800"><td class="font-bold">${esc(o.name)}</td><td>${o.n}</td><td class="font-bold text-sky-400">${o.g}</td><td>${o.c}</td><td>${pct(o.c, o.n)}</td><td>${o.w}-${o.d}-${o.l}</td><td>${pct(o.w, o.g)}</td><td>${o.gf}</td><td>${o.ga}</td><td class="${o.gd >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${o.gd > 0 ? '+' : ''}${o.gd}</td></tr>`).join('') + '</table>'
+    rows.map(o => `<tr class="border-b border-slate-800${o.rk ? ' text-slate-400' : ''}"><td class="font-bold">${esc(o.name)}${o.tag ? ` <span class="font-normal text-xs">(${o.tag})</span>` : ''}</td><td>${o.n}</td><td class="font-bold text-sky-400">${o.g}</td><td>${o.c}</td><td>${pct(o.c, o.n)}</td><td>${o.w}-${o.d}-${o.l}</td><td>${pct(o.w, o.g)}</td><td>${o.gf}</td><td>${o.ga}</td><td class="${o.gd >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${o.gd > 0 ? '+' : ''}${o.gd}</td></tr>`).join('') + '</table>'
     : '<p class="text-slate-400">데이터가 없습니다.</p>';
 }
 function chem() {
@@ -360,8 +363,8 @@ function chem() {
   $('chem').innerHTML = `<p class="mb-3"><b class="text-emerald-400">${esc(p)}</b> ${cap ? '팀장 ' : '출전 '}${me.n}회 · ${me.w + me.d + me.l}경기 ${me.w}-${me.d}-${me.l} · 🏆 ${me.c}회 (${pct(me.c, me.n)})
     ${N ? `<span class="text-slate-400">(최근 ${N}회 라운드 기준)</span>` : ''}</p>
     <table class="w-full"><tr>${th('chem', 'name', '같은 팀 멤버')}${th('chem', 'n', '같이 한 횟수')}${th('chem', 'g', '경기수')}${th('chem', 'c', '🏆 우승')}${th('chem', 'cr', '우승률')}${th('chem', 'w', '승-무-패')}${th('chem', 'k', '그 사람이 팀장')}</tr>` +
-    rows.map(o => `<tr class="border-b border-slate-800"><td class="font-bold">${esc(o.name)}</td><td>${o.n}</td><td>${o.g}</td><td>${o.c}</td><td>${pct(o.c, o.n)}</td><td>${o.w}-${o.d}-${o.l}</td><td>${o.k || '-'}</td></tr>`).join('') +
-    '</table><p class="text-[11px] text-slate-500 mt-2">※ 같이 한 횟수가 3회 미만이면 우승률은 참고용입니다. 열 제목을 누르면 정렬됩니다.</p>';
+    rows.map(o => `<tr class="border-b border-slate-800${o.rk ? ' text-slate-400' : ''}"><td class="font-bold">${esc(o.name)}${o.tag ? ` <span class="font-normal text-xs">(${o.tag})</span>` : ''}</td><td>${o.n}</td><td>${o.g}</td><td>${o.c}</td><td>${pct(o.c, o.n)}</td><td>${o.w}-${o.d}-${o.l}</td><td>${o.k || '-'}</td></tr>`).join('') +
+    '</table><p class="text-[11px] text-slate-500 mt-2">※ 같이 한 횟수가 3회 미만이면 우승률은 참고용입니다. 열 제목을 누르면 정렬됩니다. 정회원이 아닌 분은 이름 옆에 구분이 표시되고 항상 아래에 모아서 보여 드립니다.</p>';
 }
 
 boot();

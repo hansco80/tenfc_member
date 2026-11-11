@@ -1,6 +1,7 @@
 <!DOCTYPE html>
+<!-- TenFC 팀 집계 v1.0 -->
 <html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TenFC 팀 집계</title>
+<title>TenFC 팀 집계 v1.0</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style type="text/tailwindcss">
@@ -15,7 +16,7 @@ th{@apply text-slate-400 text-xs border-b border-slate-700}
 <body class="bg-slate-900 text-slate-100 min-h-screen p-4 text-sm">
 
 <div id="login" class="max-w-sm mx-auto mt-20 card space-y-3">
-  <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계</h1>
+  <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.0</span></h1>
   <p class="text-xs text-slate-400">운영진 전용 (최고관리자·부관리자)</p>
   <input id="em" type="text" placeholder="성명" class="inp w-full">
   <input id="pw" type="password" placeholder="비밀번호 (멤버 사이트와 동일)" class="inp w-full" onkeydown="if(event.key==='Enter')login()">
@@ -27,7 +28,7 @@ th{@apply text-slate-400 text-xs border-b border-slate-700}
 <div id="app" class="hidden max-w-4xl mx-auto">
   <div id="demo-bar" class="hidden mb-3 p-2 rounded bg-amber-900/40 border border-amber-700/50 text-amber-300 text-xs">🧪 데모 모드 — 샘플 데이터이며 DB에는 아무것도 저장되지 않습니다. 새로고침하면 초기화됩니다.</div>
   <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
-    <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계</h1>
+    <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.0</span></h1>
     <div class="flex gap-2 items-center">
       <span id="me" class="text-xs text-slate-400"></span>
       <a href="../tenfc_member/" class="text-xs text-slate-400 underline">← 멤버 관리</a>
@@ -59,8 +60,7 @@ th{@apply text-slate-400 text-xs border-b border-slate-700}
 
   <section id="s-chem" class="hidden">
     <div class="card flex flex-wrap gap-2 items-center">
-      <input id="who" list="names" placeholder="이름 검색" class="inp" oninput="chem()">
-      <datalist id="names"></datalist>
+      <select id="who" class="inp" onchange="chem()"><option value="">이름 선택</option></select>
       <select id="rng" class="inp" onchange="chem()"><option value="0">전체 기간</option><option value="3" selected>최근 3회</option><option value="5">최근 5회</option><option value="10">최근 10회</option></select>
       <label class="text-xs"><input type="checkbox" id="capOnly" onchange="chem()"> 이 사람이 팀장일 때만</label>
     </div>
@@ -123,8 +123,11 @@ async function load() {
   D.forEach((r, i) => r.round_teams.forEach(t => T.push({ ...t, ri: i, date: r.played_on, pl: t.round_players.map(p => p.player) })));
   const staffSet = new Set(STAFF.map(m => m.name));
   const names = [...new Set(T.flatMap(t => t.pl))].filter(n => !staffSet.has(n)).sort();
-  $('names').innerHTML = STAFF.map(m => `<option value="${esc(m.name)}" label="🛡️ ${m.role === 'admin' ? '최고관리자' : '부관리자'}">`).join('')
-    + names.map(n => `<option value="${esc(n)}">`).join('');
+  const cur = $('who').value;
+  $('who').innerHTML = '<option value="">이름 선택</option>'
+    + (STAFF.length ? `<optgroup label="🛡️ 운영진">${STAFF.map(m => `<option value="${esc(m.name)}">${esc(m.name)} (${m.role === 'admin' ? '최고관리자' : '부관리자'})</option>`).join('')}</optgroup>` : '')
+    + `<optgroup label="멤버">${names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('')}</optgroup>`;
+  $('who').value = cur;
   recList();
 }
 
@@ -240,14 +243,15 @@ function applyRes(redraw) {
   const text = $('res').value.trim(); if (!text || !draft.length) { if (redraw) drawDraft(); return; }
   const find = k => { const c = canon(k); return draft.find(d => c ? canon(d.name) === c : d.name.includes(k)); };
   draft.forEach(d => { d.w = d.d = d.l = 0; d.gf = d.ga = 0; d.ch = false; });
-  let n = 0; const bad = [];
+  let n = 0; const bad = [], nums = new Set();
   text.split('\n').forEach(raw => {
     let l = raw.replace(/^[\s*\-•]+/, '').replace(/^\d+\s*경기\s*(\([^)]*\))?\s*:?\s*/, '').replace(/\([^)]*\)/g, '').trim();
-    if (!l || !/\d\s*(vs|VS|:|대)\s*\d/.test(l)) return;
-    const m = l.match(/(\S+?)\s*(\d+)\s*(?:vs|VS|:|대)\s*(\d+)\s*(\S+)/);
+    if (!l || !/\d\s*(vs|VS|:|：|대|-|–|—|~)\s*\d/i.test(l)) return;
+    const m = l.match(/(\S+?)\s*(\d+)\s*(?:vs|VS|:|：|대|-|–|—|~)\s*(\d+)\s*(\S+)/i);
     if (!m) { bad.push(raw.trim()); return; }
     const A = find(m[1]), B = find(m[4]), a = +m[2], b = +m[3];
     if (!A || !B) { bad.push(raw.trim()); return; }
+    const gn = raw.match(/^[\s*\-•]*(\d+)\s*경기/); if (gn) nums.add(+gn[1]);
     A.gf += a; A.ga += b; B.gf += b; B.ga += a;
     if (a > b) { A.w++; B.l++; } else if (a < b) { B.w++; A.l++; } else { A.d++; B.d++; }
     n++;
@@ -256,7 +260,7 @@ function applyRes(redraw) {
   const sorted = [...draft].sort((x, y) => { const a = key(x), b = key(y); return b[0] - a[0] || b[1] - a[1] || b[2] - a[2]; });
   if (n && sorted.length) { sorted[0].ch = true; }
   const tie = n && sorted.length > 1 && key(sorted[0]).join() === key(sorted[1]).join();
-  msg.textContent = `${n}경기 반영` + (tie ? ' · ⚠ 동률이라 우승팀을 직접 확인하세요' : '') + (bad.length ? ` · 인식 실패 ${bad.length}줄: ${bad.join(' / ')} · 라인업에서 인식된 팀: ${draft.map(d => d.name).join(', ')}` : '');
+  msg.textContent = `${n}경기 반영` + (tie ? ' · ⚠ 동률이라 우승팀을 직접 확인하세요' : '') + (() => { if (!nums.size) return ''; const mx = Math.max(...nums), ms = []; for (let i = 1; i <= mx; i++) if (!nums.has(i)) ms.push(i); return ms.length ? ` · ⚠ 경기 번호 ${ms.join(', ')} 누락 (총 ${mx}경기 중 ${nums.size}경기만 입력됨)` : ''; })() + (bad.length ? ` · 인식 실패 ${bad.length}줄: ${bad.join(' / ')} · 라인업에서 인식된 팀: ${draft.map(d => d.name).join(', ')}` : '');
   if (redraw) drawDraft();
 }
 function setv(i, k, v) { draft[i][k] = +v || 0; const e = $('gm' + i), d = draft[i]; if (e) e.textContent = d.w + d.d + d.l; }

@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TenFC 팀 집계</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style type="text/tailwindcss">
+.inp{@apply px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white}
+.btn{@apply px-3 py-2 bg-emerald-600 hover:bg-emerald-500 rounded font-bold text-white}
+.card{@apply bg-slate-800 border border-slate-700 rounded-xl p-4 mb-3}
+.tab{@apply px-4 py-2 rounded-lg bg-slate-800 text-slate-300}
+.tab.on{@apply bg-emerald-600 text-white font-bold}
+th,td{@apply p-2 text-left whitespace-nowrap}
+th{@apply text-slate-400 text-xs border-b border-slate-700}
+</style></head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4 text-sm">
+
+<div id="login" class="max-w-sm mx-auto mt-20 card space-y-3">
+  <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계</h1>
+  <p class="text-xs text-slate-400">운영진 전용 (최고관리자·부관리자)</p>
+  <input id="em" type="text" placeholder="성명" class="inp w-full">
+  <input id="pw" type="password" placeholder="비밀번호 (멤버 사이트와 동일)" class="inp w-full" onkeydown="if(event.key==='Enter')login()">
+  <button onclick="login()" class="btn w-full">로그인</button>
+  <p id="err" class="text-rose-400 text-xs"></p>
+  <button onclick="demo()" class="w-full px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs">🧪 로그인 없이 데모 체험 (샘플 데이터)</button>
+</div>
+
+<div id="app" class="hidden max-w-4xl mx-auto">
+  <div id="demo-bar" class="hidden mb-3 p-2 rounded bg-amber-900/40 border border-amber-700/50 text-amber-300 text-xs">🧪 데모 모드 — 샘플 데이터이며 DB에는 아무것도 저장되지 않습니다. 새로고침하면 초기화됩니다.</div>
+  <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
+    <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계</h1>
+    <div class="flex gap-2 items-center">
+      <span id="me" class="text-xs text-slate-400"></span>
+      <a href="../" class="text-xs text-slate-400 underline">← 멤버 관리</a>
+      <button onclick="logout()" class="text-xs px-3 py-1.5 rounded bg-rose-900/40 text-rose-300 border border-rose-700/50">로그아웃</button>
+    </div>
+  </div>
+  <div class="flex gap-2 mb-4">
+    <button class="tab" id="t-in" onclick="tab('in')">라운드 입력</button>
+    <button class="tab" id="t-cap" onclick="tab('cap')">팀장 성적</button>
+    <button class="tab" id="t-chem" onclick="tab('chem')">케미·최근</button>
+  </div>
+
+  <section id="s-in">
+    <div class="card">
+      <p class="text-xs text-slate-400 mb-2">라인업 텍스트를 붙여넣으세요. <code>⚽ 1팀 [레드]</code> 헤더 아래 이름을 줄바꿈/쉼표로 구분하고, 팀장 이름 뒤에 <code>*</code>를 붙입니다.</p>
+      <div class="flex gap-2 mb-2"><input id="dt" type="date" class="inp"><input id="rno" type="number" placeholder="회차(선택)" class="inp w-28"></div>
+      <textarea id="txt" rows="8" class="inp w-full font-mono text-xs" placeholder="⚽ 1팀 [레드]&#10;오한결(80)*&#10;홍길동(85)&#10;&#10;⚽ 2팀 [블랙]&#10;..."></textarea>
+      <p class="text-xs text-slate-400 mt-3 mb-1">경기 결과 (선택) — <code>그린 3 vs 0 레드 (그린 승)</code> 형식의 줄을 붙여넣으면 팀별 승/무/패와 우승이 자동 계산됩니다. 팀 이름은 헤더의 <code>[레드]</code> 색상과 맞춰 인식합니다.</p>
+      <textarea id="res" rows="6" class="inp w-full font-mono text-xs" placeholder="1경기 (오후 8:10): 그린 3 vs 0 레드 (그린 승)&#10;2경기 (오후 8:24): 그린 3 vs 3 블랙 (무승부)"></textarea>
+      <div class="flex gap-2 mt-2"><button class="btn" onclick="parse()">라인업 + 결과 인식</button><button class="inp text-xs" onclick="applyRes(true)">결과만 다시 반영</button></div>
+      <p id="resmsg" class="text-xs text-amber-300 mt-2"></p>
+    </div>
+    <div id="draft"></div>
+    <h2 class="font-bold text-slate-300 mt-6 mb-2">입력된 라운드</h2>
+    <div id="rec"></div>
+  </section>
+
+  <section id="s-cap" class="hidden"><div class="card overflow-x-auto" id="cap"></div></section>
+
+  <section id="s-chem" class="hidden">
+    <div class="card flex flex-wrap gap-2 items-center">
+      <input id="who" list="names" placeholder="이름 검색" class="inp" oninput="chem()">
+      <datalist id="names"></datalist>
+      <select id="rng" class="inp" onchange="chem()"><option value="0">전체 기간</option><option value="3" selected>최근 3회</option><option value="5">최근 5회</option><option value="10">최근 10회</option></select>
+      <label class="text-xs"><input type="checkbox" id="capOnly" onchange="chem()"> 이 사람이 팀장일 때만</label>
+    </div>
+    <div class="card overflow-x-auto" id="chem"><p class="text-slate-400">이름을 선택하세요.</p></div>
+  </section>
+</div>
+
+<div id="cardm" class="hidden fixed inset-0 bg-black/80 z-50 flex flex-col items-center justify-center p-4 gap-3">
+  <canvas id="cv" class="max-w-full max-h-[75vh] rounded-xl"></canvas>
+  <div class="flex gap-2"><button class="btn" onclick="dl()">💾 PNG 저장</button><button class="inp" onclick="$('cardm').classList.add('hidden')">닫기</button></div>
+</div>
+
+<script>
+const sb = supabase.createClient('https://bxuiwomkpgqsbyaagmlp.supabase.co', 'sb_publishable_mXkGsaxwwfnnAR3lpE8T1A_n0kiPdZj');
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '-';
+let D = [], T = [], draft = [];
+
+const tok = () => localStorage.getItem('tenfc_stat_token');
+async function rpc(fn, args) {
+  const { data, error } = await sb.rpc(fn, { p_token: tok(), ...args });
+  if (error) {
+    if (/unauthorized/.test(error.message)) { localStorage.removeItem('tenfc_stat_token'); alert('세션이 만료되었습니다. 다시 로그인하세요.'); location.reload(); }
+    else alert(error.message);
+    return null;
+  }
+  return data;
+}
+async function login() {
+  const { data, error } = await sb.rpc('stat_login', { p_name: $('em').value.trim(), p_pw: $('pw').value });
+  if (error) { $('err').textContent = '로그인 오류: ' + error.message; return; }
+  if (!data) { $('err').textContent = '이름/비밀번호가 틀렸거나 운영진 권한이 없습니다.'; return; }
+  localStorage.setItem('tenfc_stat_token', data); boot();
+}
+async function boot() {
+  if (!tok()) return;
+  const { data: me } = await sb.rpc('stat_me', { p_token: tok() });
+  if (!me) { localStorage.removeItem('tenfc_stat_token'); return; }
+  $('me').textContent = `${me.name} (${me.role === 'admin' ? '최고관리자' : '부관리자'})`;
+  $('login').classList.add('hidden'); $('app').classList.remove('hidden');
+  $('dt').valueAsDate = new Date();
+  await load(); tab('in');
+}
+async function logout() {
+  if (!DEMO) await sb.rpc('stat_logout', { p_token: tok() });
+  localStorage.removeItem('tenfc_stat_token'); location.reload();
+}
+
+let DEMO = false;
+async function load() {
+  if (!DEMO) {
+    const data = await rpc('stat_list', {});
+    if (!data) return;
+    D = data;
+  }
+  T = [];
+  D.forEach((r, i) => r.round_teams.forEach(t => T.push({ ...t, ri: i, date: r.played_on, pl: t.round_players.map(p => p.player) })));
+  const names = [...new Set(T.flatMap(t => t.pl))].sort();
+  $('names').innerHTML = names.map(n => `<option value="${esc(n)}">`).join('');
+  recList();
+}
+
+function tab(k) {
+  ['in', 'cap', 'chem'].forEach(x => { $('s-' + x).classList.toggle('hidden', x !== k); $('t-' + x).classList.toggle('on', x === k); });
+  if (k === 'cap') capTab();
+  if (k === 'chem') chem();
+}
+
+/* ---------- 데모 ---------- */
+function demoData() {
+  const N = ['오한결','김민수','이준호','박지훈','최성민','정우진','한동현','강태영','윤재호','임도윤','서지원','배현우','조민재','신유찬','홍길동','문상훈','양승우','류건호'];
+  let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  const out = [];
+  for (let k = 0; k < 8; k++) {
+    const caps = [N[k % 6], N[(k + 2) % 6], N[(k + 4) % 6]];
+    const rest = N.filter(n => !caps.includes(n)).sort(() => rnd() - 0.5);
+    const ts = caps.map((c, j) => ({ id: k * 10 + j, team_name: `${j + 1}팀 [${['레드','블랙','그린'][j]}]`, captain: c, w: 0, d: 0, l: 0, gf: 0, ga: 0, is_champion: false,
+      pl: [c, ...rest.filter((_, i) => i % 3 === j)] }));
+    [[0, 1], [0, 2], [1, 2], [0, 1], [0, 2], [1, 2]].forEach(([a, b]) => {
+      const x = Math.floor(rnd() * 4), y = Math.floor(rnd() * 4);
+      ts[a].gf += x; ts[a].ga += y; ts[b].gf += y; ts[b].ga += x;
+      if (x === y) { ts[a].d++; ts[b].d++; } else if (x > y) { ts[a].w++; ts[b].l++; } else { ts[b].w++; ts[a].l++; } });
+    const pts = ts.map(t => 3 * t.w + t.d), m = Math.max(...pts);
+    ts[pts.indexOf(m)].is_champion = true;
+    const dt = new Date(Date.now() - k * 7 * 864e5).toISOString().slice(0, 10);
+    out.push({ id: k + 1, round_no: 8 - k, played_on: dt, round_teams: ts.map(t => ({ ...t, round_players: t.pl.map(player => ({ player })) })) });
+  }
+  return out;
+}
+async function demo() {
+  DEMO = true; D = demoData();
+  $('login').classList.add('hidden'); $('app').classList.remove('hidden'); $('demo-bar').classList.remove('hidden');
+  $('dt').valueAsDate = new Date();
+  $('txt').value = '⚽ 1팀 [레드]\n오한결(80)*\n김민수(85)\n이준호(90)\n\n⚽ 2팀 [블랙]\n박지훈(82)*\n최성민(88)\n정우진(79)\n\n⚽ 3팀 [그린]\n한동현(81)*\n강태영(83)\n윤재호(86)';
+  $('res').value = '1경기 (오후 8:10): 그린 3 vs 0 레드 (그린 승)\n2경기 (오후 8:24): 그린 3 vs 3 블랙 (무승부)\n3경기 (오후 8:37): 블랙 3 vs 2 레드 (블랙 승)\n4경기 (오후 8:45): 그린 3 vs 0 블랙 (그린 승)\n5경기 (오후 8:59): 그린 3 vs 2 레드 (그린 승)\n6경기 (오후 9:12): 블랙 1 vs 0 그린 (블랙 승)\n7경기 (오후 9:25): 레드 2 vs 1 블랙 (레드 승)\n8경기 (오후 9:38): 레드 2 vs 0 그린 (레드 승)\n9경기 (오후 9:50): 레드 1 vs 0 블랙 (레드 승)\n10경기 (오후 10:00): 블랙 1 vs 1 그린 (무승부)';
+  await load(); tab('cap');
+}
+
+/* ---------- 결과 이미지 ---------- */
+const TC = { 레드: ['#dc2626', '#450a0a', '#fff', 'RED'], 그린: ['#84cc16', '#1a2e05', '#fff', 'GREEN'], 블랙: ['#e5e7eb', '#6b7280', '#111', 'BLACK'],
+  블루: ['#3b82f6', '#172554', '#fff', 'BLUE'], 옐로: ['#facc15', '#713f12', '#111', 'YELLOW'], 노랑: ['#facc15', '#713f12', '#111', 'YELLOW'],
+  화이트: ['#f8fafc', '#94a3b8', '#111', 'WHITE'], 오렌지: ['#fb923c', '#7c2d12', '#fff', 'ORANGE'] };
+const FONT = z => `bold ${z}px "Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif`;
+let cardDate = '';
+function rr(x, a, b, w, h, r) { x.beginPath(); x.moveTo(a + r, b); x.arcTo(a + w, b, a + w, b + h, r); x.arcTo(a + w, b + h, a, b + h, r); x.arcTo(a, b + h, a, b, r); x.arcTo(a, b, a + w, b, r); x.closePath(); }
+function showCard(teams, date) {
+  cardDate = date;
+  const W = 1024, H = 768, c = $('cv'), x = c.getContext('2d'); c.width = W; c.height = H;
+  const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#0b1220'); g.addColorStop(.6, '#0a2a14'); g.addColorStop(1, '#06140a');
+  x.fillStyle = g; x.fillRect(0, 0, W, H); x.textAlign = 'center';
+  const games = Math.round(teams.reduce((a, t) => a + t.w + t.d + t.l, 0) / 2);
+  x.fillStyle = '#f5deb3'; x.font = FONT(46); x.fillText(`TenFC 팀별 기록 집계 (${games}경기)`, W / 2, 78);
+  rr(x, 110, 115, 804, 52, 14); x.fillStyle = 'rgba(15,23,42,.85)'; x.fill(); x.strokeStyle = '#38bdf8'; x.lineWidth = 2; x.stroke();
+  const cols = [['경기수', 470], ['승', 555], ['무', 625], ['패', 695], ['득점', 780], ['실점', 860]];
+  x.font = FONT(22); x.fillStyle = '#e2e8f0'; x.fillText('팀명', 190, 149);
+  cols.forEach(([n, px]) => { x.fillStyle = ['승', '무', '패'].includes(n) ? '#86efac' : '#e2e8f0'; x.fillText(n, px, 149); });
+  const key = t => [3 * t.w + t.d, t.gf - t.ga, t.gf];
+  const rows = [...teams].sort((p, q) => { const a = key(p), b = key(q); return b[0] - a[0] || b[1] - a[1] || b[2] - a[2]; });
+  const h = Math.min(150, Math.floor(540 / rows.length) - 16);
+  rows.forEach((t, i) => {
+    const y = 185 + i * (h + 16), col = (t.name.match(/\[([^\]]+)\]/) || [])[1] || t.name, tc = TC[col] || ['#94a3b8', '#1e293b', '#fff', ''];
+    x.save(); rr(x, 110, y, 804, h, 16); x.fillStyle = '#0b0f14'; x.fill(); x.clip();
+    const lg = x.createLinearGradient(110, y, 430, y + h); lg.addColorStop(0, tc[0]); lg.addColorStop(1, tc[1]); x.fillStyle = lg; x.fillRect(110, y, 320, h); x.restore();
+    rr(x, 110, y, 804, h, 16); x.strokeStyle = tc[0]; x.lineWidth = 3; x.stroke();
+    x.fillStyle = tc[2]; x.font = FONT(Math.round(h * .3)); x.fillText(col, 270, y + h * .55);
+    x.font = FONT(Math.round(h * .14)); x.globalAlpha = .75; x.fillText(tc[3], 270, y + h * .8); x.globalAlpha = 1;
+    if (t.ch) { x.font = FONT(30); x.fillText('🏆', 145, y + 40); }
+    const vals = [t.w + t.d + t.l, t.w, t.d, t.l, t.gf, t.ga];
+    cols.forEach(([n, px], k) => {
+      x.fillStyle = '#cbd5e1'; x.font = FONT(Math.round(h * .12) + 4); x.fillText(n, px, y + h * .3);
+      x.fillStyle = '#fff'; x.font = FONT(Math.round(h * .3)); x.fillText(String(vals[k]), px, y + h * .72);
+    });
+  });
+  x.fillStyle = '#f5deb3'; x.font = FONT(38); x.fillText((date || '').replace('-', '.'), W / 2, 740);
+  $('cardm').classList.remove('hidden');
+}
+function dl() { const a = document.createElement('a'); a.download = `tenfc-${cardDate || 'result'}.png`; a.href = $('cv').toDataURL('image/png'); a.click(); }
+function cardFromDraft() {
+  if (!draft.length) return;
+  showCard(draft.map(d => ({ name: d.name, w: d.w, d: d.d, l: d.l, gf: d.gf || 0, ga: d.ga || 0 })), $('dt').value);
+}
+function cardFromRound(id) {
+  const r = D.find(x => x.id === id); if (!r) return;
+  showCard(r.round_teams.map(t => ({ name: t.team_name || t.captain, w: t.w, d: t.d, l: t.l, gf: t.gf || 0, ga: t.ga || 0 })), r.played_on);
+}
+
+/* ---------- 입력 ---------- */
+function parse() {
+  draft = []; let c = null;
+  $('txt').value.split('\n').forEach(l => {
+    l = l.trim(); if (!l) return;
+    if (/^(⚽|\d+\s*팀)/.test(l)) { c = { name: l.replace(/^⚽\s*/, ''), pl: [], cap: '', w: 0, d: 0, l: 0, gf: 0, ga: 0, ch: false }; draft.push(c); return; }
+    if (!c) return;
+    l.split(/[,\/]+/).forEach(tk => {
+      const star = tk.includes('*');
+      const n = tk.replace(/\([^)]*\)|（[^）]*）/g, '').replace(/[*\-\s]/g, '').replace(/^(용병|지인)/, '');
+      if (!n) return;
+      if (!c.pl.includes(n)) c.pl.push(n);
+      if (star) c.cap = n;
+    });
+  });
+  draft.forEach(d => { if (!d.cap) d.cap = d.pl[0] || ''; });
+  if (!draft.length) alert('팀 헤더(⚽ 1팀 …)를 인식하지 못했습니다.');
+  applyRes(false);
+  drawDraft();
+}
+function applyRes(redraw) {
+  const msg = $('resmsg'); msg.textContent = '';
+  const text = $('res').value.trim(); if (!text || !draft.length) { if (redraw) drawDraft(); return; }
+  const color = d => (d.name.match(/\[([^\]]+)\]/) || [])[1] || d.name;
+  const find = k => draft.find(d => color(d) === k || d.name.startsWith(k));
+  draft.forEach(d => { d.w = d.d = d.l = 0; d.gf = d.ga = 0; d.ch = false; });
+  let n = 0; const bad = [];
+  text.split('\n').forEach(raw => {
+    let l = raw.replace(/^[\s*\-•]+/, '').replace(/^\d+\s*경기\s*(\([^)]*\))?\s*:?\s*/, '').replace(/\([^)]*\)/g, '').trim();
+    if (!l || !/\d\s*(vs|VS|:|대)\s*\d/.test(l)) return;
+    const m = l.match(/(\S+?)\s*(\d+)\s*(?:vs|VS|:|대)\s*(\d+)\s*(\S+)/);
+    if (!m) { bad.push(raw.trim()); return; }
+    const A = find(m[1]), B = find(m[4]), a = +m[2], b = +m[3];
+    if (!A || !B) { bad.push(raw.trim()); return; }
+    A.gf += a; A.ga += b; B.gf += b; B.ga += a;
+    if (a > b) { A.w++; B.l++; } else if (a < b) { B.w++; A.l++; } else { A.d++; B.d++; }
+    n++;
+  });
+  const key = d => [3 * d.w + d.d, d.gf - d.ga, d.gf];
+  const sorted = [...draft].sort((x, y) => { const a = key(x), b = key(y); return b[0] - a[0] || b[1] - a[1] || b[2] - a[2]; });
+  if (n && sorted.length) { sorted[0].ch = true; }
+  const tie = n && sorted.length > 1 && key(sorted[0]).join() === key(sorted[1]).join();
+  msg.textContent = `${n}경기 반영` + (tie ? ' · ⚠ 동률이라 우승팀을 직접 확인하세요' : '') + (bad.length ? ` · 인식 실패 ${bad.length}줄: ${bad.join(' / ')}` : '');
+  if (redraw) drawDraft();
+}
+function drawDraft() {
+  $('draft').innerHTML = draft.map((d, i) => `<div class="card"><b>${esc(d.name)}</b> <span class="text-slate-400">${d.pl.length}명</span>
+    <div class="flex flex-wrap gap-2 mt-2 items-center">👑
+      <select class="inp" onchange="draft[${i}].cap=this.value">${d.pl.map(p => `<option ${p === d.cap ? 'selected' : ''}>${esc(p)}</option>`).join('')}</select>
+      ${[['w', '승'], ['d', '무'], ['l', '패'], ['gf', '득점'], ['ga', '실점']].map(([k, n]) => `<label class="text-xs">${n} <input type="number" min="0" value="${d[k]}" class="inp w-16" onchange="draft[${i}].${k}=+this.value"></label>`).join('')}
+      <label class="text-xs"><input type="checkbox" ${d.ch ? 'checked' : ''} onchange="draft[${i}].ch=this.checked"> 🏆 우승</label>
+    </div></div>`).join('') + (draft.length ? '<button class="btn" onclick="save()">저장</button> <button class="inp" onclick="cardFromDraft()">🖼 결과 이미지 생성</button> <span class="text-xs text-slate-400">우승 미체크 시 승점(승3·무1) 단독 1위를 자동 우승 처리</span>' : '');
+}
+async function save() {
+  const date = $('dt').value; if (!date) return alert('날짜를 입력하세요.');
+  if (!draft.some(d => d.ch)) {
+    const pts = draft.map(d => 3 * d.w + d.d), m = Math.max(...pts);
+    if (m > 0 && pts.filter(p => p === m).length === 1) draft[pts.indexOf(m)].ch = true;
+  }
+  if (DEMO) {
+    D.unshift({ id: Date.now(), round_no: +$('rno').value || null, played_on: date,
+      round_teams: draft.map((d, i) => ({ id: i, team_name: d.name, captain: d.cap, w: d.w, d: d.d, l: d.l, gf: d.gf || 0, ga: d.ga || 0, is_champion: d.ch, round_players: d.pl.map(player => ({ player })) })) });
+    D.sort((a, b) => b.played_on.localeCompare(a.played_on));
+    draft = []; $('txt').value = ''; $('res').value = ''; $('resmsg').textContent = ''; drawDraft(); await load(); alert('저장되었습니다. (데모: 메모리에만 반영)'); return;
+  }
+  const ok = await rpc('stat_save', { p_date: date, p_no: +$('rno').value || null,
+    p_teams: draft.map(d => ({ team_name: d.name, captain: d.cap, w: d.w, d: d.d, l: d.l, gf: d.gf || 0, ga: d.ga || 0, is_champion: d.ch, players: d.pl })) });
+  if (ok === null) return;
+  draft = []; $('txt').value = ''; $('res').value = ''; $('resmsg').textContent = ''; drawDraft(); await load(); alert('저장되었습니다.');
+}
+function recList() {
+  $('rec').innerHTML = D.map(r => `<div class="card flex justify-between gap-2"><div>
+    <b>${esc(r.played_on)}</b> ${r.round_no ? `<span class="text-slate-400">${r.round_no}회차</span>` : ''}
+    <div class="text-xs text-slate-300 mt-1">${r.round_teams.map(t => `${t.is_champion ? '🏆' : ''}${esc(t.captain)}(${t.w}-${t.d}-${t.l})`).join(' · ')}</div></div>
+    <div class="flex flex-col gap-1 items-end"><button class="text-sky-400 text-xs" onclick="cardFromRound(${r.id})">🖼 이미지</button><button class="text-rose-400 text-xs" onclick="delRound(${r.id})">삭제</button></div></div>`).join('') || '<p class="text-slate-400">아직 기록이 없습니다.</p>';
+}
+async function delRound(id) {
+  if (!confirm('이 라운드 기록을 삭제할까요?')) return;
+  if (DEMO) { D = D.filter(r => r.id !== id); await load(); return; }
+  if (await rpc('stat_delete', { p_id: id }) === null && !tok()) return;
+  await load();
+}
+
+/* ---------- 집계 ---------- */
+const add = (o, t) => { o.n++; o.c += t.is_champion ? 1 : 0; o.w += t.w; o.d += t.d; o.l += t.l; o.gf = (o.gf || 0) + (t.gf || 0); o.ga = (o.ga || 0) + (t.ga || 0); };
+function capTab() {
+  const m = {};
+  T.forEach(t => add(m[t.captain] ??= { n: 0, c: 0, w: 0, d: 0, l: 0 }, t));
+  const rows = Object.entries(m).sort((a, b) => b[1].c - a[1].c || b[1].n - a[1].n);
+  $('cap').innerHTML = rows.length ? `<table class="w-full"><tr><th>팀장</th><th>팀장 횟수</th><th>🏆 우승</th><th>우승률</th><th>승-무-패</th><th>승률</th><th>득점</th><th>실점</th><th>득실</th></tr>` +
+    rows.map(([k, o]) => `<tr class="border-b border-slate-800"><td class="font-bold">${esc(k)}</td><td>${o.n}</td><td>${o.c}</td><td>${pct(o.c, o.n)}</td><td>${o.w}-${o.d}-${o.l}</td><td>${pct(o.w, o.w + o.d + o.l)}</td><td>${o.gf}</td><td>${o.ga}</td><td class="${o.gf - o.ga >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${o.gf - o.ga > 0 ? '+' : ''}${o.gf - o.ga}</td></tr>`).join('') + '</table>'
+    : '<p class="text-slate-400">데이터가 없습니다.</p>';
+}
+function chem() {
+  const p = $('who').value.trim(), N = +$('rng').value, cap = $('capOnly').checked;
+  if (!p) { $('chem').innerHTML = '<p class="text-slate-400">이름을 선택하세요.</p>'; return; }
+  const ts = T.filter(t => (!N || t.ri < N) && (cap ? t.captain === p : t.pl.includes(p)));
+  if (!ts.length) { $('chem').innerHTML = '<p class="text-slate-400">해당 기간 기록이 없습니다.</p>'; return; }
+  const m = {}, me = { n: 0, c: 0, w: 0, d: 0, l: 0 };
+  ts.forEach(t => { add(me, t); t.pl.forEach(q => { if (q === p) return; const o = m[q] ??= { n: 0, c: 0, w: 0, d: 0, l: 0, k: 0 }; add(o, t); if (t.captain === q) o.k++; }); });
+  const rows = Object.entries(m).sort((a, b) => b[1].n - a[1].n || b[1].c - a[1].c);
+  $('chem').innerHTML = `<p class="mb-3"><b class="text-emerald-400">${esc(p)}</b> ${cap ? '팀장 ' : '출전 '}${me.n}회 · 🏆 ${me.c}회 (${pct(me.c, me.n)}) · ${me.w}-${me.d}-${me.l}
+    ${N ? `<span class="text-slate-400">(최근 ${N}회 라운드 기준)</span>` : ''}</p>
+    <table class="w-full"><tr><th>같은 팀 멤버</th><th>같이 한 횟수</th><th>🏆 우승</th><th>우승률</th><th>승-무-패</th><th>그 사람이 팀장</th></tr>` +
+    rows.map(([k, o]) => `<tr class="border-b border-slate-800"><td class="font-bold">${esc(k)}</td><td>${o.n}</td><td>${o.c}</td><td>${pct(o.c, o.n)}</td><td>${o.w}-${o.d}-${o.l}</td><td>${o.k || '-'}</td></tr>`).join('') +
+    '</table><p class="text-[11px] text-slate-500 mt-2">※ 같이 한 횟수가 3회 미만이면 우승률은 참고용입니다.</p>';
+}
+
+boot();
+</script>
+</body></html>

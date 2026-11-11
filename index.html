@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 풋살팀 통합 시스템 v2.27</title>
+    <title>TenFC 풋살팀 통합 시스템 v2.37</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
@@ -19,7 +19,7 @@
     <div id="login-container" class="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
         <div class="text-center mb-6">
             <h1 class="text-3xl font-bold text-emerald-400">⚽ TenFC 풋살팀</h1>
-            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v2.27</span></p>
+            <p class="text-slate-400 text-sm mt-1">멤버 평점 및 출석 관리 시스템 <span class="text-emerald-400 font-bold">v2.37</span></p>
         </div>
         <form id="login-form" class="space-y-4">
             <div>
@@ -81,9 +81,10 @@
         <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <div>
                 <h2 id="user-welcome" class="text-2xl font-bold text-white"></h2>
-                <p class="text-xs text-slate-400 mt-1">정회원 총원: <span id="member-total-count" class="font-bold text-emerald-400">0명</span> | 팀 총 매치: <span id="team-total-matches-display" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.27</span></p>
+                <p class="text-xs text-slate-400 mt-1">정회원 총원: <span id="member-total-count" class="font-bold text-emerald-400">0명</span> | 팀 총 매치: <span id="team-total-matches-display" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.37</span></p>
             </div>
             <div class="flex gap-2">
+                <a href="#" target="_blank" rel="noopener noreferrer" class="stats-link stats-link-member hidden px-3 py-1.5 bg-sky-700 hover:bg-sky-600 text-white text-xs font-bold rounded-lg transition">📊 팀 집계</a>
                 <button onclick="openPwModal()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">비밀번호 변경</button>
                 <button onclick="logout()" class="px-3 py-1.5 bg-rose-900/40 hover:bg-rose-800/60 text-rose-300 text-xs rounded-lg transition border border-rose-700/50">로그아웃</button>
             </div>
@@ -214,7 +215,7 @@
         <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <div>
                 <h2 id="admin-title" class="text-2xl font-bold text-emerald-400">🛡️ 관리자 대시보드</h2>
-                <p class="text-xs text-slate-400 mt-1">정회원 총: <span id="admin-member-total-count" class="font-bold text-emerald-400">0명</span> | 총 매치: <span id="admin-team-matches" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.27</span></p>
+                <p class="text-xs text-slate-400 mt-1">정회원 총: <span id="admin-member-total-count" class="font-bold text-emerald-400">0명</span> | 총 매치: <span id="admin-team-matches" class="font-bold text-amber-400">0회</span> | 버전: <span class="text-emerald-400 font-bold">v2.37</span></p>
             </div>
             <div class="flex gap-2">
                 <a href="#" target="_blank" rel="noopener noreferrer" class="stats-link px-3 py-1.5 bg-sky-700 hover:bg-sky-600 text-white text-xs font-bold rounded-lg transition">📊 팀 집계</a>
@@ -712,6 +713,14 @@
             document.getElementById('photo-preview-modal').classList.add('hidden');
         }
 
+        // 팀 집계 사이트 단일 로그인: 로그인 성공 시 세션 토큰을 받아 저장 (집계 사이트가 같은 도메인에서 읽음)
+        async function issueStatToken(name, pw) {
+            try {
+                const { data } = await supabaseClient.rpc('stat_login', { p_name: name, p_pw: pw });
+                if (data) localStorage.setItem('tenfc_stat_token', data);
+            } catch (e) { /* 집계 사이트 미설치/오류 시 기존 로그인에는 영향 없음 */ }
+        }
+
         document.getElementById('login-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const inputName = document.getElementById('name-input').value.trim();
@@ -730,6 +739,7 @@
 
                 currentUser = user;
                 localStorage.setItem('tenfc_logged_user', user.name); 
+                await issueStatToken(user.name, inputPw);
                 document.getElementById('login-container').classList.add('hidden');
                 document.getElementById('login-error').classList.add('hidden');
                 
@@ -759,6 +769,7 @@
         }
 
         function loadMemberDashboard(user) {
+            document.querySelectorAll('.stats-link-member').forEach(el => el.classList.toggle('hidden', !['member', 'admin', 'sub_admin'].includes(user.role)));
             document.getElementById('user-welcome').innerHTML = `<span class="text-white">${user.name} 님</span>`;
             document.getElementById('team-total-matches-display').innerText = `${teamTotalMatches}회`;
             document.getElementById('member-total-count').innerText = `${activeRegularMemberCount}명`;
@@ -1547,6 +1558,9 @@
         function logout() {
             currentUser = null;
             localStorage.removeItem('tenfc_logged_user');
+            const statToken = localStorage.getItem('tenfc_stat_token');
+            localStorage.removeItem('tenfc_stat_token');
+            if (statToken) { try { supabaseClient.rpc('stat_logout', { p_token: statToken }); } catch (e) {} }
             document.getElementById('dashboard-container').classList.add('hidden');
             document.getElementById('admin-container').classList.add('hidden');
             document.getElementById('login-container').classList.remove('hidden');

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<!-- TenFC 팀 집계 v1.21 -->
+<!-- TenFC 팀 집계 v1.24 -->
 <html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TenFC 팀 집계 v1.21</title>
+<title>TenFC 팀 집계 v1.24</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style type="text/tailwindcss">
@@ -16,7 +16,7 @@ th{@apply text-slate-400 text-xs border-b border-slate-700}
 <body class="bg-slate-900 text-slate-100 min-h-screen p-4 text-sm">
 
 <div id="login" class="max-w-sm mx-auto mt-20 card space-y-3">
-  <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.21</span></h1>
+  <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.24</span></h1>
   <p class="text-xs text-slate-400">정회원·운영진 전용 · 멤버 사이트에서 로그인하셨다면 자동으로 들어옵니다.</p>
   <input id="em" type="text" placeholder="성명" class="inp w-full">
   <input id="pw" type="password" placeholder="비밀번호 (멤버 사이트와 동일)" class="inp w-full" onkeydown="if(event.key==='Enter')login()">
@@ -28,7 +28,7 @@ th{@apply text-slate-400 text-xs border-b border-slate-700}
 <div id="app" class="hidden max-w-4xl mx-auto">
   <div id="demo-bar" class="hidden mb-3 p-2 rounded bg-amber-900/40 border border-amber-700/50 text-amber-300 text-xs">🧪 데모 모드 — 샘플 데이터이며 DB에는 아무것도 저장되지 않습니다. 새로고침하면 초기화됩니다.</div>
   <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
-    <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.21</span></h1>
+    <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.24</span></h1>
     <div class="flex gap-2 items-center">
       <span id="me" class="text-xs text-slate-400"></span>
       <a href="../" class="text-xs text-slate-400 underline">← 멤버 관리</a>
@@ -64,6 +64,7 @@ th{@apply text-slate-400 text-xs border-b border-slate-700}
       <select id="rng" class="inp" onchange="chem()"><option value="0" selected>전체 기간</option><option value="3">최근 3회</option><option value="5">최근 5회</option><option value="10">최근 10회</option></select>
       <label class="text-xs"><input type="checkbox" id="capOnly" onchange="chem()"> 이 사람이 팀장일 때만</label>
     </div>
+    <p id="memwarn" class="text-xs text-amber-300 mb-2"></p>
     <div class="card overflow-x-auto" id="chem"><p class="text-slate-400">이름을 선택하세요.</p></div>
   </section>
 </div>
@@ -77,6 +78,9 @@ th{@apply text-slate-400 text-xs border-b border-slate-700}
 const sb = supabase.createClient('https://bxuiwomkpgqsbyaagmlp.supabase.co', 'sb_publishable_mXkGsaxwwfnnAR3lpE8T1A_n0kiPdZj');
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// members.role 값 → 구분: member=정회원, admin=최고관리자, sub_admin=부관리자, 아래 두 값이 용병/지인
+// (기존 멤버 사이트 드롭다운 기준: guest=용병, acquaintance=지인. DB와 반대라면 두 값을 서로 바꾸세요)
+const ROLE_GUEST = 'guest', ROLE_ACQ = 'acquaintance';
 const norm = n => String(n).replace(/^(용병|지인)[-\s]*/, '');
 const pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '-';
 let D = [], T = [], draft = [];
@@ -120,7 +124,8 @@ async function load() {
     if (!data) return;
     D = data;
     const st = await sb.rpc('stat_members', { p_token: tok() });
-    MEMBERS = st.data || [];
+    MEMBERS = (st.data || []).map(m => ({ ...m, role: m.role || 'member' }));
+    $('memwarn').textContent = MEMBERS.length ? '' : `⚠ 멤버 구분 정보를 불러오지 못했습니다${st.error ? ' (' + st.error.message + ')' : ''}. Supabase에서 schema.sql을 다시 실행했는지 확인해 주세요.`;
   }
   T = [];
   D.forEach((r, i) => r.round_teams.forEach(t => T.push({ ...t, ri: i, date: r.played_on, pl: t.round_players.map(p => p.player) })));
@@ -129,7 +134,7 @@ async function load() {
   const pick = (test, onlyUsed) => MEMBERS.filter(m => !m.withdrawn && test(m.role)).map(m => norm(m.name)).filter(n => !seen.has(n) && (!onlyUsed || used.has(n)) && seen.add(n));
   const opt = (n, tag) => `<option value="${esc(n)}">${esc(n)}${tag ? ` (${tag})` : ''}</option>`;
   const staff = pick(r => r === 'admin' || r === 'sub_admin', false), regular = pick(r => r === 'member', false).sort(ko);
-  const guest = pick(r => r === 'guest', true).sort(ko), acq = pick(r => r === 'acquaintance', true).sort(ko);
+  const guest = pick(r => r === ROLE_GUEST, true).sort(ko), acq = pick(r => r === ROLE_ACQ, true).sort(ko);
   const wd = MEMBERS.filter(m => m.withdrawn).map(m => norm(m.name)).filter(n => used.has(n) && !seen.has(n) && seen.add(n)).sort(ko);
   const etc = [...used].filter(n => !seen.has(n)).sort(ko);
   const tail = [...guest.map(n => [n, '용병']), ...acq.map(n => [n, '지인']), ...wd.map(n => [n, '탈퇴']), ...etc.map(n => [n, MEMBERS.length ? '미등록' : ''])];

@@ -30,7 +30,7 @@ th{@apply text-slate-400 text-xs border-b border-slate-700}
     <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계</h1>
     <div class="flex gap-2 items-center">
       <span id="me" class="text-xs text-slate-400"></span>
-      <a href="../" class="text-xs text-slate-400 underline">← 멤버 관리</a>
+      <a href="../tenfc_member/" class="text-xs text-slate-400 underline">← 멤버 관리</a>
       <button onclick="logout()" class="text-xs px-3 py-1.5 rounded bg-rose-900/40 text-rose-300 border border-rose-700/50">로그아웃</button>
     </div>
   </div>
@@ -164,6 +164,9 @@ async function demo() {
 const TC = { 레드: ['#dc2626', '#450a0a', '#fff', 'RED'], 그린: ['#84cc16', '#1a2e05', '#fff', 'GREEN'], 블랙: ['#e5e7eb', '#6b7280', '#111', 'BLACK'],
   블루: ['#3b82f6', '#172554', '#fff', 'BLUE'], 옐로: ['#facc15', '#713f12', '#111', 'YELLOW'], 노랑: ['#facc15', '#713f12', '#111', 'YELLOW'],
   화이트: ['#f8fafc', '#94a3b8', '#111', 'WHITE'], 오렌지: ['#fb923c', '#7c2d12', '#fff', 'ORANGE'] };
+const CK = [['레드', /레드|red|🔴|🟥/i], ['그린', /그린|green|🟢|🟩/i], ['블랙', /블랙|black|⚫|⬛/i], ['블루', /블루|blue|🔵|🟦/i],
+  ['옐로', /옐로|노랑|yellow|🟡|🟨/i], ['화이트', /화이트|white|⚪/i], ['오렌지', /오렌지|orange|🟠/i]];
+const canon = s => (CK.find(([, r]) => r.test(s)) || [])[0] || '';
 const FONT = z => `bold ${z}px "Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif`;
 let cardDate = '';
 function rr(x, a, b, w, h, r) { x.beginPath(); x.moveTo(a + r, b); x.arcTo(a + w, b, a + w, b + h, r); x.arcTo(a + w, b + h, a, b + h, r); x.arcTo(a, b + h, a, b, r); x.arcTo(a, b, a + w, b, r); x.closePath(); }
@@ -182,7 +185,7 @@ function showCard(teams, date) {
   const rows = [...teams].sort((p, q) => { const a = key(p), b = key(q); return b[0] - a[0] || b[1] - a[1] || b[2] - a[2]; });
   const h = Math.min(150, Math.floor(540 / rows.length) - 16);
   rows.forEach((t, i) => {
-    const y = 185 + i * (h + 16), col = (t.name.match(/\[([^\]]+)\]/) || [])[1] || t.name, tc = TC[col] || ['#94a3b8', '#1e293b', '#fff', ''];
+    const y = 185 + i * (h + 16), col = canon(t.name) || (t.name.match(/\[([^\]]+)\]/) || [])[1] || t.name, tc = TC[col] || ['#94a3b8', '#1e293b', '#fff', ''];
     x.save(); rr(x, 110, y, 804, h, 16); x.fillStyle = '#0b0f14'; x.fill(); x.clip();
     const lg = x.createLinearGradient(110, y, 430, y + h); lg.addColorStop(0, tc[0]); lg.addColorStop(1, tc[1]); x.fillStyle = lg; x.fillRect(110, y, 320, h); x.restore();
     rr(x, 110, y, 804, h, 16); x.strokeStyle = tc[0]; x.lineWidth = 3; x.stroke();
@@ -231,8 +234,7 @@ function parse() {
 function applyRes(redraw) {
   const msg = $('resmsg'); msg.textContent = '';
   const text = $('res').value.trim(); if (!text || !draft.length) { if (redraw) drawDraft(); return; }
-  const color = d => (d.name.match(/\[([^\]]+)\]/) || [])[1] || d.name;
-  const find = k => draft.find(d => color(d) === k || d.name.startsWith(k));
+  const find = k => { const c = canon(k); return draft.find(d => c ? canon(d.name) === c : d.name.includes(k)); };
   draft.forEach(d => { d.w = d.d = d.l = 0; d.gf = d.ga = 0; d.ch = false; });
   let n = 0; const bad = [];
   text.split('\n').forEach(raw => {
@@ -250,7 +252,7 @@ function applyRes(redraw) {
   const sorted = [...draft].sort((x, y) => { const a = key(x), b = key(y); return b[0] - a[0] || b[1] - a[1] || b[2] - a[2]; });
   if (n && sorted.length) { sorted[0].ch = true; }
   const tie = n && sorted.length > 1 && key(sorted[0]).join() === key(sorted[1]).join();
-  msg.textContent = `${n}경기 반영` + (tie ? ' · ⚠ 동률이라 우승팀을 직접 확인하세요' : '') + (bad.length ? ` · 인식 실패 ${bad.length}줄: ${bad.join(' / ')}` : '');
+  msg.textContent = `${n}경기 반영` + (tie ? ' · ⚠ 동률이라 우승팀을 직접 확인하세요' : '') + (bad.length ? ` · 인식 실패 ${bad.length}줄: ${bad.join(' / ')} · 라인업에서 인식된 팀: ${draft.map(d => d.name).join(', ')}` : '');
   if (redraw) drawDraft();
 }
 function drawDraft() {

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<!-- TenFC 팀 집계 v1.27 -->
+<!-- TenFC 팀 집계 v1.28 -->
 <html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TenFC 팀 집계 v1.27</title>
+<title>TenFC 팀 집계 v1.28</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style type="text/tailwindcss">
@@ -16,7 +16,7 @@ th{@apply text-slate-400 text-xs border-b border-slate-700}
 <body class="bg-slate-900 text-slate-100 min-h-screen p-4 text-sm">
 
 <div id="login" class="max-w-sm mx-auto mt-20 card space-y-3">
-  <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.27</span></h1>
+  <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.28</span></h1>
   <p class="text-xs text-slate-400">정회원·운영진 전용 · 멤버 사이트에서 로그인하셨다면 자동으로 들어옵니다.</p>
   <input id="em" type="text" placeholder="성명" class="inp w-full">
   <input id="pw" type="password" placeholder="비밀번호 (멤버 사이트와 동일)" class="inp w-full" onkeydown="if(event.key==='Enter')login()">
@@ -28,7 +28,7 @@ th{@apply text-slate-400 text-xs border-b border-slate-700}
 <div id="app" class="hidden max-w-4xl mx-auto">
   <div id="demo-bar" class="hidden mb-3 p-2 rounded bg-amber-900/40 border border-amber-700/50 text-amber-300 text-xs">🧪 데모 모드 — 샘플 데이터이며 DB에는 아무것도 저장되지 않습니다. 새로고침하면 초기화됩니다.</div>
   <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
-    <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.27</span></h1>
+    <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.28</span></h1>
     <div class="flex gap-2 items-center">
       <span id="me" class="text-xs text-slate-400"></span>
       <a href="../" class="text-xs text-slate-400 underline">← 멤버 관리</a>
@@ -56,7 +56,11 @@ th{@apply text-slate-400 text-xs border-b border-slate-700}
     <div id="rec"></div>
   </section>
 
-  <section id="s-cap" class="hidden"><div class="card overflow-x-auto" id="cap"></div></section>
+  <section id="s-cap" class="hidden">
+    <div class="card overflow-x-auto" id="cap"></div>
+    <h2 class="font-bold text-slate-300 mt-6 mb-2">라운드 결과</h2>
+    <div id="caprec"></div>
+  </section>
 
   <section id="s-chem" class="hidden">
     <div class="card flex flex-wrap gap-2 items-center">
@@ -351,7 +355,22 @@ function sortBy(t, k) {
 const th = (t, k, label) => { const on = SORT[t].k === k; return `<th class="cursor-pointer select-none hover:text-emerald-400" onclick="sortBy('${t}','${k}')">${label} <span class="${on ? 'text-emerald-400' : 'text-slate-600'}">${on ? (SORT[t].d < 0 ? '▼' : '▲') : '↕'}</span></th>`; };
 const srt = (t, rows) => { const o = SORT[t]; return rows.sort((a, b) => { const x = a[o.k], y = b[o.k]; const c = typeof x === 'string' ? x.localeCompare(y, 'ko') : x - y; return a.rk - b.rk || c * o.d || b.n - a.n || b.c - a.c || a.name.localeCompare(b.name, 'ko'); }); };
 const stat = (name, o) => { const g = o.w + o.d + o.l, [tag, rk] = kind(name); return { ...o, name, tag, rk, g, cr: o.n ? o.c / o.n : 0, wr: g ? o.w / g : 0, gd: (o.gf || 0) - (o.ga || 0) }; };
+let RV_ALL = false;
+function roundView() {
+  if (!D.length) return '<p class="text-slate-400">아직 기록이 없습니다.</p>';
+  const list = RV_ALL ? D : D.slice(0, 10);
+  const tm = t => {
+    const col = canon(t.team_name || ''), g = t.w + t.d + t.l;
+    const pl = (t.round_players || []).map(p => p.player).sort((a, b) => (a === t.captain ? -1 : b === t.captain ? 1 : 0));
+    return `<details class="mb-1"><summary class="cursor-pointer">${t.is_champion ? '🏆 ' : ''}<b>${esc(t.captain)}</b>${col ? ` (${col})` : ''} · ${g}경기 ${t.w}-${t.d}-${t.l} · 득${t.gf || 0} 실${t.ga || 0}</summary>
+      <div class="text-xs text-slate-400 pl-5 py-1">${pl.map(n => { const [tag] = kind(n); return (n === t.captain ? '👑' : '') + esc(n) + (tag ? `(${tag})` : ''); }).join(', ')}</div></details>`;
+  };
+  return list.map(r => `<div class="card"><div class="flex justify-between items-center mb-2"><div><b>${esc(r.played_on)}</b> ${r.round_no ? `<span class="text-slate-400">${r.round_no}회차</span>` : ''}</div>
+    <button class="text-sky-400 text-xs" onclick="cardFromRound(${r.id})">🖼 이미지</button></div>${r.round_teams.map(tm).join('')}</div>`).join('')
+    + (!RV_ALL && D.length > 10 ? `<button class="inp text-xs" onclick="RV_ALL=true;capTab()">전체 ${D.length}개 라운드 보기</button>` : '');
+}
 function capTab() {
+  $('caprec').innerHTML = roundView();
   const m = {};
   T.forEach(t => add(m[t.captain] ??= { n: 0, c: 0, w: 0, d: 0, l: 0 }, t));
   const rows = srt('cap', Object.entries(m).map(([k, o]) => stat(k, o)));

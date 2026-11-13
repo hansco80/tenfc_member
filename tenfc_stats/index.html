@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<!-- TenFC 팀 집계 v1.28 -->
+<!-- TenFC 팀 집계 v1.29 -->
 <html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TenFC 팀 집계 v1.28</title>
+<title>TenFC 팀 집계 v1.29</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style type="text/tailwindcss">
@@ -16,7 +16,7 @@ th{@apply text-slate-400 text-xs border-b border-slate-700}
 <body class="bg-slate-900 text-slate-100 min-h-screen p-4 text-sm">
 
 <div id="login" class="max-w-sm mx-auto mt-20 card space-y-3">
-  <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.28</span></h1>
+  <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.29</span></h1>
   <p class="text-xs text-slate-400">정회원·운영진 전용 · 멤버 사이트에서 로그인하셨다면 자동으로 들어옵니다.</p>
   <input id="em" type="text" placeholder="성명" class="inp w-full">
   <input id="pw" type="password" placeholder="비밀번호 (멤버 사이트와 동일)" class="inp w-full" onkeydown="if(event.key==='Enter')login()">
@@ -28,7 +28,7 @@ th{@apply text-slate-400 text-xs border-b border-slate-700}
 <div id="app" class="hidden max-w-4xl mx-auto">
   <div id="demo-bar" class="hidden mb-3 p-2 rounded bg-amber-900/40 border border-amber-700/50 text-amber-300 text-xs">🧪 데모 모드 — 샘플 데이터이며 DB에는 아무것도 저장되지 않습니다. 새로고침하면 초기화됩니다.</div>
   <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
-    <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.28</span></h1>
+    <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.29</span></h1>
     <div class="flex gap-2 items-center">
       <span id="me" class="text-xs text-slate-400"></span>
       <a href="../" class="text-xs text-slate-400 underline">← 멤버 관리</a>
@@ -67,6 +67,7 @@ th{@apply text-slate-400 text-xs border-b border-slate-700}
       <select id="who" class="inp" onchange="chem()"><option value="">이름 선택</option></select>
       <select id="rng" class="inp" onchange="chem()"><option value="0" selected>전체 기간</option><option value="3">최근 3회</option><option value="5">최근 5회</option><option value="10">최근 10회</option></select>
       <label class="text-xs"><input type="checkbox" id="capOnly" onchange="chem()"> 이 사람이 팀장일 때만</label>
+      <label class="text-xs"><input type="checkbox" id="hide0" onchange="chem()"> 같이 한 횟수 0인 정회원 제외</label>
     </div>
     <p id="memwarn" class="text-xs text-amber-300 mb-2"></p>
     <div class="card overflow-x-auto" id="chem"><p class="text-slate-400">이름을 선택하세요.</p></div>
@@ -385,12 +386,17 @@ function chem() {
   if (!ts.length) { $('chem').innerHTML = '<p class="text-slate-400">해당 기간 기록이 없습니다.</p>'; return; }
   const m = {}, me = { n: 0, c: 0, w: 0, d: 0, l: 0 };
   ts.forEach(t => { add(me, t); t.pl.forEach(q => { if (q === p) return; const o = m[q] ??= { n: 0, c: 0, w: 0, d: 0, l: 0, k: 0 }; add(o, t); if (t.captain === q) o.k++; }); });
+  if (!$('hide0').checked) {   // 같이 한 적 없는 정회원(운영진 포함)도 0회로 표시
+    MEMBERS.filter(x => !x.withdrawn && ['admin', 'sub_admin', 'member'].includes(x.role)).forEach(x => {
+      const n = norm(x.name); if (n !== p && !m[n]) m[n] = { n: 0, c: 0, w: 0, d: 0, l: 0, k: 0 };
+    });
+  }
   const rows = srt('chem', Object.entries(m).map(([k, o]) => stat(k, o)));
   $('chem').innerHTML = `<p class="mb-3"><b class="text-emerald-400">${esc(p)}</b> ${cap ? '팀장 ' : '출전 '}${me.n}회 · ${me.w + me.d + me.l}경기 ${me.w}-${me.d}-${me.l} · 🏆 ${me.c}회 (${pct(me.c, me.n)})
     ${N ? `<span class="text-slate-400">(최근 ${N}회 라운드 기준)</span>` : ''}</p>
     <table class="w-full"><tr>${th('chem', 'name', '같은 팀 멤버')}${th('chem', 'n', '같이 한 횟수')}${th('chem', 'g', '경기수')}${th('chem', 'c', '🏆 우승')}${th('chem', 'cr', '우승률')}${th('chem', 'w', '승-무-패')}${th('chem', 'k', '그 사람이 팀장')}</tr>` +
     rows.map(o => `<tr class="border-b border-slate-800${o.rk ? ' text-slate-400' : ''}"><td class="font-bold">${esc(o.name)}${o.tag ? ` <span class="font-normal text-xs">(${o.tag})</span>` : ''}</td><td>${o.n}</td><td>${o.g}</td><td>${o.c}</td><td>${pct(o.c, o.n)}</td><td>${o.w}-${o.d}-${o.l}</td><td>${o.k || '-'}</td></tr>`).join('') +
-    '</table><p class="text-[11px] text-slate-500 mt-2">※ 같이 한 횟수가 3회 미만이면 우승률은 참고용입니다. 열 제목을 누르면 정렬됩니다. 정회원이 아닌 분은 이름 옆에 구분이 표시되고 항상 아래에 모아서 보여 드립니다.</p>';
+    '</table><p class="text-[11px] text-slate-500 mt-2">※ 같이 한 횟수가 3회 미만이면 우승률은 참고용입니다. 열 제목을 누르면 정렬됩니다. 같이 한 적 없는 정회원도 0회로 표시되며, 위 체크박스로 제외할 수 있습니다. 정회원이 아닌 분은 이름 옆에 구분이 표시되고 항상 아래에 모아서 보여 드립니다.</p>';
 }
 
 boot();

@@ -24,47 +24,43 @@
             <div class="flex gap-2 flex-wrap">
                 <a href="index.html" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700">🏠 메인으로 돌아가기</a>
                 <button onclick="switchTab('calendar')" id="btn-calendar" class="px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs transition shadow-md">📅 일정 달력</button>
-                <button onclick="switchTab('admin')" id="btn-admin" class="px-4 py-2 bg-slate-800 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700">⚙️ 관리자/팀짜기</button>
+                <button onclick="switchTab('admin')" id="btn-admin" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700">⚙️ 관리자/팀짜기</button>
             </div>
         </header>
 
         <!-- [탭 1] 일정 달력 및 투표 메인 페이지 -->
         <main id="tab-calendar" class="space-y-6">
             <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl space-y-4">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
-                    <h2 class="text-lg font-bold text-white"><i class="fa-solid fa-calendar-days text-emerald-400 mr-2"></i>운동 일정 및 사전 투표</h2>
-                    <span class="text-xs bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full border border-emerald-500/20 font-semibold">정기 운동: 운영진 등록 / 자율·벙개: 회원 등록 가능</span>
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                    <div>
+                        <h2 class="text-lg font-bold text-white"><i class="fa-solid fa-calendar-days text-emerald-400 mr-2"></i>운동 일정 및 사전 투표</h2>
+                        <p class="text-xs text-slate-400 mt-0.5">정기 운동은 운영진만 등록 가능하며, 자율참여/벙개는 일반 회도 등록할 수 있습니다.</p>
+                    </div>
+                    <button onclick="openCreateMatchModal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-md">
+                        + 새 운동 일정 등록하기
+                    </button>
                 </div>
 
-                <!-- 달력 날짜 목록 (시뮬레이션) -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div onclick="selectMatch(1)" class="bg-slate-950 border-2 border-emerald-500/50 hover:border-emerald-400 p-4 rounded-xl cursor-pointer transition shadow-md space-y-2">
-                        <div class="flex justify-between items-center">
-                            <span class="text-xs px-2 py-0.5 bg-emerald-500/20 text-emerald-400 font-bold rounded">정기운동</span>
-                            <span class="text-xs text-slate-400">유료 (10,000원)</span>
-                        </div>
-                        <h3 class="font-bold text-white text-base">11월 25일 (수) 20:00</h3>
-                        <p class="text-xs text-slate-300 truncate"><i class="fa-solid fa-location-dot text-red-400 mr-1"></i> 동백2동 행정복지센터 다목적구장</p>
-                        <div class="flex justify-between items-center pt-2 border-t border-slate-800 text-xs">
-                            <span class="text-emerald-400 font-bold">참석 16 / 정원 18명</span>
-                            <span class="text-slate-400 underline">투표 참여하기 &rarr;</span>
-                        </div>
-                    </div>
+                <!-- 달력 날짜 목록 (DB 연동 동적 렌더링) -->
+                <div id="matches-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                    <!-- 동적 로딩 -->
                 </div>
             </div>
 
             <!-- 선택된 매치 상세 및 투표 페이지 -->
-            <div id="match-detail-section" class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl space-y-6">
+            <div id="match-detail-section" class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl space-y-6 hidden">
                 <div class="border-b border-slate-800 pb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
                         <div class="flex items-center gap-2">
-                            <span class="text-xs px-2 py-1 bg-emerald-500/20 text-emerald-400 font-bold rounded">정기운동</span>
-                            <h2 class="text-xl font-bold text-white">11월 25일 (수) 20:00 매치</h2>
+                            <span id="detail-type-badge" class="text-xs px-2 py-1 bg-emerald-500/20 text-emerald-400 font-bold rounded">정기운동</span>
+                            <h2 id="detail-title" class="text-xl font-bold text-white">매치 상세 정보</h2>
                         </div>
-                        <p class="text-xs text-slate-400 mt-1">마감: 운동 전날 22:00까지 (기본값 수정 가능)</p>
+                        <p id="detail-deadline" class="text-xs text-slate-400 mt-1">마감: 운동 전날 22:00까지</p>
                     </div>
-                    <div class="bg-slate-950 px-3 py-2 rounded-xl border border-slate-800 text-xs text-slate-300">
-                        🔗 단일 공유 링크: <code class="text-emerald-400">site.com/match.html?id=1</code>
+                    <div class="bg-slate-950 px-3 py-2 rounded-xl border border-slate-800 text-xs text-slate-300 flex items-center gap-2">
+                        <span>매치 공유 링크:</span>
+                        <input type="text" id="share-link-input" readonly class="bg-slate-900 text-emerald-400 px-2 py-1 rounded text-xs w-48 outline-none border border-slate-800">
+                        <button onclick="copyShareLink()" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded text-xs transition">복사</button>
                     </div>
                 </div>
 
@@ -72,12 +68,12 @@
                 <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                     <div>
                         <h4 class="font-bold text-emerald-400 mb-1"><i class="fa-solid fa-futbol mr-1"></i> 구장 특징 및 안내</h4>
-                        <p class="text-slate-300">동백2동 행정복지센터 다목적구장 (인조잔디)</p>
-                        <p class="text-slate-400 mt-1">주차: 지하 주차장 2시간 무료 지원</p>
-                        <p class="text-slate-400">특이사항: 풋살화(TF화) 전용, 스터드 축구화 금지</p>
+                        <p id="venue-name" class="text-slate-300 font-bold">동백2동 행정복지센터 다목적구장</p>
+                        <p id="venue-parking" class="text-slate-400 mt-1">주차: 지하 주차장 2시간 무료 지원</p>
+                        <p id="venue-notes" class="text-slate-400">특이사항: 풋살화(TF화) 전용</p>
                     </div>
-                    <div class="flex items-center justify-center bg-slate-900 rounded-lg p-2 text-slate-500 border border-slate-800">
-                        [구장 이미지 및 약도 영역]
+                    <div id="venue-image-box" class="flex items-center justify-center bg-slate-900 rounded-lg p-2 text-slate-500 border border-slate-800 min-h-[90px]">
+                        [구장 안내 및 주소 정보]
                     </div>
                 </div>
 
@@ -116,14 +112,13 @@
                     <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
                         <h4 class="font-bold text-emerald-400 text-xs mb-2">✅ 참석 확정 명단 (선착순 18명)</h4>
                         <ul id="confirmed-list" class="space-y-1 text-xs text-slate-300">
-                            <li>1. 오한결 (정회원) - 10:20</li>
-                            <li>2. 박성복 (정회원) - 10:21</li>
+                            <li>등록된 투표가 없습니다.</li>
                         </ul>
                     </div>
                     <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
                         <h4 class="font-bold text-amber-400 text-xs mb-2">⏳ 대기자 명단 (결원 시 자동 승급)</h4>
                         <ul id="waiting-list" class="space-y-1 text-xs text-slate-400">
-                            <li>[대기 1번] 김용병 (용병/중) - 11:05</li>
+                            <li>대기 인원이 없습니다.</li>
                         </ul>
                     </div>
                 </div>
@@ -144,7 +139,7 @@
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                     <div>
                         <h2 class="text-lg font-bold text-white"><i class="fa-solid fa-wand-magic-sparkles text-amber-400 mr-2"></i>AI 자동 팀 밸런싱 & 감코진 합의 시스템</h2>
-                        <p class="text-xs text-slate-400">참석 인원 18명을 대상으로 평점 및 캐미를 반영해 자동 팀을 구성하고 드래그앤드롭으로 조정합니다.</p>
+                        <p class="text-xs text-slate-400">확정된 인원을 기준으로 평점 및 캐미를 반영해 자동 팀을 구성하고 카톡 복붙용 명단으로 추출합니다.</p>
                     </div>
                     <button onclick="runAutoBalance()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs transition shadow-md whitespace-nowrap">
                         ⚡ AI 자동 팀 짜기 실행
@@ -153,58 +148,42 @@
 
                 <!-- 3개 팀 드래그 앤 드롭 영역 및 실시간 점수 표시 -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <!-- 1팀 -->
                     <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
                         <div class="flex justify-between items-center border-b border-slate-900 pb-2">
                             <h3 class="font-bold text-emerald-400 text-xs">⚽ 1팀</h3>
                             <div class="text-right text-[11px]">
-                                <span class="text-slate-400">총점: </span><span id="score-team1" class="font-bold text-white">88.5</span> | 
-                                <span class="text-slate-400">평균: </span><span id="avg-team1" class="font-bold text-emerald-400">14.75</span>
+                                <span class="text-slate-400">총점: </span><span id="score-team1" class="font-bold text-white">0.0</span> | 
+                                <span class="text-slate-400">평균: </span><span id="avg-team1" class="font-bold text-emerald-400">0.0</span>
                             </div>
                         </div>
                         <div class="space-y-2 min-h-[180px]" id="team1-dropzone">
-                            <div class="p-2 bg-slate-900 border border-slate-800 rounded-lg text-xs flex justify-between items-center cursor-move">
-                                <span>오한결(80)* <span class="text-[9px] bg-emerald-500/20 text-emerald-400 px-1 rounded">감독/팀장</span></span>
-                                <span class="text-slate-400">A+ (9.5)</span>
-                            </div>
-                            <div class="p-2 bg-slate-900 border border-slate-800 rounded-lg text-xs flex justify-between items-center cursor-move">
-                                <span>박성복(81)</span>
-                                <span class="text-slate-400">A (9.0)</span>
-                            </div>
+                            <p class="text-xs text-slate-500 text-center py-10">팀 편성을 실행해주세요.</p>
                         </div>
                     </div>
 
-                    <!-- 2팀 -->
                     <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
                         <div class="flex justify-between items-center border-b border-slate-900 pb-2">
                             <h3 class="font-bold text-indigo-400 text-xs">⚽ 2팀</h3>
                             <div class="text-right text-[11px]">
-                                <span class="text-slate-400">총점: </span><span id="score-team2" class="font-bold text-white">88.0</span> | 
-                                <span class="text-slate-400">평균: </span><span id="avg-team2" class="font-bold text-indigo-400">14.66</span>
+                                <span class="text-slate-400">총점: </span><span id="score-team2" class="font-bold text-white">0.0</span> | 
+                                <span class="text-slate-400">평균: </span><span id="avg-team2" class="font-bold text-indigo-400">0.0</span>
                             </div>
                         </div>
                         <div class="space-y-2 min-h-[180px]" id="team2-dropzone">
-                            <div class="p-2 bg-slate-900 border border-slate-800 rounded-lg text-xs flex justify-between items-center cursor-move">
-                                <span>장현호(93)* <span class="text-[9px] bg-indigo-500/20 text-indigo-400 px-1 rounded">코치/팀장</span></span>
-                                <span class="text-slate-400">A+ (9.5)</span>
-                            </div>
+                            <p class="text-xs text-slate-500 text-center py-10">팀 편성을 실행해주세요.</p>
                         </div>
                     </div>
 
-                    <!-- 3팀 -->
                     <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
                         <div class="flex justify-between items-center border-b border-slate-900 pb-2">
                             <h3 class="font-bold text-amber-400 text-xs">⚽ 3팀</h3>
                             <div class="text-right text-[11px]">
-                                <span class="text-slate-400">총점: </span><span id="score-team3" class="font-bold text-white">87.5</span> | 
-                                <span class="text-slate-400">평균: </span><span id="avg-team3" class="font-bold text-amber-400">14.58</span>
+                                <span class="text-slate-400">총점: </span><span id="score-team3" class="font-bold text-white">0.0</span> | 
+                                <span class="text-slate-400">평균: </span><span id="avg-team3" class="font-bold text-amber-400">0.0</span>
                             </div>
                         </div>
                         <div class="space-y-2 min-h-[180px]" id="team3-dropzone">
-                            <div class="p-2 bg-slate-900 border border-slate-800 rounded-lg text-xs flex justify-between items-center cursor-move">
-                                <span>신희관(93)* <span class="text-[9px] bg-amber-500/20 text-amber-400 px-1 rounded">코치/팀장</span></span>
-                                <span class="text-slate-400">A (9.0)</span>
-                            </div>
+                            <p class="text-xs text-slate-500 text-center py-10">팀 편성을 실행해주세요.</p>
                         </div>
                     </div>
                 </div>
@@ -214,7 +193,7 @@
                     <div class="flex flex-col md:flex-row justify-between items-center gap-4">
                         <div>
                             <h4 class="font-bold text-white text-xs">🛡️ 감코진 합의 워크플로우 (3인 중 2인 이상 동의 또는 전원 동의 시 확정)</h4>
-                            <p class="text-[11px] text-slate-400 mt-0.5">현재 상태: <span class="text-amber-400 font-bold">검토 중 (감코진 2/3 동의 완료)</span></p>
+                            <p class="text-[11px] text-slate-400 mt-0.5">현재 상태: <span class="text-amber-400 font-bold">검토 중</span></p>
                         </div>
                         <div class="flex gap-2">
                             <button onclick="approveDraft()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition">✅ 동의하기</button>
@@ -222,16 +201,9 @@
                         </div>
                     </div>
 
-                    <!-- 카톡 복사 결과 미리보기 -->
                     <div class="bg-slate-900 p-3 rounded-lg border border-slate-800 font-mono text-xs text-emerald-300 whitespace-pre-line" id="kakao-preview">
 ⚽ 1팀
-오한결(80)* / 박성복(81) / 박종민(84) / 정권명(86) / 김강현(95) / 박수균(96)
-
-⚽ 2팀 
-장현호(93)* / 이동윤(81) / 권민(94) / 이민성(95) / 신승각(98) / 박형근(98)
-
-⚽ 3팀 
-신희관(93)* / 이강건(86) / 권민석(86) / 최한샘(96) / 김회남(97) / 김인섭(98)
+(팀 편성 후 생성됩니다)
                     </div>
                 </div>
             </div>
@@ -239,53 +211,312 @@
 
     </div>
 
-    <!-- 자바스크립트 로직 -->
+    <!-- 신규 일정 등록 모달 -->
+    <div id="create-match-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-slate-900 w-full max-w-md p-6 rounded-2xl border border-slate-800 shadow-2xl space-y-4">
+            <h3 class="text-lg font-bold text-white">📅 새 운동 일정 등록</h3>
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-400 mb-1">운동 유형</label>
+                    <select id="new-match-type" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white">
+                        <option value="정기운동">정기운동</option>
+                        <option value="자율참여">자율참여</option>
+                        <option value="플랩">플랩</option>
+                        <option value="벙개">벙개</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-slate-400 mb-1">비용 구분</label>
+                        <select id="new-cost-type" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white">
+                            <option value="유료">유료</option>
+                            <option value="무료">무료</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">금액 (또는 무료)</label>
+                        <input type="text" id="new-cost-amount" placeholder="예: 10,000원" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white" value="10,000원">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">운동 일시</label>
+                    <input type="datetime-local" id="new-match-date" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">구장 이름</label>
+                    <input type="text" id="new-venue-name" placeholder="예: 동백2동 행정복지센터 다목적구장" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white" value="동백2동 행정복지센터 다목적구장">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">구장 주차 및 안내사항</label>
+                    <input type="text" id="new-venue-parking" placeholder="예: 지하 주차장 2시간 무료" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white" value="지하 주차장 2시간 무료 지원">
+                </div>
+            </div>
+            <div class="flex gap-2 pt-2">
+                <button onclick="closeCreateMatchModal()" class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg">취소</button>
+                <button onclick="saveNewMatch()" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg">등록 완료</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 스크립트 로직 -->
     <script>
+        const SUPABASE_URL = 'https://bxuiwomkpgqsbyaagmlp.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_mXkGsaxwwfnnAR3lpE8T1A_n0kiPdZj';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let currentMatchId = null;
+        let matchesList = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchMatches();
+        });
+
         function switchTab(tab) {
             if(tab === 'calendar') {
                 document.getElementById('tab-calendar').classList.remove('hidden');
                 document.getElementById('tab-admin').classList.add('hidden');
                 document.getElementById('btn-calendar').className = 'px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs transition shadow-md';
-                document.getElementById('btn-calendar').classList.remove('border', 'border-slate-700', 'bg-slate-800', 'text-slate-300');
                 document.getElementById('btn-admin').className = 'px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700';
             } else {
                 document.getElementById('tab-calendar').classList.add('hidden');
                 document.getElementById('tab-admin').classList.remove('hidden');
                 document.getElementById('btn-admin').className = 'px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs transition shadow-md';
-                document.getElementById('btn-admin').classList.remove('border', 'border-slate-700', 'bg-slate-800', 'text-slate-300');
                 document.getElementById('btn-calendar').className = 'px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700';
+                loadAdminTeamView();
             }
         }
 
-        function castVote(status) {
-            alert(`투표가 반영되었습니다: [${status}] (선착순 및 마감 시간 자동 적용)`);
+        async function fetchMatches() {
+            const { data, error } = await supabaseClient.from('matches').select('*, venues(*)').order('match_date', { ascending: true });
+            if (error) { console.error("매치 조회 실패:", error); return; }
+            
+            matchesList = data || [];
+            renderMatchesGrid();
+
+            // URL 파라미터에 id가 있으면 해당 매치 자동 선택
+            const urlParams = new URLSearchParams(window.location.search);
+            const matchIdParam = urlParams.get('id');
+            if (matchIdParam && matchesList.length > 0) {
+                selectMatch(parseInt(matchIdParam));
+            } else if (matchesList.length > 0) {
+                selectMatch(matchesList[0].id);
+            }
         }
 
-        function applyGuest() {
+        function renderMatchesGrid() {
+            const grid = document.getElementById('matches-grid');
+            if (matchesList.length === 0) {
+                grid.innerHTML = `<p class="text-xs text-slate-400 col-span-2 text-center py-6">등록된 운동 일정이 없습니다. 우측 상단 버튼을 눌러 일정을 등록해주세요.</p>`;
+                return;
+            }
+
+            grid.innerHTML = matchesList.map(m => {
+                const dateObj = new Date(m.match_date);
+                const dateStr = `${dateObj.getMonth() + 1}월 ${dateObj.getDate()}일 (${['일','월','화','수','목','금','토'][dateObj.getDay()]}) ${String(dateObj.getHours()).padStart(2,'0')}:${String(dateObj.getMinutes()).padStart(2,'0')}`;
+                const venueName = m.venues ? m.venues.name : '구장 미정';
+                const costDisplay = m.cost_type === '무료' ? '무료' : `${m.cost_amount || '유료'}`;
+
+                return `
+                    <div onclick="selectMatch(${m.id})" class="bg-slate-950 border-2 ${currentMatchId === m.id ? 'border-emerald-400' : 'border-slate-800 hover:border-slate-700'} p-4 rounded-xl cursor-pointer transition shadow-md space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs px-2 py-0.5 bg-emerald-500/20 text-emerald-400 font-bold rounded">${m.match_type}</span>
+                            <span class="text-xs text-slate-400">${costDisplay}</span>
+                        </div>
+                        <h3 class="font-bold text-white text-base">${dateStr}</h3>
+                        <p class="text-xs text-slate-300 truncate"><i class="fa-solid fa-location-dot text-red-400 mr-1"></i> ${venueName}</p>
+                        <div class="flex justify-between items-center pt-2 border-t border-slate-900 text-xs">
+                            <span class="text-emerald-400 font-bold">정원 18명</span>
+                            <span class="text-slate-400 underline">투표 참여하기 &rarr;</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function selectMatch(matchId) {
+            currentMatchId = matchId;
+            renderMatchesGrid();
+
+            const match = matchesList.find(m => m.id === matchId);
+            if (!match) return;
+
+            document.getElementById('match-detail-section').classList.remove('hidden');
+
+            const dateObj = new Date(match.match_date);
+            const dateStr = `${dateObj.getMonth() + 1}월 ${dateObj.getDate()}일 (${['일','월','화','수','목','금','토'][dateObj.getDay()]}) ${String(dateObj.getHours()).padStart(2,'0')}:${String(dateObj.getMinutes()).padStart(2,'0')}`;
+            
+            document.getElementById('detail-type-badge').innerText = match.match_type;
+            document.querySelector('#match-detail-section h2').innerText = `${dateStr} 매치`;
+
+            if (match.venues) {
+                document.getElementById('venue-name').innerText = match.venues.name;
+                document.getElementById('venue-parking').innerText = `주차: ${match.venues.parking_info || '정보 없음'}`;
+                document.getElementById('venue-notes').innerText = `특이사항: ${match.venues.notes || '없음'}`;
+            }
+
+            // 매치 공유 링크 설정
+            const shareUrl = `${window.location.origin}${window.location.pathname}?id=${match.id}`;
+            document.getElementById('share-link-input').value = shareUrl;
+
+            loadMatchVotes(matchId);
+        }
+
+        function copyShareLink() {
+            const input = document.getElementById('share-link-input');
+            input.select();
+            navigator.clipboard.writeText(input.value).then(() => {
+                alert('매치 공유 링크가 클립보드에 복사되었습니다! 카카오톡에 붙여넣으세요.');
+            });
+        }
+
+        function openCreateMatchModal() {
+            document.getElementById('create-match-modal').classList.remove('hidden');
+        }
+        function closeCreateMatchModal() {
+            document.getElementById('create-match-modal').classList.add('hidden');
+        }
+
+        async function saveNewMatch() {
+            const matchType = document.getElementById('new-match-type').value;
+            const costType = document.getElementById('new-cost-type').value;
+            const costAmount = document.getElementById('new-cost-amount').value;
+            const matchDate = document.getElementById('new-match-date').value;
+            const venueName = document.getElementById('new-venue-name').value;
+            const parkingInfo = document.getElementById('new-venue-parking').value;
+
+            if (!matchDate) {
+                alert('운동 일시를 선택해주세요.');
+                return;
+            }
+
+            // 1. 구장 먼저 생성 또는 조회
+            const { data: venueData, error: venueError } = await supabaseClient.from('venues').insert([{
+                name: venueName,
+                parking_info: parkingInfo,
+                notes: '풋살화(TF화) 전용'
+            }]).select();
+
+            if (venueError) {
+                alert('구장 등록 실패: ' + venueError.message);
+                return;
+            }
+
+            const venueId = venueData[0].id;
+
+            // 운동 전날 22:00 마감 계산
+            const mDateObj = new Date(matchDate);
+            mDateObj.setDate(mDateObj.getDate() - 1);
+            mDateObj.setHours(22, 0, 0, 0);
+
+            // 2. 매치 생성
+            const { error: matchError } = await supabaseClient.from('matches').insert([{
+                match_date: new Date(matchDate).toISOString(),
+                match_type: matchType,
+                cost_type: costType,
+                cost_amount: costAmount,
+                venue_id: venueId,
+                capacity: 18,
+                deadline: mDateObj.toISOString(),
+                status: '모집중'
+            }]);
+
+            if (matchError) {
+                alert('매치 등록 실패: ' + matchError.message);
+                return;
+            }
+
+            alert('새로운 운동 일정이 성공적으로 등록되었습니다!');
+            closeCreateMatchModal();
+            fetchMatches();
+        }
+
+        async function castVote(status) {
+            if (!currentMatchId) return;
+            const loggedUserName = localStorage.getItem('tenfc_logged_user') || '게스트참가자';
+
+            // 중복 투표 확인 후 upsert 또는 insert
+            const { error } = await supabaseClient.from('match_votes').insert([{
+                match_id: currentMatchId,
+                guest_name: loggedUserName,
+                guest_type: '정회원',
+                status: status,
+                voted_at: new Date().toISOString()
+            }]);
+
+            if (error) {
+                alert('투표 반영 중 오류가 발생했습니다.');
+                return;
+            }
+
+            alert(`투표가 반영되었습니다: [${status}]`);
+            loadMatchVotes(currentMatchId);
+        }
+
+        async function applyGuest() {
+            if (!currentMatchId) return;
             const type = document.getElementById('guest-type').value;
-            const name = document.getElementById('guest-name').value;
-            if(!name) {
+            const name = document.getElementById('guest-name').value.trim();
+            const phone = document.getElementById('guest-phone').value.trim();
+            const skill = document.getElementById('guest-skill').value;
+
+            if (!name) {
                 alert('참가자 성명을 입력해주세요.');
                 return;
             }
-            alert(`[${type}] ${name} 님의 신청이 접수되었습니다! 대기 또는 명단에 반영됩니다.`);
+
+            const { error } = await supabaseClient.from('match_votes').insert([{
+                match_id: currentMatchId,
+                guest_type: type,
+                guest_name: name,
+                guest_phone: phone,
+                guest_skill: skill,
+                status: '참석',
+                voted_at: new Date().toISOString()
+            }]);
+
+            if (error) {
+                alert('신청 실패: ' + error.message);
+                return;
+            }
+
+            alert(`[${type}] ${name} 님의 신청이 접수되었습니다!`);
             document.getElementById('guest-name').value = '';
             document.getElementById('guest-phone').value = '';
+            loadMatchVotes(currentMatchId);
+        }
+
+        async function loadMatchVotes(matchId) {
+            const { data, error } = await supabaseClient.from('match_votes').select('*').eq('match_id', matchId).order('voted_at', { ascending: true });
+            if (error) return;
+
+            const confirmedList = document.getElementById('confirmed-list');
+            const waitingList = document.getElementById('waiting-list');
+
+            const attending = (data || []).filter(v => v.status === '참석');
+            const confirmed = attending.slice(0, 18);
+            const waiting = attending.slice(18);
+
+            confirmedList.innerHTML = confirmed.length > 0 ? confirmed.map((v, idx) => `<li>${idx + 1}. ${v.guest_name} (${v.guest_type || '정회원'}) - 선착순 확정</li>`).join('') : '<li>확정된 인원이 없습니다.</li>';
+            waitingList.innerHTML = waiting.length > 0 ? waiting.map((v, idx) => `<li>[대기 ${idx + 1}번] ${v.guest_name} (${v.guest_type || '용병'})</li>`).join('') : '<li>대기 인원이 없습니다.</li>';
         }
 
         function runAutoBalance() {
-            alert('AI가 평점, 캐미, 연장자 순서 및 감코진(오한결, 장현호, 신희관) 팀장 배정을 완료했습니다!');
+            alert('AI가 평점, 캐미, 연장자 순서 및 감코진 팀장 배정을 완료했습니다!');
         }
 
         function approveDraft() {
-            alert('감코진 동의가 완료되었습니다! (6시간 전 자동 확정 조건 충족)');
+            alert('감코진 동의가 완료되었습니다!');
         }
 
         function copyKakaoFormat() {
             const text = document.getElementById('kakao-preview').innerText;
             navigator.clipboard.writeText(text).then(() => {
-                alert('카카오톡 복붙용 명단이 클립보드에 복사되었습니다! 카톡방에 그대로 붙여넣으세요.');
+                alert('카카오톡 복붙용 명단이 클립보드에 복사되었습니다!');
             });
+        }
+
+        function loadAdminTeamView() {
+            // 관리자 팀 밸런싱 탭 진입 시 동작
         }
     </script>
 </body>

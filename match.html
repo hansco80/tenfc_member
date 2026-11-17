@@ -24,7 +24,7 @@
             <div class="flex gap-2 flex-wrap">
                 <a href="index.html" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700">🏠 메인 통합시스템</a>
                 <button onclick="switchTab('calendar')" id="btn-calendar" class="px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs transition shadow-md">📅 일정 달력</button>
-                <button onclick="switchTab('admin')" id="btn-admin" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700 hidden">⚙️ 관리자/팀짜기</button>
+                <button onclick="switchTab('admin')" id="btn-admin" class="px-4 py-2 bg-slate-800 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700 hidden">⚙️ 관리자/팀짜기</button>
             </div>
         </header>
 
@@ -36,7 +36,7 @@
                         <h2 class="text-lg font-bold text-white"><i class="fa-solid fa-calendar-days text-emerald-400 mr-2"></i>운동 일정 및 사전 투표</h2>
                         <p class="text-xs text-slate-400 mt-0.5">정기 운동은 운영진만 등록 가능하며, 자율참여/벙개는 일반 회원도 등록할 수 있습니다.</p>
                     </div>
-                    <button onclick="openCreateMatchModal()" id="create-match-btn" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-md">
+                    <button onclick="openCreateMatchModal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-md">
                         + 새 운동 일정 등록하기
                     </button>
                 </div>
@@ -72,7 +72,7 @@
                         <p id="venue-parking" class="text-slate-400">주차: -</p>
                         <p id="venue-notes" class="text-slate-400">특이사항: -</p>
                     </div>
-                    <div id="venue-image-box" class="flex items-center justify-center bg-slate-900 rounded-lg p-3 text-slate-500 border border-slate-800 min-h-[90px] text-center">
+                    <div class="flex items-center justify-center bg-slate-900 rounded-lg p-3 text-slate-500 border border-slate-800 min-h-[90px] text-center">
                         [구장 안내 및 주소 정보]
                     </div>
                 </div>
@@ -82,7 +82,7 @@
                     <h3 class="font-bold text-xs text-white uppercase tracking-wider">✍️ 사전 투표 남기기 (1인 1투표)</h3>
                     <div class="grid grid-cols-3 gap-3">
                         <button onclick="castVote('참석')" class="py-3 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-xl text-white transition text-xs shadow-md">✅ 참석 (1순위)</button>
-                        <button onclick="castVote('미정')" class="py-3 bg-amber-600 hover:bg-amber-500 font-bold rounded-xl text-white transition text-xs shadow-md">❓ 미정 (6시전 자동불참)</button>
+                        <button onclick="castVote('미정')" class="py-3 bg-amber-600 hover:bg-amber-500 font-bold rounded-xl text-white transition text-xs shadow-md">❓ 미정</button>
                         <button onclick="castVote('불참')" class="py-3 bg-rose-600 hover:bg-rose-500 font-bold rounded-xl text-white transition text-xs shadow-md">❌ 불참</button>
                     </div>
                 </div>
@@ -112,13 +112,13 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
                         <h4 class="font-bold text-emerald-400 text-xs mb-2">✅ 참석 확정 명단 (선착순 18명 / 가입전참가는 하단)</h4>
-                        <ul id="confirmed-list" class="space-y-1 text-xs text-slate-300">
+                        <ul id="confirmed-list" class="space-y-1.5 text-xs text-slate-300">
                             <li>등록된 투표가 없습니다.</li>
                         </ul>
                     </div>
                     <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
-                        <h4 class="font-bold text-amber-400 text-xs mb-2">⏳ 대기자 명단 (용병/지인 및 19번째 이후 인원)</h4>
-                        <ul id="waiting-list" class="space-y-1 text-xs text-slate-400">
+                        <h4 class="font-bold text-amber-400 text-xs mb-2">⏳ 대기자 명단 (용병/지인 및 19번째 이후)</h4>
+                        <ul id="waiting-list" class="space-y-1.5 text-xs text-slate-400">
                             <li>대기 인원이 없습니다.</li>
                         </ul>
                     </div>
@@ -134,13 +134,13 @@
             </div>
         </main>
 
-        <!-- [탭 2] 관리자 팀 빌딩 & 감코진 합의 페이지 -->
+        <!-- [탭 2] 관리자 팀 빌딩 & 감코진 합의 페이지 (주관리자 전용) -->
         <main id="tab-admin" class="space-y-6 hidden">
             <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl space-y-4">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                     <div>
                         <h2 class="text-lg font-bold text-white"><i class="fa-solid fa-wand-magic-sparkles text-amber-400 mr-2"></i>AI 자동 팀 밸런싱 & 감코진 합의 시스템</h2>
-                        <p class="text-xs text-slate-400">확정된 18명을 대상으로 평점 및 연장자순을 반영해 1·2·3팀을 구성합니다.</p>
+                        <p class="text-xs text-slate-400">현재 확정된 인원(인원수 무관)을 대상으로 평점 및 출생년도를 고려해 1·2·3팀으로 분할합니다.</p>
                     </div>
                     <button onclick="runAutoBalance()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs transition shadow-md whitespace-nowrap">
                         ⚡ AI 자동 팀 짜기 실행
@@ -194,7 +194,7 @@
                     <div class="flex flex-col md:flex-row justify-between items-center gap-4">
                         <div>
                             <h4 class="font-bold text-white text-xs">🛡️ 감코진 합의 및 카톡 복붙 명단 생성</h4>
-                            <p class="text-[11px] text-slate-400 mt-0.5">팀장(*) 및 연장자순(출생년도) 자동 정렬</p>
+                            <p class="text-[11px] text-slate-400 mt-0.5">출생년도 및 평점 반영 자동 정렬</p>
                         </div>
                         <button onclick="copyKakaoFormat()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs transition shadow">📋 카톡 복붙용 명단 복사</button>
                     </div>
@@ -278,6 +278,7 @@
         let matchesList = [];
         let membersData = [];
         let currentUser = null;
+        let currentMatchVotes = [];
 
         document.addEventListener('DOMContentLoaded', async () => {
             await fetchMembers();
@@ -288,7 +289,6 @@
             const { data } = await supabaseClient.from('members').select('*');
             if (data) membersData = data;
 
-            // ?view=이름 파라미터 지원
             const urlParams = new URLSearchParams(window.location.search);
             const viewName = urlParams.get('view');
             if (viewName) {
@@ -302,11 +302,15 @@
 
             if (currentUser) {
                 document.getElementById('current-user-badge').innerText = `${currentUser.name} 님 (${currentUser.role === 'admin' ? '주관리자' : '정회원'})`;
-                if (currentUser.role === 'admin' || currentUser.role === 'sub_admin') {
+                // 주관리자(admin)만 팀짜기/관리자 탭 접근 허용
+                if (currentUser.role === 'admin') {
                     document.getElementById('btn-admin').classList.remove('hidden');
+                } else {
+                    document.getElementById('btn-admin').classList.add('hidden');
                 }
             } else {
                 document.getElementById('current-user-badge').innerText = '비회원 (방문자)';
+                document.getElementById('btn-admin').classList.add('hidden');
             }
         }
 
@@ -321,8 +325,15 @@
                 document.getElementById('tab-calendar').classList.remove('hidden');
                 document.getElementById('tab-admin').classList.add('hidden');
                 document.getElementById('btn-calendar').className = 'px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs transition shadow-md';
-                document.getElementById('btn-admin').className = 'px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700';
+                if (currentUser && currentUser.role === 'admin') {
+                    document.getElementById('btn-admin').className = 'px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700';
+                }
             } else {
+                // 주관리자만 접근 가능하도록 방어
+                if (!currentUser || currentUser.role !== 'admin') {
+                    alert('⚠️ 관리자 팀짜기 메뉴는 주관리자만 접근할 수 있습니다.');
+                    return;
+                }
                 document.getElementById('tab-calendar').classList.add('hidden');
                 document.getElementById('tab-admin').classList.remove('hidden');
                 document.getElementById('btn-admin').className = 'px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs transition shadow-md';
@@ -459,29 +470,40 @@
             fetchMatches();
         }
 
-        async function castVote(status) {
-            if (!currentMatchId) return;
-            const voterName = currentUser ? currentUser.name : prompt('비회원 투표입니다. 성명을 입력해주세요:');
-            if (!voterName) return;
+       async function castVote(status) {
+    if (!currentMatchId) return;
+    const voterName = currentUser ? currentUser.name : prompt('비회원 투표입니다. 성명을 입력해주세요:');
+    if (!voterName) return;
 
-            // 동일인 중복 투표 방지 (기존 투표 확인 후 업데이트 또는 삽입)
-            const { data: existing } = await supabaseClient.from('match_votes').select('*').eq('match_id', currentMatchId).eq('guest_name', voterName);
-            
-            if (existing && existing.length > 0) {
-                await supabaseClient.from('match_votes').update({ status: status, voted_at: new Date().toISOString() }).eq('id', existing[0].id);
-            } else {
-                await supabaseClient.from('match_votes').insert([{
-                    match_id: currentMatchId,
-                    guest_name: voterName,
-                    guest_type: currentUser ? '정회원' : '비회원',
-                    status: status,
-                    voted_at: new Date().toISOString()
-                }]);
-            }
+    // 회원의 실제 role에 따라 guest_type 결정 (guest면 '용병'으로 처리)
+    let assignedGuestType = '정회원';
+    if (currentUser) {
+        if (currentUser.role === 'guest') assignedGuestType = '용병';
+        else if (currentUser.role === 'acquaintance') assignedGuestType = '지인';
+        else if (currentUser.role === 'admin' || currentUser.role === 'sub_admin') assignedGuestType = '정회원';
+    }
 
-            alert(`투표가 반영되었습니다: [${status}]`);
-            loadMatchVotes(currentMatchId);
-        }
+    const { data: existing } = await supabaseClient.from('match_votes').select('*').eq('match_id', currentMatchId).eq('guest_name', voterName);
+    
+    if (existing && existing.length > 0) {
+        await supabaseClient.from('match_votes').update({ 
+            status: status, 
+            guest_type: assignedGuestType, 
+            voted_at: new Date().toISOString() 
+        }).eq('id', existing[0].id);
+    } else {
+        await supabaseClient.from('match_votes').insert([{
+            match_id: currentMatchId,
+            guest_name: voterName,
+            guest_type: assignedGuestType, // 👈 올바른 권한 타입 적용
+            status: status,
+            voted_at: new Date().toISOString()
+        }]);
+    }
+
+    alert(`투표가 반영되었습니다: [${status}]`);
+    loadMatchVotes(currentMatchId);
+}
 
         async function applyGuest() {
             if (!currentMatchId) return;
@@ -505,7 +527,7 @@
 
             if (error) { alert('신청 실패'); return; }
 
-            alert(`[${type}] ${name} 님의 신청이 접수되었습니다! (대기 또는 하단 배치)`);
+            alert(`[${type}] ${name} 님의 신청이 접수되었습니다!`);
             document.getElementById('guest-name').value = '';
             document.getElementById('guest-birth').value = '';
             document.getElementById('guest-phone').value = '';
@@ -514,43 +536,101 @@
 
         async function loadMatchVotes(matchId) {
             const { data } = await supabaseClient.from('match_votes').select('*').eq('match_id', matchId).order('voted_at', { ascending: true });
-            const votes = data || [];
+            currentMatchVotes = data || [];
 
             const confirmedList = document.getElementById('confirmed-list');
             const waitingList = document.getElementById('waiting-list');
 
-            const attending = votes.filter(v => v.status === '참석');
+            const attending = currentMatchVotes.filter(v => v.status === '참석');
             
-            // 용병 및 지인은 무조건 대기자 명단으로 분류
             const regularAttending = attending.filter(v => v.guest_type !== '용병' && v.guest_type !== '지인');
             const guestAttending = attending.filter(v => v.guest_type === '용병' || v.guest_type === '지인');
 
-            // 선착순 정회원 중 상위 18명 확정 (단, '가입전 참가'는 확정 명단 하단으로 배치)
             let confirmedNormal = regularAttending.filter(v => v.guest_type !== '가입전 참가').slice(0, 18);
             let confirmedPreJoin = regularAttending.filter(v => v.guest_type === '가입전 참가');
 
-            // 만약 정회원이 18명 미만이면 가입전 참가도 채워줌
             let totalConfirmed = [...confirmedNormal, ...confirmedPreJoin].slice(0, 18);
             let overflowConfirmed = [...confirmedNormal, ...confirmedPreJoin].slice(18);
 
-            // 대기자 명단: overflow된 정회원 + 용병/지인 + 미정/불참
-            let waitingPool = [...overflowConfirmed, ...guestAttending, ...votes.filter(v => v.status === '미정')];
+            let waitingPool = [...overflowConfirmed, ...guestAttending, ...currentMatchVotes.filter(v => v.status === '미정')];
 
-            const isLoginedAdmin = currentUser && (currentUser.role === 'admin' || currentUser.role === 'sub_admin');
+            const isLoginedAdmin = currentUser && currentUser.role === 'admin';
 
             confirmedList.innerHTML = totalConfirmed.length > 0 ? totalConfirmed.map((v, idx) => {
                 let displayName = isLoginedAdmin ? v.guest_name : maskName(v.guest_name);
-                return `<li>${idx + 1}. ${displayName} (${v.guest_type || '정회원'})</li>`;
+                let subInfo = (v.guest_type === '용병' || v.guest_type === '지인' || v.guest_type === '가입전 참가') && v.guest_phone 
+                    ? ` <span class="text-[10px] text-amber-400">(${v.guest_phone}, 실력:${v.guest_skill || '중'})</span>` 
+                    : '';
+                return `<li>${idx + 1}. ${displayName} (${v.guest_type || '정회원'})${subInfo}</li>`;
             }).join('') : '<li>확정된 인원이 없습니다.</li>';
 
             waitingList.innerHTML = waitingPool.length > 0 ? waitingPool.map((v, idx) => {
                 let displayName = isLoginedAdmin ? v.guest_name : maskName(v.guest_name);
-                return `<li>[대기 ${idx + 1}번] ${displayName} (${v.guest_type || '용병'})</li>`;
+                // 용병/지인 신청 상세 정보(연락처, 실력)를 대기 명단에서도 바로 확인 가능하도록 추가
+                let subInfo = (v.guest_type === '용병' || v.guest_type === '지인') && v.guest_phone 
+                    ? ` <span class="text-[10px] text-amber-400">(${v.guest_phone}, 실력:${v.guest_skill || '중'})</span>` 
+                    : '';
+                return `<li>[대기 ${idx + 1}번] ${displayName} (${v.guest_type || '용병'})${subInfo}</li>`;
             }).join('') : '<li>대기 인원이 없습니다.</li>';
         }
 
+        // 8번 항목: 인원수에 구애받지 않고 수시로 작동하는 유연한 팀짜기 로직
         function runAutoBalance() {
-            alert('AI가 평점 및 연장자순을 고려하여 1,2,3팀 편성을 완료했습니다!');
+            const attending = currentMatchVotes.filter(v => v.status === '참석');
+            if (attending.length === 0) {
+                alert('참석 확정된 인원이 없습니다.');
+                return;
+            }
+
+            // 1, 2, 3팀으로 균등 분할
+            let team1 = [], team2 = [], team3 = [];
+            attending.forEach((v, index) => {
+                if (index % 3 === 0) team1.push(v);
+                else if (index % 3 === 1) team2.push(v);
+                else team3.push(v);
+            });
+
+            const renderTeamBox = (teamArr, zoneId, scoreId, avgId) => {
+                const zone = document.getElementById(zoneId);
+                if (teamArr.length === 0) {
+                    zone.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">인원 없음</p>`;
+                    document.getElementById(scoreId).innerText = "0.0";
+                    document.getElementById(avgId).innerText = "0.0";
+                    return;
+                }
+
+                let totalScore = 0;
+                zone.innerHTML = teamArr.map(member => {
+                    // 멤버 DB에서 평점 조회 (없으면 기본 6.5점 부여)
+                    let foundMem = membersData.find(m => m.name === member.guest_name);
+                    let rating = foundMem ? (foundMem.rating || 'C') : 'C';
+                    let score = scoreMap[rating] !== undefined ? scoreMap[rating] : 6.5;
+                    totalScore += score;
+
+                    return `
+                        <div class="p-2 bg-slate-900 border border-slate-800 rounded-lg text-xs flex justify-between items-center">
+                            <span>${member.guest_name} <span class="text-[10px] text-slate-400">(${member.guest_type || '정회원'})</span></span>
+                            <span class="text-emerald-400 font-bold">${rating} (${score})</span>
+                        </div>
+                    `;
+                }).join('');
+
+                let avgScore = (totalScore / teamArr.length).toFixed(2);
+                document.getElementById(scoreId).innerText = totalScore.toFixed(1);
+                document.getElementById(avgId).innerText = avgScore;
+            };
+
+            renderTeamBox(team1, 'team1-dropzone', 'score-team1', 'avg-team1');
+            renderTeamBox(team2, 'team2-dropzone', 'score-team2', 'avg-team2');
+            renderTeamBox(team3, 'team3-dropzone', 'score-team3', 'avg-team3');
+
+            // 카카오톡 복붙용 텍스트 생성
+            let kakaoText = `⚽ 1팀\n` + team1.map(m => m.guest_name).join(' / ') + `\n\n` +
+                            `⚽ 2팀\n` + team2.map(m => m.guest_name).join(' / ') + `\n\n` +
+                            `⚽ 3팀\n` + team3.map(m => m.guest_name).join(' / ');
+            document.getElementById('kakao-preview').innerText = kakaoText;
+
+            alert(`총 ${attending.length명의 참석 인원이 1·2·3팀으로 자동 분배되었습니다!`);
         }
 
         function copyKakaoFormat() {

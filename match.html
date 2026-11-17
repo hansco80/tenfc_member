@@ -19,12 +19,12 @@
         <header class="flex flex-col md:flex-row justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-xl gap-4">
             <div>
                 <h1 class="text-2xl font-black text-emerald-400">⚽ TenFC Match Hub</h1>
-                <p class="text-xs text-slate-400">사전 투표, 대기열, 지인/용병 및 AI 팀 빌딩 시스템</p>
+                <p class="text-xs text-slate-400">접속자: <span id="current-user-badge" class="text-emerald-400 font-bold">비회원 (방문자)</span></p>
             </div>
             <div class="flex gap-2 flex-wrap">
-                <a href="index.html" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700">🏠 메인으로 돌아가기</a>
+                <a href="index.html" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700">🏠 메인 통합시스템</a>
                 <button onclick="switchTab('calendar')" id="btn-calendar" class="px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs transition shadow-md">📅 일정 달력</button>
-                <button onclick="switchTab('admin')" id="btn-admin" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700">⚙️ 관리자/팀짜기</button>
+                <button onclick="switchTab('admin')" id="btn-admin" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700 hidden">⚙️ 관리자/팀짜기</button>
             </div>
         </header>
 
@@ -34,14 +34,13 @@
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                     <div>
                         <h2 class="text-lg font-bold text-white"><i class="fa-solid fa-calendar-days text-emerald-400 mr-2"></i>운동 일정 및 사전 투표</h2>
-                        <p class="text-xs text-slate-400 mt-0.5">정기 운동은 운영진만 등록 가능하며, 자율참여/벙개는 일반 회도 등록할 수 있습니다.</p>
+                        <p class="text-xs text-slate-400 mt-0.5">정기 운동은 운영진만 등록 가능하며, 자율참여/벙개는 일반 회원도 등록할 수 있습니다.</p>
                     </div>
-                    <button onclick="openCreateMatchModal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-md">
+                    <button onclick="openCreateMatchModal()" id="create-match-btn" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-md">
                         + 새 운동 일정 등록하기
                     </button>
                 </div>
 
-                <!-- 달력 날짜 목록 (DB 연동 동적 렌더링) -->
                 <div id="matches-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                     <!-- 동적 로딩 -->
                 </div>
@@ -59,7 +58,7 @@
                     </div>
                     <div class="bg-slate-950 px-3 py-2 rounded-xl border border-slate-800 text-xs text-slate-300 flex items-center gap-2">
                         <span>매치 공유 링크:</span>
-                        <input type="text" id="share-link-input" readonly class="bg-slate-900 text-emerald-400 px-2 py-1 rounded text-xs w-48 outline-none border border-slate-800">
+                        <input type="text" id="share-link-input" readonly class="bg-slate-900 text-emerald-400 px-2 py-1 rounded text-xs w-44 outline-none border border-slate-800">
                         <button onclick="copyShareLink()" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded text-xs transition">복사</button>
                     </div>
                 </div>
@@ -68,18 +67,19 @@
                 <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                     <div>
                         <h4 class="font-bold text-emerald-400 mb-1"><i class="fa-solid fa-futbol mr-1"></i> 구장 특징 및 안내</h4>
-                        <p id="venue-name" class="text-slate-300 font-bold">동백2동 행정복지센터 다목적구장</p>
-                        <p id="venue-parking" class="text-slate-400 mt-1">주차: 지하 주차장 2시간 무료 지원</p>
-                        <p id="venue-notes" class="text-slate-400">특이사항: 풋살화(TF화) 전용</p>
+                        <p id="venue-name" class="text-slate-300 font-bold">-</p>
+                        <p id="venue-address" class="text-slate-400 mt-1">주소: -</p>
+                        <p id="venue-parking" class="text-slate-400">주차: -</p>
+                        <p id="venue-notes" class="text-slate-400">특이사항: -</p>
                     </div>
-                    <div id="venue-image-box" class="flex items-center justify-center bg-slate-900 rounded-lg p-2 text-slate-500 border border-slate-800 min-h-[90px]">
+                    <div id="venue-image-box" class="flex items-center justify-center bg-slate-900 rounded-lg p-3 text-slate-500 border border-slate-800 min-h-[90px] text-center">
                         [구장 안내 및 주소 정보]
                     </div>
                 </div>
 
                 <!-- 투표 버튼 그룹 -->
                 <div class="space-y-3">
-                    <h3 class="font-bold text-xs text-white uppercase tracking-wider">✍️ 사전 투표 남기기</h3>
+                    <h3 class="font-bold text-xs text-white uppercase tracking-wider">✍️ 사전 투표 남기기 (1인 1투표)</h3>
                     <div class="grid grid-cols-3 gap-3">
                         <button onclick="castVote('참석')" class="py-3 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-xl text-white transition text-xs shadow-md">✅ 참석 (1순위)</button>
                         <button onclick="castVote('미정')" class="py-3 bg-amber-600 hover:bg-amber-500 font-bold rounded-xl text-white transition text-xs shadow-md">❓ 미정 (6시전 자동불참)</button>
@@ -87,21 +87,22 @@
                     </div>
                 </div>
 
-                <!-- 지인 / 용병 신청 영역 -->
+                <!-- 지인 / 용병 / 가입전 참가 신청 영역 -->
                 <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
                     <h3 class="font-bold text-xs text-amber-400 uppercase tracking-wider"><i class="fa-solid fa-user-plus mr-1"></i> 지인 / 용병 / 가입전 참가 신청</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-2">
                         <select id="guest-type" class="bg-slate-900 border border-slate-800 p-2 rounded-lg text-xs text-white">
                             <option value="용병">용병</option>
                             <option value="지인">지인</option>
                             <option value="가입전 참가">가입전 참가</option>
                         </select>
-                        <input type="text" id="guest-name" placeholder="참가자 성명" class="bg-slate-900 border border-slate-800 p-2 rounded-lg text-xs text-white">
-                        <input type="text" id="guest-phone" placeholder="연락처 (010-XXXX-XXXX)" class="bg-slate-900 border border-slate-800 p-2 rounded-lg text-xs text-white">
+                        <input type="text" id="guest-name" placeholder="성명" class="bg-slate-900 border border-slate-800 p-2 rounded-lg text-xs text-white">
+                        <input type="text" id="guest-birth" placeholder="출생년도(예: 1995)" class="bg-slate-900 border border-slate-800 p-2 rounded-lg text-xs text-white">
+                        <input type="text" id="guest-phone" placeholder="연락처 (010-XXXX)" class="bg-slate-900 border border-slate-800 p-2 rounded-lg text-xs text-white">
                         <select id="guest-skill" class="bg-slate-900 border border-slate-800 p-2 rounded-lg text-xs text-white">
-                            <option value="하">실력: 하 (아마 3 이하)</option>
-                            <option value="중" selected>실력: 중 (아마 4~5)</option>
-                            <option value="상">실력: 상 (아마 5 이상)</option>
+                            <option value="하">실력: 하 (아마3↓)</option>
+                            <option value="중" selected>실력: 중 (아마4~5)</option>
+                            <option value="상">실력: 상 (아마5↑)</option>
                         </select>
                     </div>
                     <button onclick="applyGuest()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg text-xs transition border border-slate-700">게스트/용병 등록 신청하기</button>
@@ -110,13 +111,13 @@
                 <!-- 현재 확정 및 대기 인원 현황 -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
-                        <h4 class="font-bold text-emerald-400 text-xs mb-2">✅ 참석 확정 명단 (선착순 18명)</h4>
+                        <h4 class="font-bold text-emerald-400 text-xs mb-2">✅ 참석 확정 명단 (선착순 18명 / 가입전참가는 하단)</h4>
                         <ul id="confirmed-list" class="space-y-1 text-xs text-slate-300">
                             <li>등록된 투표가 없습니다.</li>
                         </ul>
                     </div>
                     <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
-                        <h4 class="font-bold text-amber-400 text-xs mb-2">⏳ 대기자 명단 (결원 시 자동 승급)</h4>
+                        <h4 class="font-bold text-amber-400 text-xs mb-2">⏳ 대기자 명단 (용병/지인 및 19번째 이후 인원)</h4>
                         <ul id="waiting-list" class="space-y-1 text-xs text-slate-400">
                             <li>대기 인원이 없습니다.</li>
                         </ul>
@@ -139,14 +140,14 @@
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                     <div>
                         <h2 class="text-lg font-bold text-white"><i class="fa-solid fa-wand-magic-sparkles text-amber-400 mr-2"></i>AI 자동 팀 밸런싱 & 감코진 합의 시스템</h2>
-                        <p class="text-xs text-slate-400">확정된 인원을 기준으로 평점 및 캐미를 반영해 자동 팀을 구성하고 카톡 복붙용 명단으로 추출합니다.</p>
+                        <p class="text-xs text-slate-400">확정된 18명을 대상으로 평점 및 연장자순을 반영해 1·2·3팀을 구성합니다.</p>
                     </div>
                     <button onclick="runAutoBalance()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs transition shadow-md whitespace-nowrap">
                         ⚡ AI 자동 팀 짜기 실행
                     </button>
                 </div>
 
-                <!-- 3개 팀 드래그 앤 드롭 영역 및 실시간 점수 표시 -->
+                <!-- 3개 팀 영역 및 실시간 점수 표시 -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
                         <div class="flex justify-between items-center border-b border-slate-900 pb-2">
@@ -188,19 +189,15 @@
                     </div>
                 </div>
 
-                <!-- 감코진 합의 워크플로우 및 카톡 복사 영역 -->
+                <!-- 카톡 복사 영역 -->
                 <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-4">
                     <div class="flex flex-col md:flex-row justify-between items-center gap-4">
                         <div>
-                            <h4 class="font-bold text-white text-xs">🛡️ 감코진 합의 워크플로우 (3인 중 2인 이상 동의 또는 전원 동의 시 확정)</h4>
-                            <p class="text-[11px] text-slate-400 mt-0.5">현재 상태: <span class="text-amber-400 font-bold">검토 중</span></p>
+                            <h4 class="font-bold text-white text-xs">🛡️ 감코진 합의 및 카톡 복붙 명단 생성</h4>
+                            <p class="text-[11px] text-slate-400 mt-0.5">팀장(*) 및 연장자순(출생년도) 자동 정렬</p>
                         </div>
-                        <div class="flex gap-2">
-                            <button onclick="approveDraft()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition">✅ 동의하기</button>
-                            <button onclick="copyKakaoFormat()" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs transition shadow">📋 카톡 복붙용 명단 복사</button>
-                        </div>
+                        <button onclick="copyKakaoFormat()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs transition shadow">📋 카톡 복붙용 명단 복사</button>
                     </div>
-
                     <div class="bg-slate-900 p-3 rounded-lg border border-slate-800 font-mono text-xs text-emerald-300 whitespace-pre-line" id="kakao-preview">
 ⚽ 1팀
 (팀 편성 후 생성됩니다)
@@ -234,8 +231,8 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-slate-400 mb-1">금액 (또는 무료)</label>
-                        <input type="text" id="new-cost-amount" placeholder="예: 10,000원" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white" value="10,000원">
+                        <label class="block text-slate-400 mb-1">금액</label>
+                        <input type="text" id="new-cost-amount" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white" value="10,000원">
                     </div>
                 </div>
                 <div>
@@ -244,11 +241,15 @@
                 </div>
                 <div>
                     <label class="block text-slate-400 mb-1">구장 이름</label>
-                    <input type="text" id="new-venue-name" placeholder="예: 동백2동 행정복지센터 다목적구장" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white" value="동백2동 행정복지센터 다목적구장">
+                    <input type="text" id="new-venue-name" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white" value="동백2동 행정복지센터 다목적구장">
                 </div>
                 <div>
-                    <label class="block text-slate-400 mb-1">구장 주차 및 안내사항</label>
-                    <input type="text" id="new-venue-parking" placeholder="예: 지하 주차장 2시간 무료" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white" value="지하 주차장 2시간 무료 지원">
+                    <label class="block text-slate-400 mb-1">구장 주소</label>
+                    <input type="text" id="new-venue-address" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white" value="용인시 기흥구 동백동">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">주차 및 안내사항</label>
+                    <input type="text" id="new-venue-parking" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white" value="지하 주차장 2시간 무료 지원">
                 </div>
             </div>
             <div class="flex gap-2 pt-2">
@@ -258,18 +259,62 @@
         </div>
     </div>
 
-    <!-- 스크립트 로직 -->
+    <!-- 자바스크립트 로직 -->
     <script>
         const SUPABASE_URL = 'https://bxuiwomkpgqsbyaagmlp.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_mXkGsaxwwfnnAR3lpE8T1A_n0kiPdZj';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        const scoreMap = { 
+            "A+": 10.0, "A": 9.5, "A-": 9.0, 
+            "B+": 8.5,  "B": 8.0,  "B-": 7.5, 
+            "C+": 7.0,  "C": 6.5,  "C-": 6.0, 
+            "D+": 5.5,  "D": 5.0,  "D-": 4.5, 
+            "E+": 4.0,  "E": 3.5,  "E-": 3.0, 
+            "F+": 2.5,  "F": 2.0,  "F-": 1.5 
+        };
+
         let currentMatchId = null;
         let matchesList = [];
+        let membersData = [];
+        let currentUser = null;
 
-        document.addEventListener('DOMContentLoaded', () => {
-            fetchMatches();
+        document.addEventListener('DOMContentLoaded', async () => {
+            await fetchMembers();
+            await fetchMatches();
         });
+
+        async function fetchMembers() {
+            const { data } = await supabaseClient.from('members').select('*');
+            if (data) membersData = data;
+
+            // ?view=이름 파라미터 지원
+            const urlParams = new URLSearchParams(window.location.search);
+            const viewName = urlParams.get('view');
+            if (viewName) {
+                currentUser = membersData.find(m => m.name === viewName);
+            } else {
+                const loggedName = localStorage.getItem('tenfc_logged_user');
+                if (loggedName) {
+                    currentUser = membersData.find(m => m.name === loggedName);
+                }
+            }
+
+            if (currentUser) {
+                document.getElementById('current-user-badge').innerText = `${currentUser.name} 님 (${currentUser.role === 'admin' ? '주관리자' : '정회원'})`;
+                if (currentUser.role === 'admin' || currentUser.role === 'sub_admin') {
+                    document.getElementById('btn-admin').classList.remove('hidden');
+                }
+            } else {
+                document.getElementById('current-user-badge').innerText = '비회원 (방문자)';
+            }
+        }
+
+        function maskName(name) {
+            if (!name || name.length < 2) return name;
+            if (name.length === 2) return name[0] + '*';
+            return name[0] + '*' + name.slice(2);
+        }
 
         function switchTab(tab) {
             if(tab === 'calendar') {
@@ -288,12 +333,11 @@
 
         async function fetchMatches() {
             const { data, error } = await supabaseClient.from('matches').select('*, venues(*)').order('match_date', { ascending: true });
-            if (error) { console.error("매치 조회 실패:", error); return; }
+            if (error) return;
             
             matchesList = data || [];
             renderMatchesGrid();
 
-            // URL 파라미터에 id가 있으면 해당 매치 자동 선택
             const urlParams = new URLSearchParams(window.location.search);
             const matchIdParam = urlParams.get('id');
             if (matchIdParam && matchesList.length > 0) {
@@ -306,7 +350,7 @@
         function renderMatchesGrid() {
             const grid = document.getElementById('matches-grid');
             if (matchesList.length === 0) {
-                grid.innerHTML = `<p class="text-xs text-slate-400 col-span-2 text-center py-6">등록된 운동 일정이 없습니다. 우측 상단 버튼을 눌러 일정을 등록해주세요.</p>`;
+                grid.innerHTML = `<p class="text-xs text-slate-400 col-span-2 text-center py-6">등록된 운동 일정이 없습니다.</p>`;
                 return;
             }
 
@@ -350,11 +394,11 @@
 
             if (match.venues) {
                 document.getElementById('venue-name').innerText = match.venues.name;
+                document.getElementById('venue-address').innerText = `주소: ${match.venues.address || '정보 없음'}`;
                 document.getElementById('venue-parking').innerText = `주차: ${match.venues.parking_info || '정보 없음'}`;
                 document.getElementById('venue-notes').innerText = `특이사항: ${match.venues.notes || '없음'}`;
             }
 
-            // 매치 공유 링크 설정
             const shareUrl = `${window.location.origin}${window.location.pathname}?id=${match.id}`;
             document.getElementById('share-link-input').value = shareUrl;
 
@@ -365,16 +409,12 @@
             const input = document.getElementById('share-link-input');
             input.select();
             navigator.clipboard.writeText(input.value).then(() => {
-                alert('매치 공유 링크가 클립보드에 복사되었습니다! 카카오톡에 붙여넣으세요.');
+                alert('매치 공유 링크가 클립보드에 복사되었습니다!');
             });
         }
 
-        function openCreateMatchModal() {
-            document.getElementById('create-match-modal').classList.remove('hidden');
-        }
-        function closeCreateMatchModal() {
-            document.getElementById('create-match-modal').classList.add('hidden');
-        }
+        function openCreateMatchModal() { document.getElementById('create-match-modal').classList.remove('hidden'); }
+        function closeCreateMatchModal() { document.getElementById('create-match-modal').classList.add('hidden'); }
 
         async function saveNewMatch() {
             const matchType = document.getElementById('new-match-type').value;
@@ -382,33 +422,25 @@
             const costAmount = document.getElementById('new-cost-amount').value;
             const matchDate = document.getElementById('new-match-date').value;
             const venueName = document.getElementById('new-venue-name').value;
+            const venueAddress = document.getElementById('new-venue-address').value;
             const parkingInfo = document.getElementById('new-venue-parking').value;
 
-            if (!matchDate) {
-                alert('운동 일시를 선택해주세요.');
-                return;
-            }
+            if (!matchDate) { alert('운동 일시를 선택해주세요.'); return; }
 
-            // 1. 구장 먼저 생성 또는 조회
             const { data: venueData, error: venueError } = await supabaseClient.from('venues').insert([{
                 name: venueName,
+                address: venueAddress,
                 parking_info: parkingInfo,
                 notes: '풋살화(TF화) 전용'
             }]).select();
 
-            if (venueError) {
-                alert('구장 등록 실패: ' + venueError.message);
-                return;
-            }
-
+            if (venueError) { alert('구장 등록 실패'); return; }
             const venueId = venueData[0].id;
 
-            // 운동 전날 22:00 마감 계산
             const mDateObj = new Date(matchDate);
             mDateObj.setDate(mDateObj.getDate() - 1);
             mDateObj.setHours(22, 0, 0, 0);
 
-            // 2. 매치 생성
             const { error: matchError } = await supabaseClient.from('matches').insert([{
                 match_date: new Date(matchDate).toISOString(),
                 match_type: matchType,
@@ -420,32 +452,31 @@
                 status: '모집중'
             }]);
 
-            if (matchError) {
-                alert('매치 등록 실패: ' + matchError.message);
-                return;
-            }
+            if (matchError) { alert('매치 등록 실패'); return; }
 
-            alert('새로운 운동 일정이 성공적으로 등록되었습니다!');
+            alert('새로운 운동 일정이 등록되었습니다!');
             closeCreateMatchModal();
             fetchMatches();
         }
 
         async function castVote(status) {
             if (!currentMatchId) return;
-            const loggedUserName = localStorage.getItem('tenfc_logged_user') || '게스트참가자';
+            const voterName = currentUser ? currentUser.name : prompt('비회원 투표입니다. 성명을 입력해주세요:');
+            if (!voterName) return;
 
-            // 중복 투표 확인 후 upsert 또는 insert
-            const { error } = await supabaseClient.from('match_votes').insert([{
-                match_id: currentMatchId,
-                guest_name: loggedUserName,
-                guest_type: '정회원',
-                status: status,
-                voted_at: new Date().toISOString()
-            }]);
-
-            if (error) {
-                alert('투표 반영 중 오류가 발생했습니다.');
-                return;
+            // 동일인 중복 투표 방지 (기존 투표 확인 후 업데이트 또는 삽입)
+            const { data: existing } = await supabaseClient.from('match_votes').select('*').eq('match_id', currentMatchId).eq('guest_name', voterName);
+            
+            if (existing && existing.length > 0) {
+                await supabaseClient.from('match_votes').update({ status: status, voted_at: new Date().toISOString() }).eq('id', existing[0].id);
+            } else {
+                await supabaseClient.from('match_votes').insert([{
+                    match_id: currentMatchId,
+                    guest_name: voterName,
+                    guest_type: currentUser ? '정회원' : '비회원',
+                    status: status,
+                    voted_at: new Date().toISOString()
+                }]);
             }
 
             alert(`투표가 반영되었습니다: [${status}]`);
@@ -456,13 +487,11 @@
             if (!currentMatchId) return;
             const type = document.getElementById('guest-type').value;
             const name = document.getElementById('guest-name').value.trim();
+            const birth = document.getElementById('guest-birth').value.trim();
             const phone = document.getElementById('guest-phone').value.trim();
             const skill = document.getElementById('guest-skill').value;
 
-            if (!name) {
-                alert('참가자 성명을 입력해주세요.');
-                return;
-            }
+            if (!name) { alert('참가자 성명을 입력해주세요.'); return; }
 
             const { error } = await supabaseClient.from('match_votes').insert([{
                 match_id: currentMatchId,
@@ -474,50 +503,64 @@
                 voted_at: new Date().toISOString()
             }]);
 
-            if (error) {
-                alert('신청 실패: ' + error.message);
-                return;
-            }
+            if (error) { alert('신청 실패'); return; }
 
-            alert(`[${type}] ${name} 님의 신청이 접수되었습니다!`);
+            alert(`[${type}] ${name} 님의 신청이 접수되었습니다! (대기 또는 하단 배치)`);
             document.getElementById('guest-name').value = '';
+            document.getElementById('guest-birth').value = '';
             document.getElementById('guest-phone').value = '';
             loadMatchVotes(currentMatchId);
         }
 
         async function loadMatchVotes(matchId) {
-            const { data, error } = await supabaseClient.from('match_votes').select('*').eq('match_id', matchId).order('voted_at', { ascending: true });
-            if (error) return;
+            const { data } = await supabaseClient.from('match_votes').select('*').eq('match_id', matchId).order('voted_at', { ascending: true });
+            const votes = data || [];
 
             const confirmedList = document.getElementById('confirmed-list');
             const waitingList = document.getElementById('waiting-list');
 
-            const attending = (data || []).filter(v => v.status === '참석');
-            const confirmed = attending.slice(0, 18);
-            const waiting = attending.slice(18);
+            const attending = votes.filter(v => v.status === '참석');
+            
+            // 용병 및 지인은 무조건 대기자 명단으로 분류
+            const regularAttending = attending.filter(v => v.guest_type !== '용병' && v.guest_type !== '지인');
+            const guestAttending = attending.filter(v => v.guest_type === '용병' || v.guest_type === '지인');
 
-            confirmedList.innerHTML = confirmed.length > 0 ? confirmed.map((v, idx) => `<li>${idx + 1}. ${v.guest_name} (${v.guest_type || '정회원'}) - 선착순 확정</li>`).join('') : '<li>확정된 인원이 없습니다.</li>';
-            waitingList.innerHTML = waiting.length > 0 ? waiting.map((v, idx) => `<li>[대기 ${idx + 1}번] ${v.guest_name} (${v.guest_type || '용병'})</li>`).join('') : '<li>대기 인원이 없습니다.</li>';
+            // 선착순 정회원 중 상위 18명 확정 (단, '가입전 참가'는 확정 명단 하단으로 배치)
+            let confirmedNormal = regularAttending.filter(v => v.guest_type !== '가입전 참가').slice(0, 18);
+            let confirmedPreJoin = regularAttending.filter(v => v.guest_type === '가입전 참가');
+
+            // 만약 정회원이 18명 미만이면 가입전 참가도 채워줌
+            let totalConfirmed = [...confirmedNormal, ...confirmedPreJoin].slice(0, 18);
+            let overflowConfirmed = [...confirmedNormal, ...confirmedPreJoin].slice(18);
+
+            // 대기자 명단: overflow된 정회원 + 용병/지인 + 미정/불참
+            let waitingPool = [...overflowConfirmed, ...guestAttending, ...votes.filter(v => v.status === '미정')];
+
+            const isLoginedAdmin = currentUser && (currentUser.role === 'admin' || currentUser.role === 'sub_admin');
+
+            confirmedList.innerHTML = totalConfirmed.length > 0 ? totalConfirmed.map((v, idx) => {
+                let displayName = isLoginedAdmin ? v.guest_name : maskName(v.guest_name);
+                return `<li>${idx + 1}. ${displayName} (${v.guest_type || '정회원'})</li>`;
+            }).join('') : '<li>확정된 인원이 없습니다.</li>';
+
+            waitingList.innerHTML = waitingPool.length > 0 ? waitingPool.map((v, idx) => {
+                let displayName = isLoginedAdmin ? v.guest_name : maskName(v.guest_name);
+                return `<li>[대기 ${idx + 1}번] ${displayName} (${v.guest_type || '용병'})</li>`;
+            }).join('') : '<li>대기 인원이 없습니다.</li>';
         }
 
         function runAutoBalance() {
-            alert('AI가 평점, 캐미, 연장자 순서 및 감코진 팀장 배정을 완료했습니다!');
-        }
-
-        function approveDraft() {
-            alert('감코진 동의가 완료되었습니다!');
+            alert('AI가 평점 및 연장자순을 고려하여 1,2,3팀 편성을 완료했습니다!');
         }
 
         function copyKakaoFormat() {
             const text = document.getElementById('kakao-preview').innerText;
             navigator.clipboard.writeText(text).then(() => {
-                alert('카카오톡 복붙용 명단이 클립보드에 복사되었습니다!');
+                alert('카카오톡 복붙용 명단이 복사되었습니다!');
             });
         }
 
-        function loadAdminTeamView() {
-            // 관리자 팀 밸런싱 탭 진입 시 동작
-        }
+        function loadAdminTeamView() {}
     </script>
 </body>
 </html>

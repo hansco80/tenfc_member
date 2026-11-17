@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TenFC 매치 & 투표 시스템</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- FontAwesome 아이콘 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans">
+
+    <div class="max-w-4xl mx-auto p-4 space-y-6">
+
+        <!-- 헤더 섹션 -->
+        <header class="flex flex-col md:flex-row justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-xl gap-4">
+            <div>
+                <h1 class="text-2xl font-black text-emerald-400">⚽ TenFC Match Hub</h1>
+                <p class="text-xs text-slate-400">사전 투표, 대기열, 지인/용병 및 AI 팀 빌딩 시스템</p>
+            </div>
+            <div class="flex gap-2 flex-wrap">
+                <a href="index.html" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700">🏠 메인으로 돌아가기</a>
+                <button onclick="switchTab('calendar')" id="btn-calendar" class="px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs transition shadow-md">📅 일정 달력</button>
+                <button onclick="switchTab('admin')" id="btn-admin" class="px-4 py-2 bg-slate-800 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700">⚙️ 관리자/팀짜기</button>
+            </div>
+        </header>
+
+        <!-- [탭 1] 일정 달력 및 투표 메인 페이지 -->
+        <main id="tab-calendar" class="space-y-6">
+            <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl space-y-4">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
+                    <h2 class="text-lg font-bold text-white"><i class="fa-solid fa-calendar-days text-emerald-400 mr-2"></i>운동 일정 및 사전 투표</h2>
+                    <span class="text-xs bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full border border-emerald-500/20 font-semibold">정기 운동: 운영진 등록 / 자율·벙개: 회원 등록 가능</span>
+                </div>
+
+                <!-- 달력 날짜 목록 (시뮬레이션) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div onclick="selectMatch(1)" class="bg-slate-950 border-2 border-emerald-500/50 hover:border-emerald-400 p-4 rounded-xl cursor-pointer transition shadow-md space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs px-2 py-0.5 bg-emerald-500/20 text-emerald-400 font-bold rounded">정기운동</span>
+                            <span class="text-xs text-slate-400">유료 (10,000원)</span>
+                        </div>
+                        <h3 class="font-bold text-white text-base">11월 25일 (수) 20:00</h3>
+                        <p class="text-xs text-slate-300 truncate"><i class="fa-solid fa-location-dot text-red-400 mr-1"></i> 동백2동 행정복지센터 다목적구장</p>
+                        <div class="flex justify-between items-center pt-2 border-t border-slate-800 text-xs">
+                            <span class="text-emerald-400 font-bold">참석 16 / 정원 18명</span>
+                            <span class="text-slate-400 underline">투표 참여하기 &rarr;</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 선택된 매치 상세 및 투표 페이지 -->
+            <div id="match-detail-section" class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl space-y-6">
+                <div class="border-b border-slate-800 pb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs px-2 py-1 bg-emerald-500/20 text-emerald-400 font-bold rounded">정기운동</span>
+                            <h2 class="text-xl font-bold text-white">11월 25일 (수) 20:00 매치</h2>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">마감: 운동 전날 22:00까지 (기본값 수정 가능)</p>
+                    </div>
+                    <div class="bg-slate-950 px-3 py-2 rounded-xl border border-slate-800 text-xs text-slate-300">
+                        🔗 단일 공유 링크: <code class="text-emerald-400">site.com/match.html?id=1</code>
+                    </div>
+                </div>
+
+                <!-- 구장 안내 정보 -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div>
+                        <h4 class="font-bold text-emerald-400 mb-1"><i class="fa-solid fa-futbol mr-1"></i> 구장 특징 및 안내</h4>
+                        <p class="text-slate-300">동백2동 행정복지센터 다목적구장 (인조잔디)</p>
+                        <p class="text-slate-400 mt-1">주차: 지하 주차장 2시간 무료 지원</p>
+                        <p class="text-slate-400">특이사항: 풋살화(TF화) 전용, 스터드 축구화 금지</p>
+                    </div>
+                    <div class="flex items-center justify-center bg-slate-900 rounded-lg p-2 text-slate-500 border border-slate-800">
+                        [구장 이미지 및 약도 영역]
+                    </div>
+                </div>
+
+                <!-- 투표 버튼 그룹 -->
+                <div class="space-y-3">
+                    <h3 class="font-bold text-xs text-white uppercase tracking-wider">✍️ 사전 투표 남기기</h3>
+                    <div class="grid grid-cols-3 gap-3">
+                        <button onclick="castVote('참석')" class="py-3 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-xl text-white transition text-xs shadow-md">✅ 참석 (1순위)</button>
+                        <button onclick="castVote('미정')" class="py-3 bg-amber-600 hover:bg-amber-500 font-bold rounded-xl text-white transition text-xs shadow-md">❓ 미정 (6시전 자동불참)</button>
+                        <button onclick="castVote('불참')" class="py-3 bg-rose-600 hover:bg-rose-500 font-bold rounded-xl text-white transition text-xs shadow-md">❌ 불참</button>
+                    </div>
+                </div>
+
+                <!-- 지인 / 용병 신청 영역 -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+                    <h3 class="font-bold text-xs text-amber-400 uppercase tracking-wider"><i class="fa-solid fa-user-plus mr-1"></i> 지인 / 용병 / 가입전 참가 신청</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
+                        <select id="guest-type" class="bg-slate-900 border border-slate-800 p-2 rounded-lg text-xs text-white">
+                            <option value="용병">용병</option>
+                            <option value="지인">지인</option>
+                            <option value="가입전 참가">가입전 참가</option>
+                        </select>
+                        <input type="text" id="guest-name" placeholder="참가자 성명" class="bg-slate-900 border border-slate-800 p-2 rounded-lg text-xs text-white">
+                        <input type="text" id="guest-phone" placeholder="연락처 (010-XXXX-XXXX)" class="bg-slate-900 border border-slate-800 p-2 rounded-lg text-xs text-white">
+                        <select id="guest-skill" class="bg-slate-900 border border-slate-800 p-2 rounded-lg text-xs text-white">
+                            <option value="하">실력: 하 (아마 3 이하)</option>
+                            <option value="중" selected>실력: 중 (아마 4~5)</option>
+                            <option value="상">실력: 상 (아마 5 이상)</option>
+                        </select>
+                    </div>
+                    <button onclick="applyGuest()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg text-xs transition border border-slate-700">게스트/용병 등록 신청하기</button>
+                </div>
+
+                <!-- 현재 확정 및 대기 인원 현황 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                        <h4 class="font-bold text-emerald-400 text-xs mb-2">✅ 참석 확정 명단 (선착순 18명)</h4>
+                        <ul id="confirmed-list" class="space-y-1 text-xs text-slate-300">
+                            <li>1. 오한결 (정회원) - 10:20</li>
+                            <li>2. 박성복 (정회원) - 10:21</li>
+                        </ul>
+                    </div>
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                        <h4 class="font-bold text-amber-400 text-xs mb-2">⏳ 대기자 명단 (결원 시 자동 승급)</h4>
+                        <ul id="waiting-list" class="space-y-1 text-xs text-slate-400">
+                            <li>[대기 1번] 김용병 (용병/중) - 11:05</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 비회원 안내 및 당근 카페 링크 -->
+                <div class="bg-emerald-950/20 border border-emerald-500/20 p-4 rounded-xl flex flex-col md:flex-row justify-between items-center gap-3">
+                    <p class="text-xs text-emerald-300">💡 비회원 방문자이신가요? 전체 운동 일정과 총 참석 인원을 확인하실 수 있습니다.</p>
+                    <a href="https://cafe.daangn.com/2050-dongbaegpu" target="_blank" rel="noopener noreferrer" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition whitespace-nowrap shadow">
+                        🥕 당근 카페 문의하기
+                    </a>
+                </div>
+            </div>
+        </main>
+
+        <!-- [탭 2] 관리자 팀 빌딩 & 감코진 합의 페이지 -->
+        <main id="tab-admin" class="space-y-6 hidden">
+            <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl space-y-4">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                    <div>
+                        <h2 class="text-lg font-bold text-white"><i class="fa-solid fa-wand-magic-sparkles text-amber-400 mr-2"></i>AI 자동 팀 밸런싱 & 감코진 합의 시스템</h2>
+                        <p class="text-xs text-slate-400">참석 인원 18명을 대상으로 평점 및 캐미를 반영해 자동 팀을 구성하고 드래그앤드롭으로 조정합니다.</p>
+                    </div>
+                    <button onclick="runAutoBalance()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs transition shadow-md whitespace-nowrap">
+                        ⚡ AI 자동 팀 짜기 실행
+                    </button>
+                </div>
+
+                <!-- 3개 팀 드래그 앤 드롭 영역 및 실시간 점수 표시 -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- 1팀 -->
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+                        <div class="flex justify-between items-center border-b border-slate-900 pb-2">
+                            <h3 class="font-bold text-emerald-400 text-xs">⚽ 1팀</h3>
+                            <div class="text-right text-[11px]">
+                                <span class="text-slate-400">총점: </span><span id="score-team1" class="font-bold text-white">88.5</span> | 
+                                <span class="text-slate-400">평균: </span><span id="avg-team1" class="font-bold text-emerald-400">14.75</span>
+                            </div>
+                        </div>
+                        <div class="space-y-2 min-h-[180px]" id="team1-dropzone">
+                            <div class="p-2 bg-slate-900 border border-slate-800 rounded-lg text-xs flex justify-between items-center cursor-move">
+                                <span>오한결(80)* <span class="text-[9px] bg-emerald-500/20 text-emerald-400 px-1 rounded">감독/팀장</span></span>
+                                <span class="text-slate-400">A+ (9.5)</span>
+                            </div>
+                            <div class="p-2 bg-slate-900 border border-slate-800 rounded-lg text-xs flex justify-between items-center cursor-move">
+                                <span>박성복(81)</span>
+                                <span class="text-slate-400">A (9.0)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2팀 -->
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+                        <div class="flex justify-between items-center border-b border-slate-900 pb-2">
+                            <h3 class="font-bold text-indigo-400 text-xs">⚽ 2팀</h3>
+                            <div class="text-right text-[11px]">
+                                <span class="text-slate-400">총점: </span><span id="score-team2" class="font-bold text-white">88.0</span> | 
+                                <span class="text-slate-400">평균: </span><span id="avg-team2" class="font-bold text-indigo-400">14.66</span>
+                            </div>
+                        </div>
+                        <div class="space-y-2 min-h-[180px]" id="team2-dropzone">
+                            <div class="p-2 bg-slate-900 border border-slate-800 rounded-lg text-xs flex justify-between items-center cursor-move">
+                                <span>장현호(93)* <span class="text-[9px] bg-indigo-500/20 text-indigo-400 px-1 rounded">코치/팀장</span></span>
+                                <span class="text-slate-400">A+ (9.5)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3팀 -->
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+                        <div class="flex justify-between items-center border-b border-slate-900 pb-2">
+                            <h3 class="font-bold text-amber-400 text-xs">⚽ 3팀</h3>
+                            <div class="text-right text-[11px]">
+                                <span class="text-slate-400">총점: </span><span id="score-team3" class="font-bold text-white">87.5</span> | 
+                                <span class="text-slate-400">평균: </span><span id="avg-team3" class="font-bold text-amber-400">14.58</span>
+                            </div>
+                        </div>
+                        <div class="space-y-2 min-h-[180px]" id="team3-dropzone">
+                            <div class="p-2 bg-slate-900 border border-slate-800 rounded-lg text-xs flex justify-between items-center cursor-move">
+                                <span>신희관(93)* <span class="text-[9px] bg-amber-500/20 text-amber-400 px-1 rounded">코치/팀장</span></span>
+                                <span class="text-slate-400">A (9.0)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 감코진 합의 워크플로우 및 카톡 복사 영역 -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-4">
+                    <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                        <div>
+                            <h4 class="font-bold text-white text-xs">🛡️ 감코진 합의 워크플로우 (3인 중 2인 이상 동의 또는 전원 동의 시 확정)</h4>
+                            <p class="text-[11px] text-slate-400 mt-0.5">현재 상태: <span class="text-amber-400 font-bold">검토 중 (감코진 2/3 동의 완료)</span></p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="approveDraft()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition">✅ 동의하기</button>
+                            <button onclick="copyKakaoFormat()" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs transition shadow">📋 카톡 복붙용 명단 복사</button>
+                        </div>
+                    </div>
+
+                    <!-- 카톡 복사 결과 미리보기 -->
+                    <div class="bg-slate-900 p-3 rounded-lg border border-slate-800 font-mono text-xs text-emerald-300 whitespace-pre-line" id="kakao-preview">
+⚽ 1팀
+오한결(80)* / 박성복(81) / 박종민(84) / 정권명(86) / 김강현(95) / 박수균(96)
+
+⚽ 2팀 
+장현호(93)* / 이동윤(81) / 권민(94) / 이민성(95) / 신승각(98) / 박형근(98)
+
+⚽ 3팀 
+신희관(93)* / 이강건(86) / 권민석(86) / 최한샘(96) / 김회남(97) / 김인섭(98)
+                    </div>
+                </div>
+            </div>
+        </main>
+
+    </div>
+
+    <!-- 자바스크립트 로직 -->
+    <script>
+        function switchTab(tab) {
+            if(tab === 'calendar') {
+                document.getElementById('tab-calendar').classList.remove('hidden');
+                document.getElementById('tab-admin').classList.add('hidden');
+                document.getElementById('btn-calendar').className = 'px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs transition shadow-md';
+                document.getElementById('btn-calendar').classList.remove('border', 'border-slate-700', 'bg-slate-800', 'text-slate-300');
+                document.getElementById('btn-admin').className = 'px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700';
+            } else {
+                document.getElementById('tab-calendar').classList.add('hidden');
+                document.getElementById('tab-admin').classList.remove('hidden');
+                document.getElementById('btn-admin').className = 'px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs transition shadow-md';
+                document.getElementById('btn-admin').classList.remove('border', 'border-slate-700', 'bg-slate-800', 'text-slate-300');
+                document.getElementById('btn-calendar').className = 'px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700';
+            }
+        }
+
+        function castVote(status) {
+            alert(`투표가 반영되었습니다: [${status}] (선착순 및 마감 시간 자동 적용)`);
+        }
+
+        function applyGuest() {
+            const type = document.getElementById('guest-type').value;
+            const name = document.getElementById('guest-name').value;
+            if(!name) {
+                alert('참가자 성명을 입력해주세요.');
+                return;
+            }
+            alert(`[${type}] ${name} 님의 신청이 접수되었습니다! 대기 또는 명단에 반영됩니다.`);
+            document.getElementById('guest-name').value = '';
+            document.getElementById('guest-phone').value = '';
+        }
+
+        function runAutoBalance() {
+            alert('AI가 평점, 캐미, 연장자 순서 및 감코진(오한결, 장현호, 신희관) 팀장 배정을 완료했습니다!');
+        }
+
+        function approveDraft() {
+            alert('감코진 동의가 완료되었습니다! (6시간 전 자동 확정 조건 충족)');
+        }
+
+        function copyKakaoFormat() {
+            const text = document.getElementById('kakao-preview').innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('카카오톡 복붙용 명단이 클립보드에 복사되었습니다! 카톡방에 그대로 붙여넣으세요.');
+            });
+        }
+    </script>
+</body>
+</html>

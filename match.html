@@ -24,7 +24,7 @@
             <div class="flex gap-2 flex-wrap">
                 <a href="index.html" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700">🏠 메인 통합시스템</a>
                 <button onclick="switchTab('calendar')" id="btn-calendar" class="px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs transition shadow-md">📅 일정 달력</button>
-                <button onclick="switchTab('admin')" id="btn-admin" class="px-4 py-2 bg-slate-800 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700 hidden">⚙️ 관리자/팀짜기</button>
+                <button onclick="switchTab('admin')" id="btn-admin" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700 hidden">⚙️ 관리자/팀짜기</button>
             </div>
         </header>
 
@@ -301,8 +301,7 @@
             }
 
             if (currentUser) {
-                document.getElementById('current-user-badge').innerText = `${currentUser.name} 님 (${currentUser.role === 'admin' ? '주관리자' : '정회원'})`;
-                // 주관리자(admin)만 팀짜기/관리자 탭 접근 허용
+                document.getElementById('current-user-badge').innerText = `${currentUser.name} 님 (${currentUser.role === 'admin' ? '주관리자' : currentUser.role === 'guest' ? '용병' : '정회원'})`;
                 if (currentUser.role === 'admin') {
                     document.getElementById('btn-admin').classList.remove('hidden');
                 } else {
@@ -329,7 +328,6 @@
                     document.getElementById('btn-admin').className = 'px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700';
                 }
             } else {
-                // 주관리자만 접근 가능하도록 방어
                 if (!currentUser || currentUser.role !== 'admin') {
                     alert('⚠️ 관리자 팀짜기 메뉴는 주관리자만 접근할 수 있습니다.');
                     return;
@@ -338,7 +336,6 @@
                 document.getElementById('tab-admin').classList.remove('hidden');
                 document.getElementById('btn-admin').className = 'px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs transition shadow-md';
                 document.getElementById('btn-calendar').className = 'px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700';
-                loadAdminTeamView();
             }
         }
 
@@ -470,40 +467,40 @@
             fetchMatches();
         }
 
-       async function castVote(status) {
-    if (!currentMatchId) return;
-    const voterName = currentUser ? currentUser.name : prompt('비회원 투표입니다. 성명을 입력해주세요:');
-    if (!voterName) return;
+        async function castVote(status) {
+            if (!currentMatchId) return;
+            const voterName = currentUser ? currentUser.name : prompt('비회원 투표입니다. 성명을 입력해주세요:');
+            if (!voterName) return;
 
-    // 회원의 실제 role에 따라 guest_type 결정 (guest면 '용병'으로 처리)
-    let assignedGuestType = '정회원';
-    if (currentUser) {
-        if (currentUser.role === 'guest') assignedGuestType = '용병';
-        else if (currentUser.role === 'acquaintance') assignedGuestType = '지인';
-        else if (currentUser.role === 'admin' || currentUser.role === 'sub_admin') assignedGuestType = '정회원';
-    }
+            // 회원의 실제 권한(role)을 정확히 판별하여 용병/지인 여부 반영
+            let assignedGuestType = '정회원';
+            if (currentUser) {
+                if (currentUser.role === 'guest') assignedGuestType = '용병';
+                else if (currentUser.role === 'acquaintance') assignedGuestType = '지인';
+                else if (currentUser.role === 'admin' || currentUser.role === 'sub_admin') assignedGuestType = '정회원';
+            }
 
-    const { data: existing } = await supabaseClient.from('match_votes').select('*').eq('match_id', currentMatchId).eq('guest_name', voterName);
-    
-    if (existing && existing.length > 0) {
-        await supabaseClient.from('match_votes').update({ 
-            status: status, 
-            guest_type: assignedGuestType, 
-            voted_at: new Date().toISOString() 
-        }).eq('id', existing[0].id);
-    } else {
-        await supabaseClient.from('match_votes').insert([{
-            match_id: currentMatchId,
-            guest_name: voterName,
-            guest_type: assignedGuestType, // 👈 올바른 권한 타입 적용
-            status: status,
-            voted_at: new Date().toISOString()
-        }]);
-    }
+            const { data: existing } = await supabaseClient.from('match_votes').select('*').eq('match_id', currentMatchId).eq('guest_name', voterName);
+            
+            if (existing && existing.length > 0) {
+                await supabaseClient.from('match_votes').update({ 
+                    status: status, 
+                    guest_type: assignedGuestType, 
+                    voted_at: new Date().toISOString() 
+                }).eq('id', existing[0].id);
+            } else {
+                await supabaseClient.from('match_votes').insert([{
+                    match_id: currentMatchId,
+                    guest_name: voterName,
+                    guest_type: assignedGuestType,
+                    status: status,
+                    voted_at: new Date().toISOString()
+                }]);
+            }
 
-    alert(`투표가 반영되었습니다: [${status}]`);
-    loadMatchVotes(currentMatchId);
-}
+            alert(`투표가 반영되었습니다: [${status}]`);
+            loadMatchVotes(currentMatchId);
+        }
 
         async function applyGuest() {
             if (!currentMatchId) return;
@@ -543,6 +540,7 @@
 
             const attending = currentMatchVotes.filter(v => v.status === '참석');
             
+            // 용병 및 지인은 무조건 대기자 명단으로 분류 (role이 guest이거나 guest_type이 용병/지인인 경우 포함)
             const regularAttending = attending.filter(v => v.guest_type !== '용병' && v.guest_type !== '지인');
             const guestAttending = attending.filter(v => v.guest_type === '용병' || v.guest_type === '지인');
 
@@ -566,7 +564,6 @@
 
             waitingList.innerHTML = waitingPool.length > 0 ? waitingPool.map((v, idx) => {
                 let displayName = isLoginedAdmin ? v.guest_name : maskName(v.guest_name);
-                // 용병/지인 신청 상세 정보(연락처, 실력)를 대기 명단에서도 바로 확인 가능하도록 추가
                 let subInfo = (v.guest_type === '용병' || v.guest_type === '지인') && v.guest_phone 
                     ? ` <span class="text-[10px] text-amber-400">(${v.guest_phone}, 실력:${v.guest_skill || '중'})</span>` 
                     : '';
@@ -574,7 +571,6 @@
             }).join('') : '<li>대기 인원이 없습니다.</li>';
         }
 
-        // 8번 항목: 인원수에 구애받지 않고 수시로 작동하는 유연한 팀짜기 로직
         function runAutoBalance() {
             const attending = currentMatchVotes.filter(v => v.status === '참석');
             if (attending.length === 0) {
@@ -582,7 +578,6 @@
                 return;
             }
 
-            // 1, 2, 3팀으로 균등 분할
             let team1 = [], team2 = [], team3 = [];
             attending.forEach((v, index) => {
                 if (index % 3 === 0) team1.push(v);
@@ -601,7 +596,6 @@
 
                 let totalScore = 0;
                 zone.innerHTML = teamArr.map(member => {
-                    // 멤버 DB에서 평점 조회 (없으면 기본 6.5점 부여)
                     let foundMem = membersData.find(m => m.name === member.guest_name);
                     let rating = foundMem ? (foundMem.rating || 'C') : 'C';
                     let score = scoreMap[rating] !== undefined ? scoreMap[rating] : 6.5;
@@ -624,13 +618,12 @@
             renderTeamBox(team2, 'team2-dropzone', 'score-team2', 'avg-team2');
             renderTeamBox(team3, 'team3-dropzone', 'score-team3', 'avg-team3');
 
-            // 카카오톡 복붙용 텍스트 생성
             let kakaoText = `⚽ 1팀\n` + team1.map(m => m.guest_name).join(' / ') + `\n\n` +
                             `⚽ 2팀\n` + team2.map(m => m.guest_name).join(' / ') + `\n\n` +
                             `⚽ 3팀\n` + team3.map(m => m.guest_name).join(' / ');
             document.getElementById('kakao-preview').innerText = kakaoText;
 
-            alert(`총 ${attending.length명의 참석 인원이 1·2·3팀으로 자동 분배되었습니다!`);
+            alert(`총 ${attending.length}명의 참석 인원이 1·2·3팀으로 자동 분배되었습니다!`);
         }
 
         function copyKakaoFormat() {
@@ -639,8 +632,6 @@
                 alert('카카오톡 복붙용 명단이 복사되었습니다!');
             });
         }
-
-        function loadAdminTeamView() {}
     </script>
 </body>
 </html>

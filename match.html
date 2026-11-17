@@ -282,34 +282,47 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             await fetchMembers();
-            await fetchMatches();
+            await fetchMatches(); // 회원이 없거나 에러가 나도 무조건 일정이 로딩되도록 보장
         });
 
         async function fetchMembers() {
-            const { data } = await supabaseClient.from('members').select('*');
-            if (data) membersData = data;
+            try {
+                const { data, error } = await supabaseClient.from('members').select('*');
+                if (!error && data) membersData = data;
 
-            const urlParams = new URLSearchParams(window.location.search);
-            const viewName = urlParams.get('view');
-            if (viewName) {
-                currentUser = membersData.find(m => m.name === viewName);
-            } else {
-                const loggedName = localStorage.getItem('tenfc_logged_user');
-                if (loggedName) {
-                    currentUser = membersData.find(m => m.name === loggedName);
-                }
-            }
-
-            if (currentUser) {
-                document.getElementById('current-user-badge').innerText = `${currentUser.name} 님 (${currentUser.role === 'admin' ? '주관리자' : currentUser.role === 'guest' ? '용병' : '정회원'})`;
-                if (currentUser.role === 'admin') {
-                    document.getElementById('btn-admin').classList.remove('hidden');
+                const urlParams = new URLSearchParams(window.location.search);
+                const viewName = urlParams.get('view');
+                if (viewName) {
+                    currentUser = membersData.find(m => m.name === viewName);
+                    // 만약 members 테이블에 '테스트'라는 이름이 없더라도 가상 객체로 강제 인식시켜 테스트 가능하게 처리
+                    if (!currentUser && viewName === '테스트') {
+                        currentUser = { name: '테스트', role: 'guest' };
+                    }
                 } else {
+                    const loggedName = localStorage.getItem('tenfc_logged_user');
+                    if (loggedName) {
+                        currentUser = membersData.find(m => m.name === loggedName);
+                    }
+                }
+
+                if (currentUser) {
+                    let roleName = '정회원';
+                    if (currentUser.role === 'admin') roleName = '주관리자';
+                    else if (currentUser.role === 'guest') roleName = '용병';
+                    else if (currentUser.role === 'acquaintance') roleName = '지인';
+
+                    document.getElementById('current-user-badge').innerText = `${currentUser.name} 님 (${roleName})`;
+                    if (currentUser.role === 'admin') {
+                        document.getElementById('btn-admin').classList.remove('hidden');
+                    } else {
+                        document.getElementById('btn-admin').classList.add('hidden');
+                    }
+                } else {
+                    document.getElementById('current-user-badge').innerText = '비회원 (방문자)';
                     document.getElementById('btn-admin').classList.add('hidden');
                 }
-            } else {
-                document.getElementById('current-user-badge').innerText = '비회원 (방문자)';
-                document.getElementById('btn-admin').classList.add('hidden');
+            } catch (err) {
+                console.error("회원 정보 조회 중 예외 발생:", err);
             }
         }
 
@@ -340,18 +353,25 @@
         }
 
         async function fetchMatches() {
-            const { data, error } = await supabaseClient.from('matches').select('*, venues(*)').order('match_date', { ascending: true });
-            if (error) return;
-            
-            matchesList = data || [];
-            renderMatchesGrid();
+            try {
+                const { data, error } = await supabaseClient.from('matches').select('*, venues(*)').order('match_date', { ascending: true });
+                if (error) {
+                    console.error("매치 조회 오류:", error);
+                    return;
+                }
+                
+                matchesList = data || [];
+                renderMatchesGrid();
 
-            const urlParams = new URLSearchParams(window.location.search);
-            const matchIdParam = urlParams.get('id');
-            if (matchIdParam && matchesList.length > 0) {
-                selectMatch(parseInt(matchIdParam));
-            } else if (matchesList.length > 0) {
-                selectMatch(matchesList[0].id);
+                const urlParams = new URLSearchParams(window.location.search);
+                const matchIdParam = urlParams.get('id');
+                if (matchIdParam && matchesList.length > 0) {
+                    selectMatch(parseInt(matchIdParam));
+                } else if (matchesList.length > 0) {
+                    selectMatch(matchesList[0].id);
+                }
+            } catch (err) {
+                console.error("매치 로딩 예외:", err);
             }
         }
 
@@ -472,7 +492,6 @@
             const voterName = currentUser ? currentUser.name : prompt('비회원 투표입니다. 성명을 입력해주세요:');
             if (!voterName) return;
 
-            // 회원의 실제 권한(role)을 정확히 판별하여 용병/지인 여부 반영
             let assignedGuestType = '정회원';
             if (currentUser) {
                 if (currentUser.role === 'guest') assignedGuestType = '용병';
@@ -540,7 +559,6 @@
 
             const attending = currentMatchVotes.filter(v => v.status === '참석');
             
-            // 용병 및 지인은 무조건 대기자 명단으로 분류 (role이 guest이거나 guest_type이 용병/지인인 경우 포함)
             const regularAttending = attending.filter(v => v.guest_type !== '용병' && v.guest_type !== '지인');
             const guestAttending = attending.filter(v => v.guest_type === '용병' || v.guest_type === '지인');
 

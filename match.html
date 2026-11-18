@@ -912,10 +912,10 @@
             const closed = isClosed(m);
 
             if (m.status === '마감') {
-                label.innerText = '🔒 운영진이 투표를 마감했습니다 (미정 투표자만 운동 6시간 전부터 참석/불참 변경 가능)';
+                label.innerText = '🔒 운영진이 투표를 마감했습니다 (미정 투표자만 운동 6시간 전까지 참석/불참 변경 가능)';
                 time.innerText = '';
             } else if (diff <= 0) {
-                label.innerText = '🔒 투표가 마감되었습니다 (미정 투표자만 운동 6시간 전부터 참석/불참 변경 가능)';
+                label.innerText = '🔒 투표가 마감되었습니다 (미정 투표자만 운동 6시간 전까지 참석/불참 변경 가능)';
                 time.innerText = '';
             } else {
                 const sec = Math.floor(diff / 1000);
@@ -1246,20 +1246,15 @@
 
                 const mine = (rows || []).filter(r => !r.guest_phone && !r.registered_by);
 
-                // 투표 마감 후에는 '미정'으로 투표한 사람만, 운동 시작 6시간 전부터 시작 시각까지 참석/불참으로 변경 가능
+                // 투표 마감 후에는 '미정'으로 투표한 사람만, 운동 시작 6시간 전까지 참석/불참으로 변경 가능
                 if (isClosed(m)) {
                     const cur = mine.length ? mine[mine.length - 1].status : null;
-                    const start = new Date(m.match_date);
                     if (cur !== '미정' || status === '미정') {
                         alert('투표가 마감되었습니다.\n마감 후에는 [미정]으로 투표한 인원만 참석/불참으로 변경할 수 있습니다.');
                         return;
                     }
-                    if (!isAfterCutoff(m)) {
-                        alert(`투표가 마감되었습니다.\n미정 인원은 운동 시작 6시간 전(${fmtShort(new Date(start.getTime() - 6 * 3600 * 1000))})부터 참석/불참으로 변경할 수 있습니다.`);
-                        return;
-                    }
-                    if (Date.now() >= start.getTime()) {
-                        alert('운동 시작 시간이 지나 더 이상 변경할 수 없습니다.');
+                    if (isAfterCutoff(m)) {
+                        alert('운동 시작 6시간 이내에는 변경할 수 없습니다.\n(미정은 불참 (미정)으로 처리됩니다)');
                         return;
                     }
                 }

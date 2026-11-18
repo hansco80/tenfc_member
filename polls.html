@@ -39,6 +39,14 @@
             </div>
         </header>
 
+        <!-- 정회원 전용 안내 -->
+        <section id="view-gate" class="hidden bg-slate-900 p-8 rounded-2xl border border-slate-800 shadow-xl text-center space-y-4">
+            <div class="text-4xl">🔒</div>
+            <h2 class="text-lg font-bold text-white">정회원 전용 페이지입니다</h2>
+            <p id="gate-msg" class="text-xs text-slate-400">투표는 정회원 로그인 후 이용할 수 있습니다.</p>
+            <button onclick="openLoginModal()" id="gate-login" class="px-6 py-3 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-xl text-sm transition shadow-md">🔑 정회원 로그인</button>
+        </section>
+
         <!-- 목록 화면 -->
         <main id="view-list" class="space-y-4">
             <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-xl space-y-4">
@@ -214,8 +222,8 @@
         document.addEventListener('DOMContentLoaded', async () => {
             try {
                 await fetchMembers();
-                await fetchPolls();
-                routeFromUrl();
+                if (hasAccess()) { await fetchPolls(); routeFromUrl(); }
+                else showGate();
             } finally {
                 document.getElementById('loading-overlay').classList.add('hidden');
             }
@@ -223,7 +231,27 @@
         });
         window.addEventListener('popstate', routeFromUrl);
 
+        // 정회원(로그인한 회원 중 용병/지인 제외)만 접근 가능
+        function hasAccess() { return !!currentUser && !NO_VOTE_ROLES.includes(currentUser.role); }
+
+        function showGate() {
+            currentPollId = null;
+            document.title = 'TenFC 투표';
+            if (chart) { chart.destroy(); chart = null; }
+            document.getElementById('view-list').classList.add('hidden');
+            document.getElementById('view-detail').classList.add('hidden');
+            document.getElementById('view-gate').classList.remove('hidden');
+            const msg = document.getElementById('gate-msg');
+            if (currentUser) {
+                msg.innerText = '용병 / 지인 계정은 투표 페이지를 이용할 수 없습니다. 정회원 계정으로 로그인해주세요.';
+            } else {
+                msg.innerText = '투표는 정회원 로그인 후 이용할 수 있습니다.';
+            }
+        }
+
         function routeFromUrl() {
+            if (!hasAccess()) { showGate(); return; }
+            document.getElementById('view-gate').classList.add('hidden');
             const id = parseInt(new URLSearchParams(window.location.search).get('id'), 10);
             if (id && getPoll(id)) showDetail(id, false);
             else showList(false);
@@ -303,9 +331,9 @@
             await afterAuthChange();
         }
         async function afterAuthChange() {
-            await computeMyVoted();
-            if (currentPollId && getPoll(currentPollId)) await showDetail(currentPollId, false);
-            else renderList();
+            if (!hasAccess()) { showGate(); return; }
+            await fetchPolls();
+            routeFromUrl();
         }
 
         // ---------- 데이터 ----------

@@ -527,13 +527,11 @@
                         seenNames.add(found.name);
 
                         const hist = Array.isArray(found.history) ? found.history : [];
-                        const recentHistory = hist.slice(-5);
 
                         // 💡 2주(14일) 경과 여부 체크 계산
                         let isOutdated = false;
                         if (hist.length > 0) {
                             const lastEntry = hist[hist.length - 1];
-                            // 날짜 문자열 형식(MM.DD 등)을 올해 연도 기준 날짜 객체로 변환 비교
                             if (lastEntry.date && lastEntry.date.includes('.')) {
                                 const parts = lastEntry.date.split('.');
                                 const currentYear = new Date().getFullYear();
@@ -543,7 +541,7 @@
                                 if (diffDays >= 14) isOutdated = true;
                             }
                         } else {
-                            isOutdated = true; // 기록이 아예 없으면 평가 필요 대상
+                            isOutdated = true;
                         }
 
                         parsedList.push({
@@ -808,8 +806,10 @@
                     const disableTwoStep = currentSession.mode === 2;
                     const disabledAttr = (isCompleted || !isAttendingAdmin) ? 'disabled' : '';
 
-                    // 💡 최근 등급 및 최근 평가일 포함 변천사 구성 (마지막 항목 날짜도 표시)
-                    const hist = Array.isArray(p.history) ? p.history : [];
+                    // 💡 실시간으로 최신 DB 멤버 데이터(`membersData`)에서 해당 멤버의 `history`를 찾아 정확히 표시
+                    const liveMember = membersData.find(m => m.name === p.name);
+                    const hist = liveMember && Array.isArray(liveMember.history) ? liveMember.history : (Array.isArray(p.history) ? p.history : []);
+                    
                     let historyText = '기록 없음';
                     let lastEvalDate = '없음';
                     if (hist.length > 0) {

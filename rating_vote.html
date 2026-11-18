@@ -8,6 +8,14 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         .vote-btn-active { transform: scale(1.04); box-shadow: 0 0 12px rgba(16, 185, 129, 0.45); }
+        @keyframes pulse-border {
+            0% { border-color: rgba(245, 158, 11, 0.4); }
+            50% { border-color: rgba(245, 158, 11, 0.9); box-shadow: 0 0 12px rgba(245, 158, 11, 0.3); }
+            100% { border-color: rgba(245, 158, 11, 0.4); }
+        }
+        .urgent-eval-card {
+            animation: pulse-border 2s infinite;
+        }
     </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen p-3 md:p-6">
@@ -92,7 +100,7 @@
                         <button onclick="setFilter('conflict')" id="filter-conflict" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-700 text-slate-300 hover:bg-slate-600 transition">🔥 의견엇갈림 / !·? 시그널</button>
                     </div>
                     <div class="text-[11px] text-slate-400">
-                        <span class="text-sky-400 font-bold">?</span> 다른 2명 의견 먼저 보고싶음 &nbsp;|&nbsp; <span class="text-rose-400 font-bold">!</span> 내 촉이 좋음(강력 어필)
+                        <span class="text-sky-400 font-bold">?</span> 관망 &nbsp;|&nbsp; <span class="text-rose-400 font-bold">!</span> 확신 &nbsp;|&nbsp; <span class="text-amber-400 font-bold">⭐ 2주 경과</span>
                     </div>
                 </div>
             </div>
@@ -151,7 +159,7 @@
 
             <div>
                 <label class="block text-xs font-bold text-slate-300 mb-1">당일 운동 팀별 명단 붙여넣기</label>
-                <textarea id="new-lineup-text" rows="10" class="w-full p-3 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white font-mono focus:outline-none focus:border-emerald-500" placeholder="⚽ 1팀 [레드]&#10;오한결(80)*&#10;최한샘(85)&#10;...&#10;&#10;⚽ 2팀 [블랙]&#10;노병호(82)*&#10;..."></textarea>
+                <textarea id="new-lineup-text" rows="10" class="w-full p-3 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white font-mono focus:outline-none focus:border-emerald-500" placeholder="⚽ 1팀 [레드]&#10;오한결(80)*&#10;최한샘(85)&#10;..."></textarea>
                 <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">
                     ※ 명단에 없는 신규 용병이나 지인이 포함되어 있다면 세션 생성 시 자동으로 등록 팝업이 뜹니다.
                 </p>
@@ -191,7 +199,7 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-300 mb-1">출생년도 (예: 95년 또는 1995.05.12)</label>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">출생년도</label>
                         <input type="text" id="q-birth" required placeholder="예: 95년생" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-xs text-white">
                     </div>
                 </div>
@@ -229,7 +237,6 @@
         let sessionVotes = [];
         let currentFilter = 'all';
 
-        // 미등록 인원 순차 처리용 큐
         let pendingUnregisteredQueue = [];
         let cachedMatchDate = '';
         let cachedRawText = '';
@@ -355,7 +362,6 @@
             document.getElementById('new-session-modal').classList.add('hidden');
         }
 
-        // 명단 파싱 및 미등록 인원 검출 로직
         function handleLineupSubmission() {
             cachedMatchDate = document.getElementById('new-match-date').value;
             cachedRawText = document.getElementById('new-lineup-text').value;
@@ -403,7 +409,6 @@
             });
 
             if (detectedUnregistered.length > 0) {
-                // 미등록 인원이 있다면 모달 띄우기
                 pendingUnregisteredQueue = detectedUnregistered;
                 closeNewSessionModal();
                 showNextUnregisteredModal();
@@ -414,7 +419,6 @@
 
         function showNextUnregisteredModal() {
             if (pendingUnregisteredQueue.length === 0) {
-                // 모두 처리 완료 후 세션 생성 재시도
                 processValidatedLineup();
                 return;
             }
@@ -461,7 +465,6 @@
                 return;
             }
 
-            // 전역 멤버 데이터 갱신
             membersData.push({
                 id: name,
                 name: name,
@@ -483,7 +486,6 @@
             showNextUnregisteredModal();
         }
 
-        // 최종 파싱 및 세션 생성
         async function processValidatedLineup() {
             const matchDate = cachedMatchDate;
             const rawText = cachedRawText;
@@ -524,9 +526,25 @@
                     if (found && !seenNames.has(found.name)) {
                         seenNames.add(found.name);
 
-                        // 등급 변천사 추출 (최근 3~5개)
                         const hist = Array.isArray(found.history) ? found.history : [];
-                        const recentHistory = hist.slice(-5); // 최근 5개
+                        const recentHistory = hist.slice(-5);
+
+                        // 💡 2주(14일) 경과 여부 체크 계산
+                        let isOutdated = false;
+                        if (hist.length > 0) {
+                            const lastEntry = hist[hist.length - 1];
+                            // 날짜 문자열 형식(MM.DD 등)을 올해 연도 기준 날짜 객체로 변환 비교
+                            if (lastEntry.date && lastEntry.date.includes('.')) {
+                                const parts = lastEntry.date.split('.');
+                                const currentYear = new Date().getFullYear();
+                                const lastDateObj = new Date(currentYear, parseInt(parts[0]) - 1, parseInt(parts[1]));
+                                const sessionDateObj = new Date(matchDate);
+                                const diffDays = (sessionDateObj - lastDateObj) / (1000 * 3600 * 24);
+                                if (diffDays >= 14) isOutdated = true;
+                            }
+                        } else {
+                            isOutdated = true; // 기록이 아예 없으면 평가 필요 대상
+                        }
 
                         parsedList.push({
                             name: found.name,
@@ -535,9 +553,8 @@
                             position: found.position,
                             rating: found.rating,
                             score: scoreMap[found.rating] || 6.5,
-                            historyStr: recentHistory.length > 0
-                                ? recentHistory.map(h => `${h.date}:${h.score}`).join(' → ')
-                                : `${found.rating} (초기)`
+                            history: hist,
+                            isOutdated: isOutdated
                         });
                     }
                 });
@@ -791,18 +808,33 @@
                     const disableTwoStep = currentSession.mode === 2;
                     const disabledAttr = (isCompleted || !isAttendingAdmin) ? 'disabled' : '';
 
-                    // 최근 변천사 문자열 구성
-                    const historyDisplay = p.historyStr ? `<span class="text-amber-300/90 font-mono text-[11px]">변천사: ${p.historyStr}</span>` : '';
+                    // 💡 최근 등급 및 최근 평가일 포함 변천사 구성 (마지막 항목 날짜도 표시)
+                    const hist = Array.isArray(p.history) ? p.history : [];
+                    let historyText = '기록 없음';
+                    let lastEvalDate = '없음';
+                    if (hist.length > 0) {
+                        const recent3 = hist.slice(-3); // 최근 3개
+                        historyText = recent3.map(h => `${h.date}:${reverseScoreToGrade(h.score)}`).join(' → ');
+                        lastEvalDate = hist[hist.length - 1].date;
+                    }
+
+                    // 💡 2주(14일) 경과 인원 강조 카드 클래스 적용
+                    const isUrgent = p.isOutdated;
+                    const cardBorderClass = isUrgent ? 'urgent-eval-card bg-slate-900/95 border-amber-500/80' : (myVal !== null ? 'bg-slate-900/90 border-slate-700' : 'bg-slate-900/40 border-amber-500/30');
 
                     const card = document.createElement('div');
-                    card.className = `p-3.5 rounded-xl border ${myVal !== null ? 'bg-slate-900/90 border-slate-700' : 'bg-slate-900/40 border-amber-500/30'} space-y-2.5`;
+                    card.className = `p-3.5 rounded-xl border ${cardBorderClass} space-y-2.5 relative`;
                     card.innerHTML = `
+                        ${isUrgent ? '<div class="absolute -top-2.5 right-3 bg-amber-500 text-slate-950 text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow">⭐ 평가일 2주 경과 (필수평가)</div>' : ''}
                         <div class="flex flex-col md:flex-row md:items-center justify-between gap-2">
                             <div>
                                 <div class="flex items-center gap-2 flex-wrap">
                                     <span class="text-sm font-extrabold text-white">${p.name}</span>
                                     <span class="px-2 py-0.5 bg-emerald-950 text-emerald-400 border border-emerald-500/40 rounded text-xs font-extrabold">현재: ${p.rating}</span>
-                                    ${historyDisplay}
+                                    <span class="text-[11px] text-slate-400">최근평가일: <strong class="text-slate-200">${lastEvalDate}</strong></span>
+                                </div>
+                                <div class="mt-1">
+                                    <span class="text-amber-300/90 font-mono text-[11px]">변천사(최근): ${historyText}</span>
                                 </div>
                                 <div class="flex flex-wrap gap-2 mt-1 text-[11px] text-slate-300">
                                     <span class="bg-slate-800 px-2 py-0.5 rounded">소속팀 순위: <strong class="text-sky-400">${p.teamRank}</strong></span>
@@ -826,10 +858,10 @@
                                 ${renderVoteOptionBtn(p.name, -2, '▼▼ -2', myVal, disableTwoStep || isCompleted || !isAttendingAdmin)}
                             </div>
                             <div class="flex gap-1.5 justify-end">
-                                <button ${disabledAttr} onclick="castSignal('${p.name}', '?')" class="px-3 py-1.5 rounded-lg text-xs font-extrabold border transition ${mySig === '?' ? 'bg-sky-600 border-sky-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'} disabled:opacity-40" title="다른 2명의 의견을 먼저 보고 싶음">
+                                <button ${disabledAttr} onclick="castSignal('${p.name}', '?')" class="px-3 py-1.5 rounded-lg text-xs font-extrabold border transition ${mySig === '?' ? 'bg-sky-600 border-sky-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'} disabled:opacity-40" title="관망">
                                     ? 관망
                                 </button>
-                                <button ${disabledAttr} onclick="castSignal('${p.name}', '!')" class="px-3 py-1.5 rounded-lg text-xs font-extrabold border transition ${mySig === '!' ? 'bg-amber-600 border-amber-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'} disabled:opacity-40" title="내 촉이 좋다 / 강력 어필">
+                                <button ${disabledAttr} onclick="castSignal('${p.name}', '!')" class="px-3 py-1.5 rounded-lg text-xs font-extrabold border transition ${mySig === '!' ? 'bg-amber-600 border-amber-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'} disabled:opacity-40" title="확신">
                                     ! 확신
                                 </button>
                             </div>
@@ -844,6 +876,18 @@
             renderFinalSummaryAndApproval();
         }
 
+        const reverseScoreMap = {
+            10.0: "A+", 9.5: "A", 9.0: "A-",
+            8.5: "B+", 8.0: "B", 7.5: "B-",
+            7.0: "C+", 6.5: "C", 6.0: "C-",
+            5.5: "D+", 5.0: "D", 4.5: "D-",
+            4.0: "E+", 3.5: "E", 3.0: "E-",
+            2.5: "F+", 2.0: "F", 1.5: "F-"
+        };
+        function reverseScoreToGrade(scoreVal) {
+            return reverseScoreMap[scoreVal] || scoreVal;
+        }
+
         function renderVoteOptionBtn(playerName, val, label, currentVal, isDisabled) {
             const isSelected = currentVal === val;
             let colorClass = 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700';
@@ -854,7 +898,7 @@
             }
             return `
                 <button ${isDisabled ? 'disabled' : ''} onclick="castVote('${playerName}', ${val})"
-                    class="py-1.5 px-2 rounded-lg text-xs font-bold border transition ${colorClass} disabled:opacity-35 disabled:cursor-not-allowed">
+                    class="py-1.5 px-2 rounded-lg text-xs font-bold border transition ${colorClass} disabled:opacity-35 disabled:cursor-not-allowed" title="한 번 더 누르면 미투표 상태로 초기화됩니다">
                     ${label}
                 </button>
             `;
@@ -869,6 +913,7 @@
             return '';
         }
 
+        // 💡 1. 평점 버튼 한 번 더 누르면 미투표 상태로 초기화(삭제)되도록 토글 구현
         async function castVote(playerName, voteValue) {
             if (currentSession.status === 'completed') return;
             if (!currentSession.attending_admins.includes(currentUser.name)) {
@@ -877,22 +922,35 @@
             }
 
             const existing = sessionVotes.find(v => v.player_name === playerName && v.voter_name === currentUser.name);
-            const currentSignal = existing ? (existing.signal || '') : '';
 
-            const { error } = await supabaseClient
-                .from('rating_votes')
-                .upsert({
-                    session_id: currentSession.id,
-                    player_name: playerName,
-                    voter_name: currentUser.name,
-                    vote_value: voteValue,
-                    signal: currentSignal,
-                    updated_at: new Date().toISOString()
-                }, { onConflict: 'session_id,player_name,voter_name' });
+            if (existing && existing.vote_value === voteValue) {
+                // 동일한 버튼 재클릭 시 투표 내역 삭제(초기화)
+                const { error } = await supabaseClient
+                    .from('rating_votes')
+                    .delete()
+                    .eq('id', existing.id);
 
-            if (error) {
-                alert('투표 저장 실패: ' + error.message);
-                return;
+                if (error) {
+                    alert('투표 초기화 실패: ' + error.message);
+                    return;
+                }
+            } else {
+                const currentSignal = existing ? (existing.signal || '') : '';
+                const { error } = await supabaseClient
+                    .from('rating_votes')
+                    .upsert({
+                        session_id: currentSession.id,
+                        player_name: playerName,
+                        voter_name: currentUser.name,
+                        vote_value: voteValue,
+                        signal: currentSignal,
+                        updated_at: new Date().toISOString()
+                    }, { onConflict: 'session_id,player_name,voter_name' });
+
+                if (error) {
+                    alert('투표 저장 실패: ' + error.message);
+                    return;
+                }
             }
 
             await fetchSessionVotes();

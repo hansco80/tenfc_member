@@ -856,6 +856,7 @@
                 const costDisplay = m.cost_type === '무료' ? '무료' : `${m.cost_amount || '유료'}`;
                 const s = typeStyle(m.match_type);
                 const closed = isClosed(m);
+                const L = computeLists(m, allVotesByMatch[m.id] || []);
                 return `
                     <div onclick="selectMatch(${m.id}, true)" class="bg-slate-950 border-2 border-l-8 ${s.border} ${currentMatchId === m.id ? 'border-emerald-400' : 'border-slate-800 hover:border-slate-700'} p-4 rounded-xl cursor-pointer transition shadow-md space-y-2">
                         <div class="flex justify-between items-center">
@@ -865,7 +866,7 @@
                         <h3 class="font-bold text-white text-base">${dateStr}</h3>
                         <p class="text-xs text-slate-300 truncate"><i class="fa-solid fa-location-dot text-red-400 mr-1"></i> ${esc(venueName)}</p>
                         <div class="flex justify-between items-center pt-2 border-t border-slate-900 text-xs">
-                            <span class="${s.text} font-bold">정원 ${capOf(m)}명</span>
+                            <span class="${s.text} font-bold">참석 ${L.confirmed.length} / ${L.cap}명${L.waiting.length ? ` <span class="text-amber-400 font-normal">(대기 ${L.waiting.length})</span>` : ''}</span>
                             <span class="text-slate-400 underline">투표 참여하기 &rarr;</span>
                         </div>
                     </div>`;
@@ -1420,7 +1421,7 @@
             const birth = getBirthOf(v);
 
             const parts = [];
-            if (birth && (isGuestish || currentUser)) parts.push(`${birth}년생`);
+            if (birth) parts.push(`${birth}년생`);   // 비회원 조회 시에도 출생년도 표시
             if (isGuestish && v.guest_phone) parts.push(esc(staff ? v.guest_phone : getMaskedPhone(v.guest_phone)));
             if (isGuestish && v.guest_phone && v.guest_skill) parts.push(`실력:${esc(v.guest_skill || '중')}`);
             const detail = parts.length ? ` <span class="text-[10px] text-amber-400">(${parts.join(', ')})</span>` : '';

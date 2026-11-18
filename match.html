@@ -11,7 +11,8 @@
     <!-- FontAwesome 아이콘 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .draggable-item { cursor: grab; }
+        .draggable-item { cursor: grab; user-select: none; -webkit-user-select: none; }
+        .drag-handle { touch-action: none; cursor: grab; }
         .draggable-item:active { cursor: grabbing; }
         .drag-over { background-color: rgba(16, 185, 129, 0.1); outline: 2px dashed #10b981; }
         details > summary { list-style: none; cursor: pointer; }
@@ -21,6 +22,12 @@
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen font-sans">
+
+    <!-- 로딩 화면 -->
+    <div id="loading-overlay" class="fixed inset-0 z-[100] bg-slate-950 flex flex-col items-center justify-center gap-3">
+        <div class="text-5xl animate-bounce">⚽</div>
+        <p class="text-sm font-bold text-emerald-400">⚽ 불러오는 중...</p>
+    </div>
 
     <div class="max-w-4xl mx-auto p-4 space-y-6">
 
@@ -177,6 +184,11 @@
                     </ul>
                 </div>
 
+                <div class="flex flex-wrap gap-2">
+                    <button id="btn-copy-roster" onclick="copyRosterText()" class="hidden px-4 py-2 bg-slate-800 hover:bg-slate-700 text-sky-300 font-bold rounded-xl text-xs transition border border-slate-700">📋 참석·대기 명단 텍스트 복사</button>
+                    <button id="btn-goto-team" onclick="goTeamBuild()" class="hidden px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs transition shadow-md">⚽ 이 일정으로 팀짜기</button>
+                </div>
+
                 <!-- 비회원 안내 및 당근 카페 링크 -->
                 <div class="bg-emerald-950/20 border border-emerald-500/20 p-4 rounded-xl flex flex-col md:flex-row justify-between items-center gap-3">
                     <p class="text-xs text-emerald-300">💡 비회원 방문자이신가요? 전체 운동 일정과 총 참석 인원을 확인하실 수 있습니다.</p>
@@ -190,14 +202,37 @@
         <!-- [탭 2] 관리자 팀 빌딩 & 드래그앤드롭 모듈 페이지 (주관리자 전용) -->
         <main id="tab-admin" class="space-y-6 hidden">
             <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl space-y-4">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                <div class="space-y-3">
                     <div>
                         <h2 class="text-lg font-bold text-white"><i class="fa-solid fa-wand-magic-sparkles text-amber-400 mr-2"></i>주관리자 팀짜기 모듈 (드래그 앤 드롭 지원)</h2>
-                        <p class="text-xs text-slate-400">참석 인원을 1·2·3팀으로 나눕니다. 운영진이 각 팀 맨 위(팀장)에 배치되며, 카드를 다른 팀으로 끌어놓거나 카드의 [→1팀] 버튼으로 이동할 수 있습니다.</p>
+                        <p class="text-xs text-slate-400">팀을 짤 일정을 고르거나 명단 텍스트를 붙여넣어 1·2·3팀을 편성합니다. 운영진이 각 팀 맨 위(팀장)에 배치되며, 카드를 끌어다 놓거나 [→팀] 버튼으로 옮길 수 있습니다.</p>
                     </div>
-                    <button onclick="runAutoBalance()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs transition shadow-md whitespace-nowrap">
-                        ⚡ AI 자동 팀 짜기 재실행
-                    </button>
+
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+                        <p class="text-xs font-bold text-white">① 팀을 짤 일정 선택</p>
+                        <div class="flex flex-col md:flex-row gap-2 md:items-center">
+                            <select id="team-match-select" class="flex-1 bg-slate-900 border border-slate-800 p-2.5 rounded-lg text-xs text-white"></select>
+                            <label class="flex items-center gap-1.5 text-xs text-slate-300 whitespace-nowrap">
+                                <input type="checkbox" id="team-include-waiting" checked> 대기자(용병/지인 등)도 포함
+                            </label>
+                            <button onclick="runTeamFromMatch()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs transition shadow-md whitespace-nowrap">⚡ 이 일정으로 팀 짜기</button>
+                        </div>
+                        <details class="bg-slate-900 rounded-lg border border-slate-800">
+                            <summary class="p-3 text-xs font-bold text-sky-300 flex justify-between items-center">
+                                <span>② 또는 참석/대기 명단 텍스트를 붙여넣어 팀 짜기</span>
+                                <i class="fa-solid fa-chevron-down chev text-xs"></i>
+                            </summary>
+                            <div class="px-3 pb-3 space-y-2">
+                                <textarea id="team-paste" rows="7" placeholder="일정 화면의 [참석·대기 명단 텍스트 복사]로 복사한 내용을 붙여넣으세요.&#10;(수정·추가·삭제한 명단도 그대로 사용할 수 있습니다)" class="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-xs text-white font-mono"></textarea>
+                                <button onclick="runTeamFromText()" class="w-full py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg text-xs transition">📋 붙여넣은 명단으로 팀 짜기</button>
+                            </div>
+                        </details>
+                    </div>
+
+                    <div class="flex flex-col md:flex-row justify-between md:items-center gap-2">
+                        <p id="team-source-label" class="text-xs font-bold text-emerald-300">📌 팀짜기 기준: (아직 선택되지 않았습니다)</p>
+                        <button onclick="runAutoBalance()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold rounded-lg text-xs transition border border-slate-700 whitespace-nowrap">🔄 같은 명단으로 재편성</button>
+                    </div>
                 </div>
 
                 <!-- 3개 팀 드래그앤드롭 존 및 실시간 점수 표시 -->
@@ -211,7 +246,7 @@
                                 <span class="text-slate-400">평균: </span><span id="avg-team1" class="font-bold text-emerald-400">0.0</span>
                             </div>
                         </div>
-                        <div class="space-y-2 min-h-[220px] p-1 rounded-lg transition" id="team1-dropzone" ondragenter="allowDrop(event)" ondragover="allowDrop(event)" ondragleave="removeDropStyle(event)" ondrop="dropMember(event, 'team1')">
+                        <div class="space-y-2 min-h-[220px] p-1 rounded-lg transition" id="team1-dropzone" data-zone="team1">
                             <p class="text-xs text-slate-500 text-center py-10">팀 편성을 실행해주세요.</p>
                         </div>
                     </div>
@@ -225,7 +260,7 @@
                                 <span class="text-slate-400">평균: </span><span id="avg-team2" class="font-bold text-indigo-400">0.0</span>
                             </div>
                         </div>
-                        <div class="space-y-2 min-h-[220px] p-1 rounded-lg transition" id="team2-dropzone" ondragenter="allowDrop(event)" ondragover="allowDrop(event)" ondragleave="removeDropStyle(event)" ondrop="dropMember(event, 'team2')">
+                        <div class="space-y-2 min-h-[220px] p-1 rounded-lg transition" id="team2-dropzone" data-zone="team2">
                             <p class="text-xs text-slate-500 text-center py-10">팀 편성을 실행해주세요.</p>
                         </div>
                     </div>
@@ -239,7 +274,7 @@
                                 <span class="text-slate-400">평균: </span><span id="avg-team3" class="font-bold text-amber-400">0.0</span>
                             </div>
                         </div>
-                        <div class="space-y-2 min-h-[220px] p-1 rounded-lg transition" id="team3-dropzone" ondragenter="allowDrop(event)" ondragover="allowDrop(event)" ondragleave="removeDropStyle(event)" ondrop="dropMember(event, 'team3')">
+                        <div class="space-y-2 min-h-[220px] p-1 rounded-lg transition" id="team3-dropzone" data-zone="team3">
                             <p class="text-xs text-slate-500 text-center py-10">팀 편성을 실행해주세요.</p>
                         </div>
                     </div>
@@ -469,6 +504,11 @@
             return !!mem && STAFF_ROLES.includes(mem.role);
         }
 
+        // 텍스트 안의 http(s) 링크를 새 창으로 열리는 링크로 변환 (HTML은 이스케이프)
+        function linkify(text) {
+            return esc(text).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-sky-400 underline break-all">$1</a>');
+        }
+
         function maskName(name) {
             if (!name || name.length < 2) return name;
             if (name.length === 2) return name[0] + '*';
@@ -485,8 +525,12 @@
         document.addEventListener('DOMContentLoaded', async () => {
             renderLegend();
             updateViewModeButtons();
-            await fetchMembers();
-            await fetchMatches();
+            try {
+                await fetchMembers();
+                await fetchMatches();
+            } finally {
+                document.getElementById('loading-overlay').classList.add('hidden');
+            }
             setInterval(tick, 1000);
         });
 
@@ -537,6 +581,7 @@
                     alert('⚠️ 관리자 팀짜기 메뉴는 주관리자만 접근할 수 있습니다.');
                     return;
                 }
+                populateTeamMatchSelect();
                 document.getElementById('tab-calendar').classList.add('hidden');
                 document.getElementById('tab-admin').classList.remove('hidden');
                 document.getElementById('btn-admin').className = 'px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs transition shadow-md';
@@ -711,8 +756,8 @@
             if (match.venues) {
                 document.getElementById('venue-name').innerText = match.venues.name;
                 document.getElementById('venue-address').innerText = `주소: ${match.venues.address || '정보 없음'}`;
-                document.getElementById('venue-parking').innerText = `주차: ${match.venues.parking_info || '정보 없음'}`;
-                document.getElementById('venue-notes').innerText = `특이사항: ${match.venues.notes || '없음'}`;
+                document.getElementById('venue-parking').innerHTML = `주차: ${linkify(match.venues.parking_info || '정보 없음')}`;
+                document.getElementById('venue-notes').innerHTML = `특이사항: ${linkify(match.venues.notes || '없음')}`;
             } else {
                 document.getElementById('venue-name').innerText = '구장 미정';
                 document.getElementById('venue-address').innerText = '주소: 정보 없음';
@@ -723,6 +768,8 @@
 
             document.getElementById('share-link-input').value = `${window.location.origin}${window.location.pathname}?id=${match.id}`;
             document.getElementById('btn-edit-match').classList.toggle('hidden', !isStaff());
+            document.getElementById('btn-copy-roster').classList.toggle('hidden', !isStaff());
+            document.getElementById('btn-goto-team').classList.toggle('hidden', !(currentUser && currentUser.role === 'admin'));
 
             lastAfterCut = null;
             lastClosed = null;
@@ -994,13 +1041,16 @@
         }
 
         // ---------- 투표 ----------
+        let voting = false;
         async function castVote(status) {
             const m = currentMatch();
             if (!m) return;
             if (isClosed(m)) { alert('투표가 마감되었습니다.'); return; }
+            if (voting) return;
 
             const voterName = currentUser ? currentUser.name : prompt('비회원 투표입니다. 성명을 입력해주세요:');
             if (!voterName) return;
+            const matchId = currentMatchId;
 
             let assignedGuestType = '정회원';
             if (currentUser) {
@@ -1008,32 +1058,57 @@
                 else if (currentUser.role === 'acquaintance') assignedGuestType = '지인';
             }
 
-            const { data: existing, error: selErr } = await supabaseClient.from('match_votes').select('*').eq('match_id', currentMatchId).eq('guest_name', voterName);
-            if (selErr) { alert('투표 조회 실패: ' + selErr.message); return; }
+            const insertVote = () => supabaseClient.from('match_votes').insert([{
+                match_id: matchId,
+                guest_name: voterName,
+                guest_type: assignedGuestType,
+                status: status,
+                voted_at: new Date().toISOString()
+            }]);
 
-            if (existing && existing.length > 0) {
-                if (existing[0].status === status) { alert(`이미 [${status}]로 투표하셨습니다.`); return; }
-                const { error } = await supabaseClient.from('match_votes').update({
-                    status: status,
-                    guest_type: assignedGuestType,
-                    voted_at: new Date().toISOString()
-                }).eq('id', existing[0].id);
-                if (error) { alert('투표 반영 실패: ' + error.message); return; }
-            } else {
-                const { error } = await supabaseClient.from('match_votes').insert([{
-                    match_id: currentMatchId,
-                    guest_name: voterName,
-                    guest_type: assignedGuestType,
-                    status: status,
-                    voted_at: new Date().toISOString()
-                }]);
-                if (error) { alert('투표 반영 실패: ' + error.message); return; }
+            voting = true;
+            try {
+                const { data: rows, error: selErr } = await supabaseClient.from('match_votes').select('*').eq('match_id', matchId).eq('guest_name', voterName).order('voted_at', { ascending: true });
+                if (selErr) { alert('투표 조회 실패: ' + selErr.message); return; }
+
+                // 본인 투표 행만 대상 (신청으로 등록된 지인/용병 행은 연락처·신청자 정보가 있어 제외)
+                const mine = (rows || []).filter(r => !r.guest_phone && !r.registered_by);
+
+                if (mine.length > 0) {
+                    const latest = mine[mine.length - 1];
+                    if (mine.length === 1 && latest.status === status) { alert(`이미 [${status}]로 투표하셨습니다.`); return; }
+
+                    // 1인 1투표: 한 행만 남기고 중복 행은 삭제
+                    const keep = mine[0];
+                    const extraIds = mine.slice(1).map(r => r.id);
+                    if (extraIds.length) {
+                        const { error: delErr } = await supabaseClient.from('match_votes').delete().in('id', extraIds);
+                        if (delErr) { alert('중복 투표 정리 실패: ' + delErr.message); return; }
+                    }
+                    const votedAt = (latest.status === status) ? latest.voted_at : new Date().toISOString();
+                    const { data: upd, error: updErr } = await supabaseClient.from('match_votes')
+                        .update({ status: status, guest_type: assignedGuestType, voted_at: votedAt })
+                        .eq('id', keep.id).select();
+                    if (updErr) { alert('투표 반영 실패: ' + updErr.message); return; }
+                    if (!upd || upd.length === 0) {
+                        // 수정 권한이 막혀 있으면 삭제 후 다시 등록
+                        const { data: del, error: dErr } = await supabaseClient.from('match_votes').delete().eq('id', keep.id).select();
+                        if (dErr || !del || del.length === 0) { alert('투표를 변경할 수 없습니다. (DB의 수정/삭제 권한 설정을 확인해주세요)'); return; }
+                        const { error: insErr } = await insertVote();
+                        if (insErr) { alert('투표 반영 실패: ' + insErr.message); return; }
+                    }
+                } else {
+                    const { error } = await insertVote();
+                    if (error) { alert('투표 반영 실패: ' + error.message); return; }
+                }
+
+                let msg = `투표가 반영되었습니다: [${status}]`;
+                if (status === '미정') msg += '\n\n※ 운동 6시간 전까지는 참석 (미정)으로, 이후에는 불참 (미정)으로 자동 변경됩니다.';
+                alert(msg);
+                await loadMatchVotes(matchId);
+            } finally {
+                voting = false;
             }
-
-            let msg = `투표가 반영되었습니다: [${status}]`;
-            if (status === '미정') msg += '\n\n※ 운동 6시간 전까지는 참석 (미정)으로, 이후에는 불참 (미정)으로 자동 변경됩니다.';
-            alert(msg);
-            loadMatchVotes(currentMatchId);
         }
 
         async function applyGuest() {
@@ -1102,9 +1177,21 @@
             return `<li>${opts.prefix} ${name} (${esc(v.guest_type || '정회원')})${tentative}${detail}${by}${time}</li>`;
         }
 
-        function renderVoteLists() {
-            const m = currentMatch();
-            if (!m) return;
+        let lastLists = null;
+        let teamSource = { people: [], label: '' };
+
+        // 1인 1투표: 같은 사람(이름+연락처+신청자)의 투표가 여러 개면 가장 마지막 투표만 인정
+        function dedupeVotes(votes) {
+            const map = new Map();
+            (votes || []).forEach(v => {
+                const key = `${v.guest_name}|${v.guest_phone || ''}|${v.registered_by || ''}`;
+                const prev = map.get(key);
+                if (!prev || new Date(v.voted_at) >= new Date(prev.voted_at)) map.set(key, v);
+            });
+            return Array.from(map.values()).sort((a, b) => new Date(a.voted_at) - new Date(b.voted_at));
+        }
+
+        function computeLists(m, votes) {
             const cap = capOf(m);
             const afterCut = isAfterCutoff(m);
             const isGuestType = v => v.guest_type === '용병' || v.guest_type === '지인';
@@ -1112,7 +1199,7 @@
             const regularPool = [];
             const guestPool = [];
             const declined = [];
-            currentMatchVotes.forEach(v => {
+            dedupeVotes(votes).forEach(v => {
                 if (v.status === '참석') {
                     (isGuestType(v) ? guestPool : regularPool).push({ v, tentative: false });
                 } else if (v.status === '미정') {
@@ -1126,23 +1213,59 @@
             const normal = regularPool.filter(e => e.v.guest_type !== '가입전 참가');
             const preJoin = regularPool.filter(e => e.v.guest_type === '가입전 참가');
             const ordered = [...normal, ...preJoin];
-            const confirmed = ordered.slice(0, cap);
-            const waiting = [...ordered.slice(cap), ...guestPool];
+            return { cap, confirmed: ordered.slice(0, cap), waiting: [...ordered.slice(cap), ...guestPool], declined };
+        }
 
-            document.getElementById('confirmed-title').innerText = `✅ 참석 명단 (${confirmed.length} / 정원 ${cap}명)`;
-            document.getElementById('declined-title').innerText = `❌ 불참 명단 (${declined.length}명)`;
+        function renderVoteLists() {
+            const m = currentMatch();
+            if (!m) return;
+            const L = computeLists(m, currentMatchVotes);
+            lastLists = L;
 
-            document.getElementById('confirmed-list').innerHTML = confirmed.length > 0
-                ? confirmed.map((e, i) => voteLi(e.v, { prefix: `${i + 1}.`, tentative: e.tentative })).join('')
+            document.getElementById('confirmed-title').innerText = `✅ 참석 명단 (${L.confirmed.length} / 정원 ${L.cap}명)`;
+            document.getElementById('declined-title').innerText = `❌ 불참 명단 (${L.declined.length}명)`;
+
+            document.getElementById('confirmed-list').innerHTML = L.confirmed.length > 0
+                ? L.confirmed.map((e, i) => voteLi(e.v, { prefix: `${i + 1}.`, tentative: e.tentative })).join('')
                 : '<li>확정된 인원이 없습니다.</li>';
 
-            document.getElementById('waiting-list').innerHTML = waiting.length > 0
-                ? waiting.map((e, i) => voteLi(e.v, { prefix: `[대기 ${i + 1}번]`, tentative: e.tentative })).join('')
+            document.getElementById('waiting-list').innerHTML = L.waiting.length > 0
+                ? L.waiting.map((e, i) => voteLi(e.v, { prefix: `[대기 ${i + 1}번]`, tentative: e.tentative })).join('')
                 : '<li>대기 인원이 없습니다.</li>';
 
-            document.getElementById('declined-list').innerHTML = declined.length > 0
-                ? declined.map(e => voteLi(e.v, { prefix: '-', tentative: e.tentative, declined: true })).join('')
+            document.getElementById('declined-list').innerHTML = L.declined.length > 0
+                ? L.declined.map(e => voteLi(e.v, { prefix: '-', tentative: e.tentative, declined: true })).join('')
                 : '<li>불참 투표가 없습니다.</li>';
+        }
+
+        // 일정별 참석/대기 명단 텍스트 (팀짜기 화면에 붙여넣어 사용 가능)
+        function buildRosterText(m, L) {
+            const line = (e, i) => {
+                const v = e.v;
+                const b = getBirthOf(v);
+                const isGuestish = v.guest_type === '용병' || v.guest_type === '지인' || v.guest_type === '가입전 참가';
+                const parts = [`${i + 1}. ${v.guest_name}${b ? `(${b})` : ''}`, v.guest_type || '정회원'];
+                if (isGuestish) parts.push(`실력:${v.guest_skill || '중'}`);
+                if (e.tentative) parts.push('미정');
+                if (isGuestish && v.registered_by) parts.push(`신청:${v.registered_by}`);
+                return parts.join(' / ');
+            };
+            return `📅 ${fmtShort(new Date(m.match_date))} ${m.match_type} (정원 ${L.cap}명)\n\n` +
+                `✅ 참석 (${L.confirmed.length}명)\n` + (L.confirmed.length ? L.confirmed.map(line).join('\n') : '없음') + '\n\n' +
+                `⏳ 대기 (${L.waiting.length}명)\n` + (L.waiting.length ? L.waiting.map(line).join('\n') : '없음');
+        }
+        function copyRosterText() {
+            const m = currentMatch();
+            if (!m || !lastLists) return;
+            navigator.clipboard.writeText(buildRosterText(m, lastLists)).then(() => {
+                alert('참석/대기 명단 텍스트가 복사되었습니다.\n팀짜기 화면의 "명단 붙여넣기"에 그대로 붙여넣을 수 있습니다.');
+            });
+        }
+        function goTeamBuild() {
+            if (!currentUser || currentUser.role !== 'admin') { alert('⚠️ 팀짜기는 주관리자만 가능합니다.'); return; }
+            switchTab('admin');
+            document.getElementById('team-match-select').value = String(currentMatchId);
+            runTeamFromMatch();
         }
 
         // ==========================================
@@ -1174,12 +1297,83 @@
                 .map(x => x.v);
         }
 
+        function populateTeamMatchSelect() {
+            const sel = document.getElementById('team-match-select');
+            if (!matchesList.length) { sel.innerHTML = '<option value="">등록된 일정 없음</option>'; return; }
+            const items = matchesList.map(m => [m.id, esc(`${fmtShort(new Date(m.match_date))} ${m.match_type}${m.venues ? ' · ' + m.venues.name : ''}`)]);
+            fillSel('team-match-select', items, currentMatchId || items[0][0]);
+        }
+
+        function setTeamSource(people, label) {
+            teamSource = { people, label };
+            document.getElementById('team-source-label').innerText = label;
+            buildTeams(people);
+        }
+
+        // 선택한 일정의 참석(+대기) 명단으로 팀 짜기
+        async function runTeamFromMatch() {
+            const id = parseInt(selVal('team-match-select'), 10);
+            const m = matchesList.find(x => x.id === id);
+            if (!m) { alert('팀을 짤 일정을 선택해주세요.'); return; }
+            const { data, error } = await supabaseClient.from('match_votes').select('*').eq('match_id', id).order('voted_at', { ascending: true });
+            if (error) { alert('투표 조회 실패: ' + error.message); return; }
+            const L = computeLists(m, data || []);
+            const includeWait = document.getElementById('team-include-waiting').checked;
+            const entries = includeWait ? [...L.confirmed, ...L.waiting] : [...L.confirmed];
+            const people = entries.map(e => e.v);
+            if (people.length === 0) { alert('이 일정에는 팀을 짤 참석 인원이 없습니다.'); return; }
+            setTeamSource(people, `📌 팀짜기 기준: ${fmtShort(new Date(m.match_date))} ${m.match_type} · 총 ${people.length}명 (참석 ${L.confirmed.length}${includeWait ? ` + 대기 ${L.waiting.length}` : ''})`);
+        }
+
+        // 붙여넣은 명단 텍스트 해석
+        function parseRosterText(text, includeWait) {
+            const types = ['가입전 참가', '정회원', '용병', '지인'];
+            const itemPrefix = /^(\d+\s*[.)]|[-•*·]|\[대기\s*\d+번\])\s*/;
+            const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+            let section = 'att', sawHeader = false;
+            const att = [], wait = [];
+            lines.forEach(line => {
+                const isItem = itemPrefix.test(line);
+                if (!isItem) {
+                    if (/^📅/.test(line)) return;
+                    if (/불참/.test(line)) { section = 'out'; sawHeader = true; return; }
+                    if (/대기/.test(line)) { section = 'wait'; sawHeader = true; return; }
+                    if (/참석/.test(line)) { section = 'att'; sawHeader = true; return; }
+                    if (sawHeader) return;   // 헤더 이후의 알 수 없는 줄은 무시
+                }
+                if (section === 'out') return;
+                const body = line.replace(itemPrefix, '');
+                const nm = body.match(/^([^\s(\/*,]+)\*?(?:\((\d{2}|(?:19|20)\d{2})\))?/);
+                if (!nm) return;
+                const person = {
+                    guest_name: nm[1],
+                    guest_birth: nm[2] || '',
+                    guest_type: types.find(t => body.includes(t)) || '정회원',
+                    guest_skill: ((body.match(/실력\s*[:：]?\s*([하중상])/) || [])[1]) || '중',
+                    status: '참석'
+                };
+                (section === 'wait' ? wait : att).push(person);
+            });
+            const all = includeWait ? [...att, ...wait] : att;
+            all.forEach((p, i) => { p.id = 'p' + i; });
+            return { people: all, att: att.length, wait: wait.length };
+        }
+        function runTeamFromText() {
+            const text = document.getElementById('team-paste').value.trim();
+            if (!text) { alert('붙여넣은 명단이 없습니다.'); return; }
+            const includeWait = document.getElementById('team-include-waiting').checked;
+            const r = parseRosterText(text, includeWait);
+            if (r.people.length === 0) { alert('명단에서 인원을 찾지 못했습니다. 형식을 확인해주세요.'); return; }
+            setTeamSource(r.people, `📌 팀짜기 기준: 붙여넣은 명단 · 총 ${r.people.length}명 (참석 ${r.att}${includeWait ? ` + 대기 ${r.wait}` : ''})`);
+        }
+
+        // 'AI 자동 팀 짜기 재실행' 버튼: 현재 기준 명단으로 다시 편성
         function runAutoBalance() {
-            const attending = currentMatchVotes.filter(v => v.status === '참석');
-            if (attending.length === 0) {
-                alert('참석 확정된 인원이 없습니다.');
-                return;
-            }
+            if (!teamSource.people.length) { alert('먼저 팀을 짤 일정을 선택하거나 명단을 붙여넣어 주세요.'); return; }
+            buildTeams(teamSource.people);
+        }
+
+        function buildTeams(attending) {
             const keys = ['team1', 'team2', 'team3'];
             teamDataState = { team1: [], team2: [], team3: [] };
             const total = k => teamDataState[k].reduce((s, v) => s + scoreOf(v), 0);
@@ -1198,9 +1392,7 @@
             staff.forEach((v, i) => { if (i < 3) teamDataState[keys[i]].push(v); else pushGreedy(v); });
             others.forEach(pushGreedy);
             keys.forEach(sortTeam);
-
             renderAllTeams();
-            alert(`총 ${attending.length}명이 1·2·3팀으로 분배되었습니다.\n각 팀 맨 위 인원이 팀장입니다. 카드를 끌어다 놓거나 [→팀] 버튼으로 이동하세요.`);
         }
 
         function renderAllTeams() {
@@ -1235,9 +1427,9 @@
 
                 return `
                     <div class="draggable-item p-2 bg-slate-900 border border-slate-800 rounded-lg text-xs space-y-1 hover:border-emerald-500 transition"
-                         draggable="true" ondragstart="dragMember(event, '${teamKey}', '${member.id}')" ondragend="dragEnd(event)">
+                         data-id="${esc(member.id)}" data-team="${teamKey}">
                         <div class="flex justify-between items-center gap-2">
-                            <span>${leader}${esc(member.guest_name)} <span class="text-[10px] text-slate-400">${birthStr} (${esc(member.guest_type || '정회원')})</span></span>
+                            <span><i class="fa-solid fa-grip-vertical drag-handle text-slate-500 mr-1 px-1"></i>${leader}${esc(member.guest_name)} <span class="text-[10px] text-slate-400">${birthStr} (${esc(member.guest_type || '정회원')})</span></span>
                             <span class="text-emerald-400 font-bold whitespace-nowrap">${esc(rating)} (${score})</span>
                         </div>
                         <div class="flex gap-1 justify-end">${moveBtns}</div>
@@ -1249,33 +1441,53 @@
             document.getElementById(avgId).innerText = (totalScore / teamArr.length).toFixed(2);
         }
 
-        // 드래그 앤 드롭 이벤트 핸들러
-        function dragMember(event, sourceTeam, id) {
-            dragging = { from: sourceTeam, id: String(id) };
-            event.dataTransfer.effectAllowed = 'move';
-            try { event.dataTransfer.setData('text/plain', String(id)); } catch (e) {}
+        // 드래그 앤 드롭 (포인터 이벤트 방식: 마우스/터치 모두 동작)
+        let dragState = null;
+        function onDragDown(e) {
+            const card = e.target.closest('.draggable-item');
+            if (!card || e.target.closest('button')) return;
+            if (e.pointerType === 'mouse' && e.button !== 0) return;
+            if (e.pointerType !== 'mouse' && !e.target.closest('.drag-handle')) return;   // 터치는 손잡이(⋮⋮)로만 드래그
+            e.preventDefault();
+            const rect = card.getBoundingClientRect();
+            dragState = { id: card.dataset.id, from: card.dataset.team, card, ghost: null, over: null,
+                          offX: e.clientX - rect.left, offY: e.clientY - rect.top, sx: e.clientX, sy: e.clientY, pid: e.pointerId, w: rect.width };
+            document.addEventListener('pointermove', onDragMove);
+            document.addEventListener('pointerup', onDragUp);
+            document.addEventListener('pointercancel', onDragUp);
         }
-        function dragEnd() {
-            document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+        function onDragMove(e) {
+            if (!dragState || e.pointerId !== dragState.pid) return;
+            if (!dragState.ghost) {
+                if (Math.hypot(e.clientX - dragState.sx, e.clientY - dragState.sy) < 5) return;
+                const g = dragState.card.cloneNode(true);
+                g.style.cssText = `position:fixed;width:${dragState.w}px;opacity:.85;pointer-events:none;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.5);`;
+                document.body.appendChild(g);
+                dragState.ghost = g;
+                dragState.card.style.opacity = '.35';
+            }
+            dragState.ghost.style.left = (e.clientX - dragState.offX) + 'px';
+            dragState.ghost.style.top = (e.clientY - dragState.offY) + 'px';
+            const el = document.elementFromPoint(e.clientX, e.clientY);
+            const zone = el ? el.closest('[data-zone]') : null;
+            document.querySelectorAll('[data-zone].drag-over').forEach(z => { if (z !== zone) z.classList.remove('drag-over'); });
+            if (zone) zone.classList.add('drag-over');
+            dragState.over = zone ? zone.dataset.zone : null;
         }
-        function allowDrop(event) {
-            event.preventDefault();
-            event.dataTransfer.dropEffect = 'move';
-            event.currentTarget.classList.add('drag-over');
+        function onDragUp(e) {
+            document.removeEventListener('pointermove', onDragMove);
+            document.removeEventListener('pointerup', onDragUp);
+            document.removeEventListener('pointercancel', onDragUp);
+            const st = dragState;
+            dragState = null;
+            document.querySelectorAll('.drag-over').forEach(z => z.classList.remove('drag-over'));
+            if (!st) return;
+            if (st.ghost) st.ghost.remove();
+            st.card.style.opacity = '';
+            if (st.ghost && st.over && st.over !== st.from && e.type !== 'pointercancel') moveMember(st.id, st.from, st.over);
         }
-        function removeDropStyle(event) {
-            if (event.relatedTarget && event.currentTarget.contains(event.relatedTarget)) return;
-            event.currentTarget.classList.remove('drag-over');
-        }
-        function dropMember(event, targetTeam) {
-            event.preventDefault();
-            event.stopPropagation();
-            event.currentTarget.classList.remove('drag-over');
-            if (!dragging) return;
-            const { from, id } = dragging;
-            dragging = null;
-            moveMember(id, from, targetTeam);
-        }
+        document.addEventListener('pointerdown', onDragDown);
+
         function moveMember(id, from, to) {
             if (from === to) return;
             const idx = teamDataState[from].findIndex(v => String(v.id) === String(id));

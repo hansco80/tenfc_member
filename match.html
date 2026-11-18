@@ -145,18 +145,20 @@
                         <i class="fa-solid fa-chevron-down chev text-amber-400 text-xs"></i>
                     </summary>
                     <div class="px-4 pb-4 space-y-3">
+                        <p class="text-[11px] text-slate-400">※ 모든 항목은 필수 입력입니다.</p>
                         <div class="grid grid-cols-1 md:grid-cols-5 gap-2">
                             <select id="guest-type" class="bg-slate-900 border border-slate-800 p-2 rounded-lg text-xs text-white">
                                 <option value="용병">용병</option>
                                 <option value="지인">지인</option>
                                 <option value="가입전 참가">가입전 참가</option>
                             </select>
-                            <input type="text" id="guest-name" placeholder="성명" class="bg-slate-900 border border-slate-800 p-2 rounded-lg text-xs text-white">
-                            <input type="text" id="guest-birth" placeholder="출생년도(예: 98)" class="bg-slate-900 border border-slate-800 p-2 rounded-lg text-xs text-white">
-                            <input type="text" id="guest-phone" placeholder="연락처 (전체 입력 가능)" class="bg-slate-900 border border-slate-800 p-2 rounded-lg text-xs text-white">
+                            <input type="text" id="guest-name" placeholder="성명 (필수)" class="bg-slate-900 border border-slate-800 p-2 rounded-lg text-xs text-white">
+                            <input type="text" id="guest-birth" placeholder="출생년도 (필수, 예: 98)" inputmode="numeric" class="bg-slate-900 border border-slate-800 p-2 rounded-lg text-xs text-white">
+                            <input type="text" id="guest-phone" placeholder="연락처 (필수, 예: 010-1234-5678)" inputmode="tel" class="bg-slate-900 border border-slate-800 p-2 rounded-lg text-xs text-white">
                             <select id="guest-skill" class="bg-slate-900 border border-slate-800 p-2 rounded-lg text-xs text-white">
+                                <option value="" selected>실력 선택 (필수)</option>
                                 <option value="하">실력: 하 (아마3↓)</option>
-                                <option value="중" selected>실력: 중 (아마4~5)</option>
+                                <option value="중">실력: 중 (아마4~5)</option>
                                 <option value="상">실력: 상 (아마5↑)</option>
                             </select>
                         </div>
@@ -465,7 +467,7 @@
 
         // 카톡 미리보기용 공유 주소 (Cloudflare Worker 주소를 넣으세요. 예: 'https://tenfc-share.내계정.workers.dev/')
         // 비워두면 기존처럼 match.html 주소가 공유됩니다.
-        const SHARE_BASE = 'https://tenfc-share.mr-hansoh.workers.dev/';
+        const SHARE_BASE = '';
 
         let currentMatchId = null;
         let allVotesByMatch = {};   // 달력의 참석 인원 표시용 (일정별 투표 캐시)
@@ -1280,7 +1282,11 @@
             const phone = document.getElementById('guest-phone').value.trim();
             const skill = document.getElementById('guest-skill').value;
 
-            if (!name) { alert('참가자 성명을 입력해주세요.'); return; }
+            // 모든 항목 필수 입력
+            if (!name) { alert('성명을 입력해주세요.'); document.getElementById('guest-name').focus(); return; }
+            if (!/^(\d{2}|(19|20)\d{2})$/.test(birth)) { alert('출생년도를 입력해주세요. (예: 98 또는 1998)'); document.getElementById('guest-birth').focus(); return; }
+            if (!/^\d{10,11}$/.test(phone.replace(/[^0-9]/g, ''))) { alert('연락처를 정확히 입력해주세요. (예: 010-1234-5678)'); document.getElementById('guest-phone').focus(); return; }
+            if (!skill) { alert('실력을 선택해주세요.'); document.getElementById('guest-skill').focus(); return; }
 
             const row = {
                 match_id: currentMatchId,
@@ -1301,6 +1307,7 @@
             document.getElementById('guest-name').value = '';
             document.getElementById('guest-birth').value = '';
             document.getElementById('guest-phone').value = '';
+            document.getElementById('guest-skill').value = '';
             loadMatchVotes(currentMatchId);
         }
 
@@ -1460,11 +1467,12 @@
             const line = (e, i) => {
                 const v = e.v;
                 const b = getBirthOf(v);
-                const isGuestish = v.guest_type === '용병' || v.guest_type === '지인' || v.guest_type === '가입전 참가';
+                const isGuestish = ['용병', '지인', '가입전 참가', '대기자'].includes(v.guest_type) || !!v.guest_phone || !!v.registered_by;
                 const parts = [`${i + 1}. ${v.guest_name}${b ? `(${b})` : ''}`, v.guest_type || '정회원'];
                 if (isGuestish) parts.push(`실력:${v.guest_skill || '중'}`);
                 if (e.tentative) parts.push('미정');
-                if (isGuestish && v.registered_by) parts.push(`신청:${v.registered_by}`);
+                if (v.guest_phone) parts.push(`연락처:${v.guest_phone}`);          // 연락처 전체
+                if (v.registered_by) parts.push(`신청:${v.registered_by}`);        // 신청자
                 return parts.join(' / ');
             };
             return `📅 ${fmtShort(new Date(m.match_date))} ${m.match_type} (정원 ${L.cap}명)\n\n` +

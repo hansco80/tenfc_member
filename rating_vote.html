@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TenFC 운영진 평점 평가 시스템</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .vote-btn-active { transform: scale(1.04); box-shadow: 0 0 12px rgba(16, 185, 129, 0.45); }
+        .signal-btn-active { ring: 2px; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-3 md:p-6">
+
+    <!-- 로딩/권한 체크 오버레이 -->
+    <div id="loading-screen" class="max-w-md mx-auto mt-20 text-center bg-slate-800 p-8 rounded-2xl border border-slate-700 shadow-xl">
+        <div class="text-3xl mb-3">⚖️</div>
+        <p id="loading-msg" class="text-sm text-slate-300">운영진 권한 및 데이터를 확인하는 중입니다...</p>
+    </div>
+
+    <!-- 메인 컨테이너 -->
+    <div id="main-app" class="max-w-5xl mx-auto hidden space-y-5">
+
+        <!-- 상단 헤더 -->
+        <header class="bg-slate-800 p-4 md:p-6 rounded-2xl border border-slate-700 shadow-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="text-xl md:text-2xl font-extrabold text-emerald-400">⚖️ 운영진 평점 평가 시스템</h1>
+                    <span id="current-admin-badge" class="px-2.5 py-0.5 bg-emerald-950 border border-emerald-500/50 text-emerald-300 text-xs font-bold rounded-full"></span>
+                </div>
+                <p class="text-xs text-slate-400 mt-1">블라인드 상대평가 · 익명 합의제 · DB 자동 반영</p>
+            </div>
+            <div class="flex gap-2 flex-wrap">
+                <button onclick="openNewSessionModal()" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg shadow transition">
+                    ➕ 새 평가 세션 시작
+                </button>
+                <a href="index.html" class="px-3.5 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-bold rounded-lg transition">
+                    🏠 메인으로
+                </a>
+            </div>
+        </header>
+
+        <!-- 세션 선택 및 이전 기록 바 -->
+        <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+            <div class="flex items-center gap-2 w-full md:w-auto">
+                <label class="text-xs font-bold text-slate-400 whitespace-nowrap">📅 평가 세션:</label>
+                <select id="session-selector" onchange="onSelectSession(this.value)" class="w-full md:w-72 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-emerald-500">
+                    <option value="">불러오는 중...</option>
+                </select>
+            </div>
+            <div id="session-meta-badges" class="flex flex-wrap gap-2 text-xs"></div>
+        </div>
+
+        <!-- 활성 세션이 없을 때 안내 -->
+        <div id="empty-session-box" class="hidden bg-slate-800 p-10 rounded-2xl border border-slate-700 text-center space-y-3">
+            <div class="text-4xl">📋</div>
+            <h2 class="text-lg font-bold text-white">진행 중인 평점 평가 세션이 없습니다</h2>
+            <p class="text-xs text-slate-400">당일 운동 팀별 명단을 붙여넣어 새로운 평점 평가를 시작해 보세요.</p>
+            <button onclick="openNewSessionModal()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shadow transition">
+                ➕ 당일 명단으로 새 평가 시작하기
+            </button>
+        </div>
+
+        <!-- 활성 세션 대시보드 -->
+        <div id="active-session-board" class="hidden space-y-5">
+
+            <!-- 진행 현황 및 유틸리티 바 -->
+            <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 space-y-4">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 border-b border-slate-700 pb-3">
+                    <div>
+                        <h2 id="session-title" class="text-base font-bold text-white"></h2>
+                        <p id="session-rule-desc" class="text-xs text-amber-300 mt-0.5"></p>
+                    </div>
+                    <div class="flex gap-2 flex-wrap">
+                        <button onclick="copyNudgeKakao()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-lg shadow transition">
+                            💬 투표 독촉 카톡 복사
+                        </button>
+                        <button id="delete-session-btn" onclick="deleteCurrentSession()" class="px-3 py-1.5 bg-rose-950/70 hover:bg-rose-800 border border-rose-700/50 text-rose-300 text-xs font-bold rounded-lg transition">
+                            🗑️ 세션 삭제
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 관리자별 투표 진행률 -->
+                <div id="admin-progress-grid" class="grid grid-cols-1 sm:grid-cols-3 gap-2.5"></div>
+
+                <!-- 필터 탭 -->
+                <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+                    <div class="flex gap-1.5 flex-wrap">
+                        <button onclick="setFilter('all')" id="filter-all" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white transition">전체 인원</button>
+                        <button onclick="setFilter('unvoted')" id="filter-unvoted" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-700 text-slate-300 hover:bg-slate-600 transition">내 미투표만</button>
+                        <button onclick="setFilter('conflict')" id="filter-conflict" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-700 text-slate-300 hover:bg-slate-600 transition">🔥 의견엇갈림 / !·? 시그널</button>
+                    </div>
+                    <div class="text-[11px] text-slate-400">
+                        <span class="text-sky-400 font-bold">?</span> 다른 2명 의견 먼저 보고싶음 &nbsp;|&nbsp; <span class="text-rose-400 font-bold">!</span> 내 촉이 좋음(강력 어필)
+                    </div>
+                </div>
+            </div>
+
+            <!-- 팀별 선수 평가 리스트 -->
+            <div id="teams-evaluation-container" class="space-y-6"></div>
+
+            <!-- 최종 합의 및 DB 반영 섹션 -->
+            <div id="final-approval-section" class="bg-slate-800 p-5 rounded-2xl border-2 border-emerald-500/40 shadow-xl space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-700 pb-3">
+                    <div>
+                        <h3 class="text-base font-extrabold text-emerald-400">🏁 최종 집계 및 DB 실제 반영</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">참석 주관리자 중 2명 이상이 [최종 결과 반영 동의]를 누르면 회원 DB 평점에 즉시 반영됩니다.</p>
+                    </div>
+                    <span id="final-status-badge" class="px-3 py-1 rounded-full text-xs font-bold bg-slate-900 border border-slate-700 text-slate-300">집계 대기중</span>
+                </div>
+
+                <!-- 변동 예정자 미리보기 -->
+                <div id="summary-preview-box" class="bg-slate-900/80 p-4 rounded-xl border border-slate-700 text-xs space-y-2"></div>
+
+                <!-- 최종 동의 버튼 영역 -->
+                <div id="approval-controls" class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+                    <div id="approval-badges" class="flex flex-wrap gap-2 text-xs"></div>
+                    <button id="approve-btn" onclick="toggleFinalApproval()" class="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold rounded-xl shadow-lg transition">
+                        ✅ 최종 결과 반영 동의하기
+                    </button>
+                </div>
+
+                <!-- 카톡 공지문 생성 영역 -->
+                <div id="kakao-result-box" class="hidden bg-slate-950 p-4 rounded-xl border border-amber-500/40 space-y-2.5">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold text-amber-400">📢 단톡방 발송용 평점 업데이트 공지문</span>
+                        <button onclick="copyKakaoAnnouncement()" class="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded transition">
+                            📋 카톡 공지 복사하기
+                        </button>
+                    </div>
+                    <textarea id="kakao-announcement-text" rows="5" readonly class="w-full p-3 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-100 font-mono focus:outline-none"></textarea>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 새 평가 세션 생성 모달 -->
+    <div id="new-session-modal" class="fixed inset-0 bg-black/75 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-slate-800 w-full max-w-lg p-6 rounded-2xl border border-slate-700 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                <h3 class="text-lg font-bold text-emerald-400">➕ 새 평점 평가 세션 생성</h3>
+                <button onclick="closeNewSessionModal()" class="text-slate-400 hover:text-white text-xl font-bold">&times;</button>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1">운동 날짜</label>
+                <input type="date" id="new-match-date" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-emerald-500">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1">당일 운동 팀별 명단 붙여넣기</label>
+                <textarea id="new-lineup-text" rows="10" class="w-full p-3 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white font-mono focus:outline-none focus:border-emerald-500" placeholder="⚽ 1팀 [레드]&#10;오한결(80)*&#10;최한샘(85)&#10;...&#10;&#10;⚽ 2팀 [블랙]&#10;노병호(82)*&#10;..."></textarea>
+                <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">
+                    ※ 팀 구분 줄(예: <code class="text-emerald-400">⚽ 1팀 [레드]</code>)을 포함해 붙여넣으면 팀별로 자동 분류됩니다.<br>
+                    ※ 정회원 10명 미만(2팀 15인 정원 기준 미달) 또는 주관리자 1명 이하 참석 시 평가가 생성되지 않습니다.
+                </p>
+            </div>
+
+            <div id="parse-error-box" class="hidden p-3 bg-rose-950/70 border border-rose-600/60 rounded-lg text-xs text-rose-200"></div>
+
+            <div class="flex gap-2 pt-2">
+                <button type="button" onclick="closeNewSessionModal()" class="flex-1 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold rounded-lg">취소</button>
+                <button type="button" onclick="createNewSession()" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shadow">분석 및 평가 시작</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://bxuiwomkpgqsbyaagmlp.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_mXkGsaxwwfnnAR3lpE8T1A_n0kiPdZj';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const ratingHierarchy = ["F-", "F", "F+", "E-", "E", "E+", "D-", "D", "D+", "C-", "C", "C+", "B-", "B", "B+", "A-", "A", "A+"];
+        const scoreMap = {
+            "A+": 10.0, "A": 9.5, "A-": 9.0,
+            "B+": 8.5,  "B": 8.0,  "B-": 7.5,
+            "C+": 7.0,  "C": 6.5,  "C-": 6.0,
+            "D+": 5.5,  "D": 5.0,  "D-": 4.5,
+            "E+": 4.0,  "E": 3.5,  "E-": 3.0,
+            "F+": 2.5,  "F": 2.0,  "F-": 1.5
+        };
+
+        let membersData = [];
+        let currentUser = null;
+        let sessionsList = [];
+        let currentSession = null;
+        let sessionVotes = [];
+        let currentFilter = 'all';
+
+        // 초기 실행
+        async function init() {
+            const savedUserName = localStorage.getItem('tenfc_logged_user');
+            if (!savedUserName) {
+                showAuthError('로그인이 필요합니다. 메인 페이지에서 먼저 로그인해 주세요.');
+                return;
+            }
+
+            const { data: members, error } = await supabaseClient.from('members').select('*');
+            if (error || !members) {
+                showAuthError('회원 데이터를 불러오지 못했습니다.');
+                return;
+            }
+
+            membersData = members.map(m => ({
+                id: m.id,
+                name: m.name,
+                rating: m.rating || 'C',
+                role: m.role || 'member',
+                isWithdrawn: m.is_withdrawn || false,
+                position: m.position || '',
+                history: m.history ? (typeof m.history === 'string' ? JSON.parse(m.history) : m.history) : []
+            }));
+
+            const foundUser = membersData.find(m => m.name === savedUserName && !m.isWithdrawn);
+            if (!foundUser || foundUser.role !== 'admin') {
+                showAuthError('⛔ 접근 권한이 없습니다. 주관리자(3인)만 접근 가능한 페이지입니다.');
+                return;
+            }
+
+            currentUser = foundUser;
+            document.getElementById('current-admin-badge').innerText = `🛡️ ${currentUser.name}`;
+            document.getElementById('loading-screen').classList.add('hidden');
+            document.getElementById('main-app').classList.remove('hidden');
+
+            await loadSessionsList();
+        }
+
+        function showAuthError(msg) {
+            document.getElementById('loading-msg').innerHTML = `
+                <span class="text-rose-400 font-bold block mb-4">${msg}</span>
+                <a href="index.html" class="px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg">메인 로그인으로 이동</a>
+            `;
+        }
+
+        // 세션 목록 로드
+        async function loadSessionsList(selectId = null) {
+            const { data, error } = await supabaseClient
+                .from('rating_sessions')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(20);
+
+            if (error) {
+                alert('세션 목록 조회 실패: ' + error.message + '\n(Supabase에 rating_sessions 테이블이 생성되었는지 확인해 주세요.)');
+                return;
+            }
+
+            sessionsList = data || [];
+            const selector = document.getElementById('session-selector');
+
+            if (sessionsList.length === 0) {
+                selector.innerHTML = '<option value="">생성된 평가 세션 없음</option>';
+                document.getElementById('empty-session-box').classList.remove('hidden');
+                document.getElementById('active-session-board').classList.add('hidden');
+                return;
+            }
+
+            document.getElementById('empty-session-box').classList.add('hidden');
+            selector.innerHTML = sessionsList.map(s => {
+                const statusLabel = s.status === 'completed' ? '[반영완료]' : '[투표중]';
+                return `<option value="${s.id}">${statusLabel} ${s.match_date} (${s.mode}인 모드 · ${s.parsed_players.length}명)</option>`;
+            }).join('');
+
+            const targetId = selectId || sessionsList[0].id;
+            selector.value = targetId;
+            await onSelectSession(targetId);
+        }
+
+        async function onSelectSession(sessionId) {
+            if (!sessionId) return;
+            const found = sessionsList.find(s => s.id === sessionId);
+            if (!found) return;
+            currentSession = found;
+
+            await fetchSessionVotes();
+            renderSessionBoard();
+        }
+
+        async function fetchSessionVotes() {
+            const { data, error } = await supabaseClient
+                .from('rating_votes')
+                .select('*')
+                .eq('session_id', currentSession.id);
+
+            if (!error && data) {
+                sessionVotes = data;
+            }
+        }
+
+        // 새 세션 모달 열기/닫기
+        function openNewSessionModal() {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            document.getElementById('new-match-date').value = `${yyyy}-${mm}-${dd}`;
+            document.getElementById('new-lineup-text').value = '';
+            document.getElementById('parse-error-box').classList.add('hidden');
+            document.getElementById('new-session-modal').classList.remove('hidden');
+        }
+
+        function closeNewSessionModal() {
+            document.getElementById('new-session-modal').classList.add('hidden');
+        }
+
+        // 순위 계산 헬퍼 (동점자 공동 순위)
+        function getRankInfo(targetScore, scoreList) {
+            let rank = 1;
+            for (const s of scoreList) {
+                if (s > targetScore) rank++;
+            }
+            return `${rank}위/${scoreList.length}명`;
+        }
+
+        // 명단 파싱 및 세션 생성
+        async function createNewSession() {
+            const matchDate = document.getElementById('new-match-date').value;
+            const rawText = document.getElementById('new-lineup-text').value;
+            const errBox = document.getElementById('parse-error-box');
+            errBox.classList.add('hidden');
+
+            if (!matchDate || !rawText.trim()) {
+                errBox.innerText = '운동 날짜와 당일 팀별 명단을 입력해 주세요.';
+                errBox.classList.remove('hidden');
+                return;
+            }
+
+            const lines = rawText.split(/\n+/);
+            let currentTeam = '미지정팀';
+            const parsedList = [];
+            const seenNames = new Set();
+
+            lines.forEach(line => {
+                const trimmed = line.trim();
+                if (!trimmed) return;
+
+                // 팀 구분선 감지 (예: ⚽ 1팀 [레드], 2팀, 블랙팀 등)
+                if (trimmed.startsWith('⚽') || /^[1-4]팀/.test(trimmed) || trimmed.includes('팀 [') || trimmed.includes('팀(')) {
+                    currentTeam = trimmed.replace(/^⚽\s*/, '').trim();
+                    return;
+                }
+
+                // 쉼표나 슬래시로 한 줄에 여러 명이 있을 경우 분리
+                const tokens = trimmed.split(/[,\/]+/);
+                tokens.forEach(token => {
+                    const clean = token.trim();
+                    if (!clean) return;
+
+                    const pureName = clean
+                        .replace(/\([^)]*\)/g, '')
+                        .replace(/（[^）]*）/g, '')
+                        .replace(/[\*\-\s]/g, '');
+                    if (!pureName) return;
+
+                    const found = membersData.find(m => !m.isWithdrawn && (
+                        m.name === clean ||
+                        m.name === pureName ||
+                        m.name === pureName.replace(/^용병/, '').replace(/^지인/, '') ||
+                        ('용병-' + m.name) === clean ||
+                        ('지인-' + m.name) === clean
+                    ));
+
+                    if (found && !seenNames.has(found.name)) {
+                        seenNames.add(found.name);
+                        parsedList.push({
+                            name: found.name,
+                            team: currentTeam,
+                            role: found.role,
+                            position: found.position,
+                            rating: found.rating,
+                            score: scoreMap[found.rating] || 6.5,
+                            lastDate: (found.history && found.history.length > 0)
+                                ? found.history[found.history.length - 1].date
+                                : '기록없음'
+                        });
+                    }
+                });
+            });
+
+            if (parsedList.length === 0) {
+                errBox.innerText = '인식된 등록 회원이 없습니다. 명단 형식을 확인해 주세요.';
+                errBox.classList.remove('hidden');
+                return;
+            }
+
+            // 조건 검증 1: 정회원 수 체크 (2팀 15인 정원 기준 최소 10명 이상 필요)
+            const regularAttendees = parsedList.filter(p => ['member', 'admin', 'sub_admin'].includes(p.role));
+            if (regularAttendees.length < 10) {
+                errBox.innerText = `⚠️ 정회원 참석 인원이 ${regularAttendees.length}명입니다. (최소 10명 이상 참석 시에만 평점 평가를 진행합니다.)`;
+                errBox.classList.remove('hidden');
+                return;
+            }
+
+            // 조건 검증 2: 참석한 주관리자(admin) 수 체크
+            const attendingAdmins = parsedList.filter(p => p.role === 'admin').map(p => p.name);
+            if (attendingAdmins.length <= 1) {
+                errBox.innerText = `⚠️ 참석한 주관리자가 ${attendingAdmins.length}명(${attendingAdmins.join(', ') || '없음'})입니다. 주관리자 2명 이상 참석 시에만 평가가 가능합니다.`;
+                errBox.classList.remove('hidden');
+                return;
+            }
+
+            const mode = attendingAdmins.length >= 3 ? 3 : 2;
+
+            // 순위 스냅샷 계산
+            // 1) 팀 전체 정회원 풀 점수
+            const allRegularScores = membersData
+                .filter(m => !m.isWithdrawn && ['member', 'admin', 'sub_admin'].includes(m.role))
+                .map(m => scoreMap[m.rating] || 6.5);
+
+            // 2) 당일 참석 전원 점수
+            const dayAllScores = parsedList.map(p => p.score);
+
+            // 3) 소속 팀별 점수
+            const teamScoreMap = {};
+            parsedList.forEach(p => {
+                if (!teamScoreMap[p.team]) teamScoreMap[p.team] = [];
+                teamScoreMap[p.team].push(p.score);
+            });
+
+            const enrichedPlayers = parsedList.map(p => {
+                const isRegular = ['member', 'admin', 'sub_admin'].includes(p.role);
+                return {
+                    ...p,
+                    teamRank: getRankInfo(p.score, teamScoreMap[p.team]),
+                    dayRank: getRankInfo(p.score, dayAllScores),
+                    totalRank: isRegular ? getRankInfo(p.score, allRegularScores) : '비정회원'
+                };
+            });
+
+            const { data: inserted, error } = await supabaseClient
+                .from('rating_sessions')
+                .insert([{
+                    match_date: matchDate,
+                    raw_lineup: rawText,
+                    parsed_players: enrichedPlayers,
+                    attending_admins: attendingAdmins,
+                    mode: mode,
+                    status: 'voting',
+                    final_approvals: [],
+                    created_by: currentUser.name
+                }])
+                .select()
+                .single();
+
+            if (error) {
+                errBox.innerText = '세션 저장 실패: ' + error.message;
+                errBox.classList.remove('hidden');
+                return;
+            }
+
+            closeNewSessionModal();
+            await loadSessionsList(inserted.id);
+        }
+
+        // 필터 변경
+        function setFilter(filterType) {
+            currentFilter = filterType;
+            ['all', 'unvoted', 'conflict'].forEach(f => {
+                const btn = document.getElementById(`filter-${f}`);
+                if (f === filterType) {
+                    btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white transition';
+                } else {
+                    btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-700 text-slate-300 hover:bg-slate-600 transition';
+                }
+            });
+            renderSessionBoard();
+        }
+
+        // 개별 선수 합의 결과 계산 로직
+        function evaluatePlayerResult(playerName) {
+            const pVotes = sessionVotes.filter(v => v.player_name === playerName && currentSession.attending_admins.includes(v.voter_name));
+            const requiredCount = currentSession.mode; // 3 or 2
+            const isComplete = pVotes.length >= requiredCount;
+
+            const signals = pVotes.map(v => v.signal).filter(Boolean);
+            const hasConflictOrSignal = signals.length > 0 || (pVotes.length >= 2 && new Set(pVotes.map(v => v.vote_value)).size > 1);
+
+            if (!isComplete) {
+                return {
+                    isComplete: false,
+                    votedCount: pVotes.length,
+                    requiredCount,
+                    delta: 0,
+                    label: `대기중 (${pVotes.length}/${requiredCount})`,
+                    signals,
+                    hasConflictOrSignal,
+                    pVotes
+                };
+            }
+
+            const vals = pVotes.map(v => v.vote_value);
+
+            // 2인 모드: 2명 의견이 정확히 일치해야 1단계 조정 (2단계 불가)
+            if (requiredCount === 2) {
+                if (vals[0] === vals[1] && vals[0] !== 0) {
+                    const clamped = vals[0] > 0 ? 1 : -1;
+                    return {
+                        isComplete: true,
+                        votedCount: 2,
+                        requiredCount: 2,
+                        delta: clamped,
+                        label: clamped === 1 ? '▲ 1단계 상향 합의' : '▼ 1단계 하향 합의',
+                        signals,
+                        hasConflictOrSignal,
+                        pVotes
+                    };
+                }
+                return {
+                    isComplete: true,
+                    votedCount: 2,
+                    requiredCount: 2,
+                    delta: 0,
+                    label: '- 유지 (불일치)',
+                    signals,
+                    hasConflictOrSignal,
+                    pVotes
+                };
+            }
+
+            // 3인 모드:
+            // 1) 3명 모두 +2 또는 -2 일치 시 -> 2단계 조정
+            if (vals.every(v => v === 2)) {
+                return { isComplete: true, votedCount: 3, requiredCount: 3, delta: 2, label: '▲▲ 2단계 상향 (만장일치)', signals, hasConflictOrSignal, pVotes };
+            }
+            if (vals.every(v => v === -2)) {
+                return { isComplete: true, votedCount: 3, requiredCount: 3, delta: -2, label: '▼▼ 2단계 하향 (만장일치)', signals, hasConflictOrSignal, pVotes };
+            }
+
+            // 2) 동일 값 2명 이상 일치 체크
+            const countMap = {};
+            vals.forEach(v => { countMap[v] = (countMap[v] || 0) + 1; });
+            for (const [valStr, cnt] of Object.entries(countMap)) {
+                const v = Number(valStr);
+                if (cnt >= 2) {
+                    // +2가 2표이고 나머지 1표가 +2가 아닌 경우 최대 +1단계로 보정
+                    const finalDelta = v === 2 ? 1 : (v === -2 ? -1 : v);
+                    const lbl = finalDelta === 1 ? '▲ 1단계 상향 (다수결)' : (finalDelta === -1 ? '▼ 1단계 하향 (다수결)' : '- 유지 (다수결)');
+                    return { isComplete: true, votedCount: 3, requiredCount: 3, delta: finalDelta, label: lbl, signals, hasConflictOrSignal, pVotes };
+                }
+            }
+
+            // 3) (+2, +1, 0) 처럼 상향 방향 의견이 2명 이상이지만 단계가 다른 경우 -> 1단계 상향 합의
+            const upCount = vals.filter(v => v > 0).length;
+            const downCount = vals.filter(v => v < 0).length;
+            if (upCount >= 2) {
+                return { isComplete: true, votedCount: 3, requiredCount: 3, delta: 1, label: '▲ 1단계 상향 (상향 합의)', signals, hasConflictOrSignal, pVotes };
+            }
+            if (downCount >= 2) {
+                return { isComplete: true, votedCount: 3, requiredCount: 3, delta: -1, label: '▼ 1단계 하향 (하향 합의)', signals, hasConflictOrSignal, pVotes };
+            }
+
+            // 4) 3명 모두 불일치 -> 유지
+            return { isComplete: true, votedCount: 3, requiredCount: 3, delta: 0, label: '- 유지 (3인 불일치)', signals, hasConflictOrSignal, pVotes };
+        }
+
+        // 다음 등급 계산
+        function getAdjustedRating(currentRating, delta) {
+            let idx = ratingHierarchy.indexOf(currentRating);
+            if (idx === -1) idx = 10; // default C
+            const nextIdx = Math.max(0, Math.min(ratingHierarchy.length - 1, idx + delta));
+            return ratingHierarchy[nextIdx];
+        }
+
+        // 보드 전체 렌더링
+        function renderSessionBoard() {
+            document.getElementById('active-session-board').classList.remove('hidden');
+
+            const players = currentSession.parsed_players;
+            const admins = currentSession.attending_admins;
+            const isCompleted = currentSession.status === 'completed';
+
+            document.getElementById('session-title').innerText = `📅 ${currentSession.match_date} 정기운동 평점 평가 (총 ${players.length}명)`;
+            document.getElementById('session-rule-desc').innerText = currentSession.mode === 3
+                ? `🛡️ 3인 참석 모드 (${admins.join(', ')}) · 2명 이상 일치 시 1단계 / 3명 만장일치 시 2단계 조정`
+                : `🛡️ 2인 참석 모드 (${admins.join(', ')}) · 2명 모두 일치 시에만 1단계 조정 가능 (2단계 불가)`;
+
+            // 메타 뱃지
+            document.getElementById('session-meta-badges').innerHTML = `
+                <span class="px-2.5 py-1 bg-slate-900 border border-slate-700 rounded-lg text-slate-300">참석 운영진: <strong class="text-emerald-400">${admins.join(', ')}</strong></span>
+                <span class="px-2.5 py-1 bg-slate-900 border border-slate-700 rounded-lg text-slate-300">상태: <strong class="${isCompleted ? 'text-sky-400' : 'text-amber-400'}">${isCompleted ? 'DB 반영 완료' : '블라인드 투표 진행중'}</strong></span>
+            `;
+
+            // 관리자별 투표 진행률 카드
+            const progressHtml = admins.map(adminName => {
+                const count = sessionVotes.filter(v => v.voter_name === adminName).length;
+                const pct = Math.round((count / players.length) * 100);
+                const isMe = adminName === currentUser.name;
+                return `
+                    <div class="bg-slate-900/80 p-3 rounded-xl border ${isMe ? 'border-emerald-500/50' : 'border-slate-700'}">
+                        <div class="flex justify-between items-center text-xs mb-1.5">
+                            <span class="font-bold ${isMe ? 'text-emerald-400' : 'text-slate-200'}">${adminName} ${isMe ? '(나)' : ''}</span>
+                            <span class="font-mono text-slate-300">${count} / ${players.length}명 (${pct}%)</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                            <div class="bg-emerald-500 h-full transition-all duration-300" style="width: ${pct}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            document.getElementById('admin-progress-grid').innerHTML = progressHtml;
+
+            // 팀별 그룹핑
+            const teamGroups = {};
+            players.forEach(p => {
+                if (!teamGroups[p.team]) teamGroups[p.team] = [];
+                teamGroups[p.team].push(p);
+            });
+
+            const container = document.getElementById('teams-evaluation-container');
+            container.innerHTML = '';
+
+            const isAttendingAdmin = admins.includes(currentUser.name);
+
+            for (const [teamName, teamPlayers] of Object.entries(teamGroups)) {
+                const filteredPlayers = teamPlayers.filter(p => {
+                    const myVote = sessionVotes.find(v => v.player_name === p.name && v.voter_name === currentUser.name);
+                    const evalRes = evaluatePlayerResult(p.name);
+                    if (currentFilter === 'unvoted') return !myVote;
+                    if (currentFilter === 'conflict') return evalRes.hasConflictOrSignal;
+                    return true;
+                });
+
+                if (filteredPlayers.length === 0) continue;
+
+                const section = document.createElement('div');
+                section.className = 'bg-slate-800 p-4 md:p-5 rounded-2xl border border-slate-700 space-y-3';
+                section.innerHTML = `
+                    <div class="flex justify-between items-center border-b border-slate-700 pb-2.5">
+                        <h3 class="text-sm font-extrabold text-emerald-400">⚽ ${teamName}</h3>
+                        <span class="text-xs text-slate-400">${filteredPlayers.length}명 표시</span>
+                    </div>
+                    <div class="space-y-3" id="team-list-${teamName}"></div>
+                `;
+
+                const listDiv = section.querySelector(`[id="team-list-${teamName}"]`);
+
+                filteredPlayers.forEach(p => {
+                    const myVote = sessionVotes.find(v => v.player_name === p.name && v.voter_name === currentUser.name);
+                    const myVal = myVote ? myVote.vote_value : null;
+                    const mySig = myVote ? (myVote.signal || '') : '';
+                    const evalRes = evaluatePlayerResult(p.name);
+
+                    // 블라인드 처리된 타인 투표 표시 (이름은 절대 비공개)
+                    const otherVotes = evalRes.pVotes.filter(v => v.voter_name !== currentUser.name);
+                    let blindBadgesHtml = '';
+
+                    if (otherVotes.length === 0) {
+                        blindBadgesHtml = `<span class="text-[11px] text-slate-500">다른 운영진 투표 대기중</span>`;
+                    } else {
+                        blindBadgesHtml = otherVotes.map((ov, idx) => {
+                            const sigTag = ov.signal ? `<span class="ml-1 px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-extrabold">${ov.signal}</span>` : '';
+                            // 내가 아직 투표하지 않았으면 블라인드(🔒), 내가 투표를 완료했으면 선택 값 공개 (단, 익명 유지)
+                            if (myVal === null && !isCompleted) {
+                                return `<span class="px-2 py-1 bg-slate-900 border border-slate-700 rounded text-[11px] text-slate-300">익명${idx + 1}: 🔒 완료${sigTag}</span>`;
+                            } else {
+                                const vText = formatVoteValue(ov.vote_value);
+                                return `<span class="px-2 py-1 bg-slate-900 border border-emerald-500/40 rounded text-[11px] text-emerald-300 font-bold">익명${idx + 1}: ${vText}${sigTag}</span>`;
+                            }
+                        }).join(' ');
+                    }
+
+                    // 최종 합의 배지
+                    let resultBadge = `<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-900 text-slate-400 border border-slate-700">${evalRes.label}</span>`;
+                    if (evalRes.isComplete) {
+                        if (evalRes.delta > 0) {
+                            const nextR = getAdjustedRating(p.rating, evalRes.delta);
+                            resultBadge = `<span class="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-emerald-950 text-emerald-300 border border-emerald-500/50">${evalRes.label} (${p.rating} → ${nextR})</span>`;
+                        } else if (evalRes.delta < 0) {
+                            const nextR = getAdjustedRating(p.rating, evalRes.delta);
+                            resultBadge = `<span class="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-rose-950 text-rose-300 border border-rose-500/50">${evalRes.label} (${p.rating} → ${nextR})</span>`;
+                        } else {
+                            resultBadge = `<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-900 text-slate-300 border border-slate-600">${evalRes.label}</span>`;
+                        }
+                    }
+
+                    const disableTwoStep = currentSession.mode === 2;
+                    const disabledAttr = (isCompleted || !isAttendingAdmin) ? 'disabled' : '';
+
+                    const card = document.createElement('div');
+                    card.className = `p-3.5 rounded-xl border ${myVal !== null ? 'bg-slate-900/90 border-slate-700' : 'bg-slate-900/40 border-amber-500/30'} space-y-2.5`;
+                    card.innerHTML = `
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                            <div>
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="text-sm font-extrabold text-white">${p.name}</span>
+                                    <span class="px-2 py-0.5 bg-emerald-950 text-emerald-400 border border-emerald-500/40 rounded text-xs font-extrabold">${p.rating}</span>
+                                    <span class="text-[11px] text-slate-400">최근변동: <strong class="text-slate-200">${p.lastDate}</strong></span>
+                                </div>
+                                <div class="flex flex-wrap gap-2 mt-1 text-[11px] text-slate-300">
+                                    <span class="bg-slate-800 px-2 py-0.5 rounded">소속팀 순위: <strong class="text-sky-400">${p.teamRank}</strong></span>
+                                    <span class="bg-slate-800 px-2 py-0.5 rounded">당일 전체: <strong class="text-amber-300">${p.dayRank}</strong></span>
+                                    <span class="bg-slate-800 px-2 py-0.5 rounded">팀 전체순위: <strong class="text-purple-300">${p.totalRank}</strong></span>
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-1.5">
+                                ${blindBadgesHtml}
+                                ${resultBadge}
+                            </div>
+                        </div>
+
+                        <!-- 투표 및 시그널 컨트롤 -->
+                        <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2 pt-2 border-t border-slate-800">
+                            <div class="grid grid-cols-5 gap-1.5 flex-1">
+                                ${renderVoteOptionBtn(p.name, 2, '▲▲ +2', myVal, disableTwoStep || isCompleted || !isAttendingAdmin)}
+                                ${renderVoteOptionBtn(p.name, 1, '▲ +1', myVal, isCompleted || !isAttendingAdmin)}
+                                ${renderVoteOptionBtn(p.name, 0, '- 유지', myVal, isCompleted || !isAttendingAdmin)}
+                                ${renderVoteOptionBtn(p.name, -1, '▼ -1', myVal, isCompleted || !isAttendingAdmin)}
+                                ${renderVoteOptionBtn(p.name, -2, '▼▼ -2', myVal, disableTwoStep || isCompleted || !isAttendingAdmin)}
+                            </div>
+                            <div class="flex gap-1.5 justify-end">
+                                <button ${disabledAttr} onclick="castSignal('${p.name}', '?')" class="px-3 py-1.5 rounded-lg text-xs font-extrabold border transition ${mySig === '?' ? 'bg-sky-600 border-sky-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'} disabled:opacity-40" title="다른 2명의 의견을 먼저 보고 싶음">
+                                    ? 관망
+                                </button>
+                                <button ${disabledAttr} onclick="castSignal('${p.name}', '!')" class="px-3 py-1.5 rounded-lg text-xs font-extrabold border transition ${mySig === '!' ? 'bg-amber-600 border-amber-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'} disabled:opacity-40" title="내 촉이 좋다 / 강력 어필">
+                                    ! 확신
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    listDiv.appendChild(card);
+                });
+
+                container.appendChild(section);
+            }
+
+            renderFinalSummaryAndApproval();
+        }
+
+        function renderVoteOptionBtn(playerName, val, label, currentVal, isDisabled) {
+            const isSelected = currentVal === val;
+            let colorClass = 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700';
+            if (isSelected) {
+                if (val > 0) colorClass = 'bg-emerald-600 border-emerald-400 text-white vote-btn-active';
+                else if (val < 0) colorClass = 'bg-rose-600 border-rose-400 text-white vote-btn-active';
+                else colorClass = 'bg-slate-600 border-slate-400 text-white vote-btn-active';
+            }
+            return `
+                <button ${isDisabled ? 'disabled' : ''} onclick="castVote('${playerName}', ${val})"
+                    class="py-1.5 px-2 rounded-lg text-xs font-bold border transition ${colorClass} disabled:opacity-35 disabled:cursor-not-allowed">
+                    ${label}
+                </button>
+            `;
+        }
+
+        function formatVoteValue(val) {
+            if (val === 2) return '▲▲ (+2)';
+            if (val === 1) return '▲ (+1)';
+            if (val === 0) return '- (유지)';
+            if (val === -1) return '▼ (-1)';
+            if (val === -2) return '▼▼ (-2)';
+            return '';
+        }
+
+        // 투표 저장
+        async function castVote(playerName, voteValue) {
+            if (currentSession.status === 'completed') return;
+            if (!currentSession.attending_admins.includes(currentUser.name)) {
+                alert('당일 운동에 참석한 주관리자만 투표할 수 있습니다.');
+                return;
+            }
+
+            const existing = sessionVotes.find(v => v.player_name === playerName && v.voter_name === currentUser.name);
+            const currentSignal = existing ? (existing.signal || '') : '';
+
+            const { error } = await supabaseClient
+                .from('rating_votes')
+                .upsert({
+                    session_id: currentSession.id,
+                    player_name: playerName,
+                    voter_name: currentUser.name,
+                    vote_value: voteValue,
+                    signal: currentSignal,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'session_id,player_name,voter_name' });
+
+            if (error) {
+                alert('투표 저장 실패: ' + error.message);
+                return;
+            }
+
+            await fetchSessionVotes();
+            renderSessionBoard();
+        }
+
+        // 시그널(?, !) 토글 저장 (투표 전이라도 시그널 단독 표기 가능)
+        async function castSignal(playerName, sigChar) {
+            if (currentSession.status === 'completed') return;
+            if (!currentSession.attending_admins.includes(currentUser.name)) {
+                alert('당일 운동에 참석한 주관리자만 시그널을 남길 수 있습니다.');
+                return;
+            }
+
+            const existing = sessionVotes.find(v => v.player_name === playerName && v.voter_name === currentUser.name);
+            const nextSignal = (existing && existing.signal === sigChar) ? '' : sigChar;
+
+            // 아직 투표 숫자를 안 골랐다면 시그널만 먼저 남길 수 있도록 안내 또는 기존 값 유지
+            if (!existing) {
+                // 투표 전 시그널 어필: 임시로 vote_value를 저장하지 않으려면 별도 처리가 필요하므로,
+                // 투표 버튼을 먼저 누르거나 시그널 토글 시 현재 선택값이 없으면 안내 후 유지(0)가 아닌 미투표 상태 분리
+                alert('먼저 상/하향/유지 중 본인의 기본 의견을 선택한 뒤 ? 또는 ! 시그널을 활성화해 주세요.\n(기본 의견을 선택해야 다른 관리자의 투표 결과도 열람됩니다!)');
+                return;
+            }
+
+            const { error } = await supabaseClient
+                .from('rating_votes')
+                .update({ signal: nextSignal, updated_at: new Date().toISOString() })
+                .eq('id', existing.id);
+
+            if (error) {
+                alert('시그널 저장 실패: ' + error.message);
+                return;
+            }
+
+            await fetchSessionVotes();
+            renderSessionBoard();
+        }
+
+        // 최종 요약 및 동의 UI 렌더링
+        function renderFinalSummaryAndApproval() {
+            const players = currentSession.parsed_players;
+            const admins = currentSession.attending_admins;
+            const approvals = currentSession.final_approvals || [];
+            const isCompleted = currentSession.status === 'completed';
+
+            let allPlayersVoted = true;
+            const changes = [];
+
+            players.forEach(p => {
+                const res = evaluatePlayerResult(p.name);
+                if (!res.isComplete) allPlayersVoted = false;
+                if (res.isComplete && res.delta !== 0) {
+                    changes.push({
+                        name: p.name,
+                        oldRating: p.rating,
+                        newRating: getAdjustedRating(p.rating, res.delta),
+                        delta: res.delta
+                    });
+                }
+            });
+
+            const previewBox = document.getElementById('summary-preview-box');
+            if (changes.length === 0) {
+                previewBox.innerHTML = `<p class="text-slate-400">현재까지 합의된 등급 변동 인원이 없습니다.</p>`;
+            } else {
+                previewBox.innerHTML = `
+                    <p class="font-bold text-slate-200 mb-1.5">📊 등급 변동 예정 인원 (총 ${changes.length}명):</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        ${changes.map(c => `
+                            <div class="flex justify-between items-center bg-slate-800 px-3 py-1.5 rounded border border-slate-700">
+                                <span class="font-bold text-white">${c.name}</span>
+                                <span class="${c.delta > 0 ? 'text-emerald-400' : 'text-rose-400'} font-extrabold">
+                                    ${c.oldRating} → ${c.newRating} (${c.delta > 0 ? '+' + c.delta : c.delta})
+                                </span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            // 동의 현황 뱃지
+            document.getElementById('approval-badges').innerHTML = admins.map(a => {
+                const ok = approvals.includes(a);
+                return `<span class="px-2.5 py-1 rounded-lg border font-bold ${ok ? 'bg-emerald-950 border-emerald-500 text-emerald-300' : 'bg-slate-900 border-slate-700 text-slate-400'}">
+                    ${a}: ${ok ? '✅ 동의완료' : '⏳ 대기중'}
+                </span>`;
+            }).join('');
+
+            const approveBtn = document.getElementById('approve-btn');
+            const statusBadge = document.getElementById('final-status-badge');
+
+            if (isCompleted) {
+                statusBadge.innerText = '✅ DB 반영 완료';
+                statusBadge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-emerald-950 border border-emerald-500 text-emerald-300';
+                approveBtn.classList.add('hidden');
+                generateKakaoAnnouncement(changes);
+            } else {
+                approveBtn.classList.remove('hidden');
+                statusBadge.innerText = allPlayersVoted ? '투표 완료 · 최종 동의 대기' : '투표 진행중';
+                const iApproved = approvals.includes(currentUser.name);
+                approveBtn.innerText = iApproved ? '↩️ 내 최종 동의 취소하기' : `✅ 최종 결과 반영 동의하기 (${approvals.length}/2명)`;
+                approveBtn.disabled = !admins.includes(currentUser.name);
+
+                // 2명 이상 동의 도달 시 즉시 DB 반영 실행
+                if (approvals.length >= 2) {
+                    applyRatingsToDatabase(changes);
+                }
+            }
+        }
+
+        // 최종 동의 토글
+        async function toggleFinalApproval() {
+            if (currentSession.status === 'completed') return;
+            const approvals = [...(currentSession.final_approvals || [])];
+            const idx = approvals.indexOf(currentUser.name);
+
+            if (idx === -1) {
+                if (!confirm('현재 집계된 결과로 실제 회원 평점을 업데이트하는 데 최종 동의하시겠습니까?\n(2명 이상 동의 시 즉시 DB에 반영됩니다.)')) return;
+                approvals.push(currentUser.name);
+            } else {
+                approvals.splice(idx, 1);
+            }
+
+            const { error } = await supabaseClient
+                .from('rating_sessions')
+                .update({ final_approvals: approvals })
+                .eq('id', currentSession.id);
+
+            if (error) {
+                alert('동의 처리 실패: ' + error.message);
+                return;
+            }
+
+            currentSession.final_approvals = approvals;
+            renderFinalSummaryAndApproval();
+        }
+
+        // 실제 members 테이블 평점 & history 일괄 업데이트
+        async function applyRatingsToDatabase(changes) {
+            if (currentSession.status === 'completed') return;
+
+            // 중복 실행 방지 플래그
+            currentSession.status = 'completed';
+
+            const now = new Date();
+            const todayStr = `${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
+
+            for (const c of changes) {
+                const member = membersData.find(m => m.name === c.name);
+                if (!member) continue;
+
+                const newScore = scoreMap[c.newRating] || 6.5;
+                let historyArr = Array.isArray(member.history) ? [...member.history] : [];
+                const existIdx = historyArr.findIndex(h => h.date === todayStr);
+                if (existIdx !== -1) {
+                    historyArr[existIdx].score = newScore;
+                } else {
+                    historyArr.push({ date: todayStr, score: newScore });
+                }
+
+                await supabaseClient
+                    .from('members')
+                    .update({
+                        rating: c.newRating,
+                        history: historyArr
+                    })
+                    .eq('name', c.name);
+            }
+
+            await supabaseClient
+                .from('rating_sessions')
+                .update({ status: 'completed' })
+                .eq('id', currentSession.id);
+
+            alert(`🎉 주관리자 2명 이상 최종 동의로 총 ${changes.length}명의 평점이 DB에 실제 반영되었습니다!`);
+            await loadSessionsList(currentSession.id);
+        }
+
+        // 카톡 공지문 생성 (요구사항 10번 포맷)
+        function generateKakaoAnnouncement(changes) {
+            const box = document.getElementById('kakao-result-box');
+            box.classList.remove('hidden');
+
+            const upTwo = changes.filter(c => c.delta === 2).map(c => c.name);
+            const upOne = changes.filter(c => c.delta === 1).map(c => c.name);
+            const totalCount = changes.length;
+
+            let lines = [`[평점 업데이트 회원 총${totalCount}명]`];
+            if (upTwo.length > 0) {
+                lines.push(`🔺️🔺️${upTwo.join(',')} (2단계 조정)`);
+            }
+            if (upOne.length > 0) {
+                lines.push(`🔺️${upOne.join(',')} (1단계 조정)`);
+            }
+            lines.push(`하향 조정 인원은 공개하지 않습니다`);
+
+            document.getElementById('kakao-announcement-text').value = lines.join('\n');
+        }
+
+        function copyKakaoAnnouncement() {
+            const text = document.getElementById('kakao-announcement-text').value;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('단톡방 공지문이 클립보드에 복사되었습니다!');
+            });
+        }
+
+        function copyNudgeKakao() {
+            const players = currentSession.parsed_players;
+            const admins = currentSession.attending_admins;
+            const statusLines = admins.map(a => {
+                const cnt = sessionVotes.filter(v => v.voter_name === a).length;
+                return `- ${a}: ${cnt}/${players.length}명 완료`;
+            });
+            const msg = `⚖️ [${currentSession.match_date} 평점 평가 안내]\n${statusLines.join('\n')}\n\n운영진 페이지에서 블라인드 투표를 완료해 주세요!`;
+            navigator.clipboard.writeText(msg).then(() => {
+                alert('투표 독촉 메시지가 클립보드에 복사되었습니다!');
+            });
+        }
+
+        async function deleteCurrentSession() {
+            if (!confirm('현재 평가 세션을 삭제하시겠습니까? (이미 DB에 반영된 평점은 유지됩니다.)')) return;
+            const { error } = await supabaseClient.from('rating_sessions').delete().eq('id', currentSession.id);
+            if (error) {
+                alert('삭제 실패: ' + error.message);
+                return;
+            }
+            await loadSessionsList();
+        }
+
+        init();
+    </script>
+</body>
+</html>

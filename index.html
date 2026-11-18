@@ -581,9 +581,14 @@
             }
         }
 
+        // 한국시간(KST, UTC+9) 기준 날짜 문자열 (YYYY-MM-DD)
+        function kstDateStr(dateLike) {
+            return new Date(new Date(dateLike).getTime() + 9 * 3600 * 1000).toISOString().split('T')[0];
+        }
+
         async function recordLoginSession(user) {
-            const todayStr = new Date().toISOString().split('T')[0];
-            const lastDateStr = user.lastLoginAt ? user.lastLoginAt.split('T')[0] : "";
+            const todayStr = kstDateStr(new Date());
+            const lastDateStr = user.lastLoginAt ? kstDateStr(user.lastLoginAt) : "";
             
             const currentIsoTime = new Date().toISOString();
             let updatedLoginCount = user.loginCount || 0;

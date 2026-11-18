@@ -1238,8 +1238,8 @@
 
         // 명단 한 줄 만들기
         function voteLi(v, opts) {
-            const staff = isStaff();
-            const name = esc(staff ? v.guest_name : maskName(v.guest_name));
+            const canSeeFullName = !!currentUser;
+const name = esc(canSeeFullName ? v.guest_name : maskName(v.guest_name));
             const isGuestish = v.guest_type === '용병' || v.guest_type === '지인' || v.guest_type === '가입전 참가';
             const birth = getBirthOf(v);
 

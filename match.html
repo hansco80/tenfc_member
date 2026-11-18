@@ -1238,10 +1238,22 @@
 
         // 명단 한 줄 만들기
         function voteLi(v, opts) {
-            const canSeeFullName = !!currentUser;
-const name = esc(canSeeFullName ? v.guest_name : maskName(v.guest_name));
-            const isGuestish = v.guest_type === '용병' || v.guest_type === '지인' || v.guest_type === '가입전 참가';
-            const birth = getBirthOf(v);
+    const staff = isStaff();
+
+    // 정회원 및 운영진은 이름 전체 표시
+    // 용병·지인 계정과 비회원은 이름 마스킹
+    const canSeeFullName = !!currentUser &&
+        !['guest', 'acquaintance'].includes(currentUser.role);
+
+    const name = esc(
+        canSeeFullName ? v.guest_name : maskName(v.guest_name)
+    );
+
+    const isGuestish = v.guest_type === '용병' ||
+        v.guest_type === '지인' ||
+        v.guest_type === '가입전 참가';
+
+    const birth = getBirthOf(v);
 
             // 연락처 앞에 'OO년생' 표기: (90년생, 5678, 실력:중)
             const parts = [];

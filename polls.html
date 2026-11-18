@@ -64,7 +64,7 @@
     <!-- 새 투표 만들기 모달 -->
     <div id="create-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-slate-900 w-full max-w-lg p-6 rounded-2xl border border-slate-800 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
-            <h3 class="text-lg font-bold text-white">🗳️ 새 투표 만들기</h3>
+            <h3 id="c-modal-title" class="text-lg font-bold text-white">🗳️ 새 투표 만들기</h3>
             <div class="space-y-3 text-xs">
                 <div>
                     <label class="block text-slate-400 mb-1">투표 제목 <span class="text-rose-400">*</span></label>
@@ -76,8 +76,8 @@
                 </div>
                 <div>
                     <div class="flex justify-between items-center mb-1">
-                        <label class="block text-slate-400">선택 항목 <span class="text-rose-400">*</span> <span class="text-slate-500">(2~10개)</span></label>
-                        <button type="button" onclick="addOptionField()" class="text-[11px] text-sky-400 hover:underline">+ 항목 추가</button>
+                        <label class="block text-slate-400">선택 항목 <span class="text-rose-400">*</span> <span id="c-opt-hint" class="text-slate-500">(2~10개)</span></label>
+                        <button type="button" id="btn-add-option" onclick="addOptionField()" class="text-[11px] text-sky-400 hover:underline">+ 항목 추가</button>
                     </div>
                     <div id="c-options" class="space-y-1.5"></div>
                 </div>
@@ -177,6 +177,7 @@
         let selected = new Set();
         let submitting = false;
         let lastClosedState = null;
+        let editingPollId = null;
         let myVotedPolls = new Set();   // 내가 투표한 투표 ID (익명 투표 포함)
 
         // ---------- 유틸 ----------
@@ -474,6 +475,7 @@
 
             const adminHtml = isAdminUser ? `
                 <div class="flex flex-wrap gap-2 pt-1">
+                    <button onclick="openEditModal()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-sky-300 font-bold rounded-lg text-xs border border-slate-700">✏️ 제목/본문 수정</button>
                     <button onclick="toggleClosePoll()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold rounded-lg text-xs border border-slate-700">${p.status === 'closed' ? '🔓 투표 다시 열기' : '🔒 지금 투표 마감'}</button>
                     <button onclick="deletePoll()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-rose-300 font-bold rounded-lg text-xs border border-slate-700">🗑️ 삭제</button>
                 </div>` : '';
@@ -712,6 +714,13 @@
 
         function openCreateModal() {
             if (!isCreator()) { alert('⚠️ 투표 만들기는 운영진만 가능합니다.'); return; }
+            editingPollId = null;
+            document.getElementById('c-modal-title').innerText = '🗳️ 새 투표 만들기';
+            document.getElementById('btn-save-poll').innerText = '투표 등록';
+            document.getElementById('btn-add-option').classList.remove('hidden');
+            document.getElementById('c-opt-hint').innerText = '(2~10개)';
+            document.getElementById('c-anon').disabled = false;
+            document.getElementById('c-multi').disabled = false;
             document.getElementById('c-title').value = '';
             document.getElementById('c-desc').value = '';
             document.getElementById('c-anon').value = '0';
@@ -726,10 +735,59 @@
             setDeadlineSelects(d);
             document.getElementById('create-modal').classList.remove('hidden');
         }
+        function openEditModal() {
+            if (!isCreator()) { alert('⚠️ 투표 수정은 운영진만 가능합니다.'); return; }
+            const p = getPoll(currentPollId);
+            if (!p) return;
+            editingPollId = p.id;
+            document.getElementById('c-modal-title').innerText = '✏️ 투표 수정';
+            document.getElementById('btn-save-poll').innerText = '수정 저장';
+            document.getElementById('c-title').value = p.title;
+            document.getElementById('c-desc').value = p.description || '';
+            document.getElementById('c-show').value = p.show_results || 'always';
+            // 투표 방식/항목은 이미 참여한 사람이 있을 수 있어 수정할 수 없음
+            document.getElementById('c-anon').value = p.is_anonymous ? '1' : '0';
+            document.getElementById('c-multi').value = p.allow_multiple ? '1' : '0';
+            document.getElementById('c-anon').disabled = true;
+            document.getElementById('c-multi').disabled = true;
+            document.getElementById('btn-add-option').classList.add('hidden');
+            document.getElementById('c-opt-hint').innerText = '(투표 시작 후에는 수정할 수 없습니다)';
+            document.getElementById('c-options').innerHTML = (optionsByPoll[p.id] || []).map(o =>
+                `<input type="text" value="${esc(o.label)}" disabled class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-slate-500">`).join('');
+            const hasDl = !!p.deadline;
+            document.getElementById('c-nodeadline').checked = !hasDl;
+            setDeadlineSelects(hasDl ? new Date(p.deadline) : (() => { const d = new Date(); d.setDate(d.getDate() + 3); d.setHours(22, 0, 0, 0); return d; })());
+            toggleNoDeadline();
+            document.getElementById('create-modal').classList.remove('hidden');
+        }
         function closeCreateModal() { document.getElementById('create-modal').classList.add('hidden'); }
+
+        async function saveEditedPoll() {
+            const p = getPoll(editingPollId);
+            if (!p) return;
+            const title = document.getElementById('c-title').value.trim();
+            const desc = document.getElementById('c-desc').value.trim();
+            if (!title) { alert('투표 제목을 입력해주세요.'); return; }
+            let deadline = null;
+            if (!document.getElementById('c-nodeadline').checked) {
+                const dl = getDeadlineValue();
+                if (dl.getTime() <= Date.now() && !confirm('마감 일시가 현재 시각 이전입니다. 저장하면 이 투표는 바로 마감됩니다. 계속할까요?')) return;
+                deadline = dl.toISOString();
+            }
+            const { error } = await supabaseClient.from('polls').update({
+                title, description: desc, show_results: selVal('c-show'), deadline
+            }).eq('id', p.id);
+            if (error) { alert('수정 실패: ' + error.message); return; }
+            Object.assign(p, { title, description: desc, show_results: selVal('c-show'), deadline });
+            closeCreateModal();
+            document.title = `🗳️ ${p.title}`;
+            renderDetail();
+            alert('투표가 수정되었습니다.');
+        }
 
         async function savePoll() {
             if (!isCreator()) { alert('⚠️ 투표 만들기는 운영진만 가능합니다.'); return; }
+            if (editingPollId) { await saveEditedPoll(); return; }
             const title = document.getElementById('c-title').value.trim();
             const desc = document.getElementById('c-desc').value.trim();
             const labels = Array.from(document.querySelectorAll('.c-opt')).map(i => i.value.trim()).filter(Boolean);

@@ -41,6 +41,8 @@
                 <a href="index.html" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700">🏠 메인 통합시스템</a>
                 <button onclick="switchTab('calendar')" id="btn-calendar" class="px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs transition shadow-md">📅 일정 달력</button>
                 <button onclick="switchTab('admin')" id="btn-admin" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700 hidden">⚙️ 관리자/팀짜기</button>
+                <button onclick="openLoginModal()" id="btn-login" class="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-xl text-xs transition shadow-md">🔑 로그인</button>
+                <button onclick="logoutUser()" id="btn-logout" class="px-4 py-2 bg-rose-600/80 hover:bg-rose-600 text-white font-bold rounded-xl text-xs transition hidden">🚪 로그아웃</button>
             </div>
         </header>
 
@@ -402,6 +404,31 @@
         </div>
     </div>
 
+    <!-- 정회원 로그인 모달 -->
+    <div id="login-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-slate-900 w-full max-w-sm p-6 rounded-2xl border border-slate-800 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-bold text-white">🔑 TenFC 정회원 로그인</h3>
+                <button type="button" onclick="closeLoginModal()" class="text-slate-400 hover:text-white text-sm"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="handleLogin(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-400 mb-1">성명</label>
+                    <input type="text" id="login-name" required placeholder="성명 입력" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">비밀번호 (초기값: 휴대폰 뒷 4자리)</label>
+                    <input type="password" id="login-pw" required placeholder="비밀번호 입력" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white outline-none focus:border-emerald-500">
+                </div>
+                <p id="login-error" class="text-rose-400 text-[11px] hidden">성명 또는 비밀번호가 일치하지 않습니다.</p>
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closeLoginModal()" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg">취소</button>
+                    <button type="submit" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg">로그인</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- 자바스크립트 로직 -->
     <script>
         const SUPABASE_URL = 'https://bxuiwomkpgqsbyaagmlp.supabase.co';
@@ -564,15 +591,80 @@
                     else if (currentUser.role === 'acquaintance') roleName = '지인';
                     document.getElementById('current-user-badge').innerText = `${currentUser.name} 님 (${roleName})`;
                     document.getElementById('btn-admin').classList.toggle('hidden', currentUser.role !== 'admin');
+                    document.getElementById('btn-login').classList.add('hidden');
+                    document.getElementById('btn-logout').classList.remove('hidden');
                 } else {
                     document.getElementById('current-user-badge').innerText = '비회원 (방문자)';
                     document.getElementById('btn-admin').classList.add('hidden');
+                    document.getElementById('btn-login').classList.remove('hidden');
+                    document.getElementById('btn-logout').classList.add('hidden');
                 }
                 // 일정 등록은 운영진만
                 document.getElementById('btn-create').classList.toggle('hidden', !isStaff());
             } catch (err) {
                 console.error('회원 정보 조회 중 예외 발생:', err);
             }
+        }
+
+        // ---------- 정회원 로그인 / 로그아웃 ----------
+        function openLoginModal() {
+            document.getElementById('login-name').value = '';
+            document.getElementById('login-pw').value = '';
+            document.getElementById('login-error').classList.add('hidden');
+            document.getElementById('login-modal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('login-name').focus(), 50);
+        }
+
+        function closeLoginModal() {
+            document.getElementById('login-modal').classList.add('hidden');
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const name = document.getElementById('login-name').value.trim();
+            const pw = document.getElementById('login-pw').value.trim();
+
+            if (!membersData.length) {
+                const { data } = await supabaseClient.from('members').select('*');
+                if (data) membersData = data;
+            }
+
+            const user = membersData.find(m => m.name === name && String(m.password) === pw);
+            if (!user) {
+                document.getElementById('login-error').innerText = '성명 또는 비밀번호가 일치하지 않습니다.';
+                document.getElementById('login-error').classList.remove('hidden');
+                return;
+            }
+            if (user.isWithdrawn || user.is_withdrawn) {
+                document.getElementById('login-error').innerText = '탈퇴 처리된 회원입니다.';
+                document.getElementById('login-error').classList.remove('hidden');
+                return;
+            }
+
+            localStorage.setItem('tenfc_logged_user', user.name);
+            if (window.location.search.includes('view=')) {
+                const url = new URL(window.location.href);
+                url.searchParams.delete('view');
+                window.history.replaceState({}, '', url);
+            }
+
+            await fetchMembers();
+            if (currentMatchId) await selectMatch(currentMatchId, false);
+            closeLoginModal();
+        }
+
+        async function logoutUser() {
+            if (!confirm('로그아웃 하시겠습니까?')) return;
+            localStorage.removeItem('tenfc_logged_user');
+            currentUser = null;
+            if (window.location.search.includes('view=')) {
+                const url = new URL(window.location.href);
+                url.searchParams.delete('view');
+                window.history.replaceState({}, '', url);
+            }
+            switchTab('calendar');
+            await fetchMembers();
+            if (currentMatchId) await selectMatch(currentMatchId, false);
         }
 
         function switchTab(tab) {

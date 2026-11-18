@@ -1418,7 +1418,25 @@
                 ? L.declined.map(e => voteLi(e.v, { prefix: '-', tentative: e.tentative, declined: true })).join('')
                 : '<li>불참 투표가 없습니다.</li>';
         }
+// 관리자 개별 투표/신청 기록 삭제 함수
+async function deleteVoteRecord(voteId) {
+    if (!isStaff()) {
+        alert('⚠️ 운영진만 삭제할 수 있습니다.');
+        return;
+    }
+    if (!confirm('해당 투표 및 참가 신청 내역을 정말 삭제하시겠습니까?')) return;
 
+    const { error } = await supabaseClient.from('match_votes').delete().eq('id', voteId);
+    if (error) {
+        alert('삭제 실패: ' + error.message);
+        return;
+    }
+
+    alert('삭제되었습니다.');
+    if (currentMatchId) {
+        await loadMatchVotes(currentMatchId); // 명단 새로고침
+    }
+}
         // 일정별 참석/대기 명단 텍스트 (팀짜기 화면에 붙여넣어 사용 가능)
         function buildRosterText(m, L) {
             const line = (e, i) => {

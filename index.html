@@ -99,6 +99,8 @@
             </div>
             <div class="flex gap-2 flex-wrap items-center">
                 <a href="match.html" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition shadow">⚽ 운동일정</a>
+                <a href="polls.html" class="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold rounded-lg transition shadow">🗳️ 투표</a>
+                <a href="rating_vote.html" class="rating-link hidden px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-lg transition shadow">⭐ 평점관리</a>
                 <a href="#" target="_blank" rel="noopener noreferrer" class="stats-link stats-link-member hidden px-3 py-1.5 bg-sky-700 hover:bg-sky-600 text-white text-xs font-bold rounded-lg transition">📊 팀 집계</a>
                 <button onclick="openPwModal()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">비밀번호 변경</button>
                 <button onclick="logout()" class="px-3 py-1.5 bg-rose-900/40 hover:bg-rose-800/60 text-rose-300 text-xs rounded-lg transition border border-rose-700/50">로그아웃</button>
@@ -234,6 +236,8 @@
             </div>
             <div class="flex gap-2 flex-wrap items-center">
                 <a href="match.html" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition shadow">⚽ 운동일정</a>
+                <a href="polls.html" class="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold rounded-lg transition shadow">🗳️ 투표</a>
+                <a href="rating_vote.html" class="rating-link hidden px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-lg transition shadow">⭐ 평점관리</a>
                 <a href="#" target="_blank" rel="noopener noreferrer" class="stats-link px-3 py-1.5 bg-sky-700 hover:bg-sky-600 text-white text-xs font-bold rounded-lg transition">📊 팀 집계</a>
                 <button onclick="switchToMyPage()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">내 마이페이지 보기</button>
                 <button onclick="logout()" class="px-3 py-1.5 bg-rose-900/40 hover:bg-rose-800/60 text-rose-300 text-xs rounded-lg transition border border-rose-700/50">로그아웃</button>
@@ -824,6 +828,7 @@
             else if (user.role === 'guest') roleText = '용병';
             else if (user.role === 'acquaintance') roleText = '지인';
             document.getElementById('prof-role').innerText = roleText;
+            updateTopLinks();
 
             const attRate = teamTotalMatches > 0 ? Math.round((user.attendedMatches / teamTotalMatches) * 100) : 0;
             document.getElementById('stat-attendance').innerText = `${user.attendedMatches}회 / ${teamTotalMatches}회`;
@@ -974,7 +979,15 @@
             return 1;
         }
 
+        // 최고관리자(주관리자)에게만 '평점관리' 버튼 표시
+        function updateTopLinks() {
+            document.querySelectorAll('.rating-link').forEach(el => {
+                el.classList.toggle('hidden', !(currentUser && currentUser.role === 'admin'));
+            });
+        }
+
         function loadAdminDashboard() {
+            updateTopLinks();
             document.getElementById('admin-team-matches').innerText = `${teamTotalMatches}회`;
             document.getElementById('admin-member-total-count').innerText = `${activeRegularMemberCount}명`;
             

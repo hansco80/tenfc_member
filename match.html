@@ -565,6 +565,31 @@
             setInterval(tick, 1000);
         });
 
+        // 로그인 횟수 기록 (index.html의 recordLoginSession과 동일 규칙: 하루 1회만 +1, 마지막 접속시각은 매번 갱신)
+        // 한국시간(KST, UTC+9) 기준 날짜 문자열 (YYYY-MM-DD)
+        function kstDateStr(dateLike) {
+            return new Date(new Date(dateLike).getTime() + 9 * 3600 * 1000).toISOString().split('T')[0];
+        }
+        const loginRecordedNames = new Set();
+        async function recordLoginSession(user) {
+            if (!user || !user.name || user.name === '테스트' || loginRecordedNames.has(user.name)) return;
+            loginRecordedNames.add(user.name);
+            try {
+                // 다른 페이지(통합 페이지)에서 이미 기록했을 수 있으므로 최신 값을 다시 읽어 계산
+                const { data: row } = await supabaseClient.from('members').select('login_count, last_login_at').eq('name', user.name).maybeSingle();
+                const lastLoginAt = row ? row.last_login_at : user.last_login_at;
+                let count = (row ? row.login_count : user.login_count) || 0;
+                const todayStr = kstDateStr(new Date());
+                const lastDateStr = lastLoginAt ? kstDateStr(lastLoginAt) : '';
+                if (lastDateStr !== todayStr) count += 1;
+                const nowIso = new Date().toISOString();
+                const { error } = await supabaseClient.from('members').update({ login_count: count, last_login_at: nowIso }).eq('name', user.name);
+                if (!error) { user.login_count = count; user.last_login_at = nowIso; }
+            } catch (e) {
+                console.error('로그인 횟수 기록 실패:', e);
+            }
+        }
+
         async function fetchMembers() {
             try {
                 const { data, error } = await supabaseClient.from('members').select('*');
@@ -577,7 +602,11 @@
                     if (!currentUser && viewName === '테스트') currentUser = { name: '테스트', role: 'guest' };
                 } else {
                     const loggedName = localStorage.getItem('tenfc_logged_user');
-                    if (loggedName) currentUser = membersData.find(m => m.name === loggedName);
+                    if (loggedName) {
+                        currentUser = membersData.find(m => m.name === loggedName);
+                        // 이미 로그인된 상태로 이 페이지를 연 경우에도 접속 기록 (탈퇴 회원 제외)
+                        if (currentUser && !(currentUser.isWithdrawn || currentUser.is_withdrawn)) await recordLoginSession(currentUser);
+                    }
                 }
 
                 if (currentUser) {
@@ -637,6 +666,7 @@
             }
 
             localStorage.setItem('tenfc_logged_user', user.name);
+            await recordLoginSession(user);   // 로그인 횟수 반영 (통합 페이지와 동일 컬럼)
             if (window.location.search.includes('view=')) {
                 const url = new URL(window.location.href);
                 url.searchParams.delete('view');

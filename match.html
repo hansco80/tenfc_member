@@ -356,7 +356,7 @@
                     </div>
                     <div>
                         <label class="block text-slate-400 mb-1">정원</label>
-                        <select id="new-capacity" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white"></select>
+                        <input type="number" id="new-capacity" min="1" max="99" inputmode="numeric" placeholder="예: 15" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white">
                     </div>
                 </div>
 
@@ -919,8 +919,6 @@
             editingMatchId = matchId || null;
             await loadVenues();
 
-            const capItems = [];
-            for (let i = 6; i <= 30; i++) capItems.push([i, `${i}명`]);
 
             if (editingMatchId) {
                 const m = matchesList.find(x => x.id === editingMatchId);
@@ -935,7 +933,7 @@
                 setDt('dl', getDeadline(m));
                 document.getElementById('new-cost-type').value = m.cost_type === '유료' ? '유료' : '무료';
                 document.getElementById('new-cost-amount').value = m.cost_amount || '10,000원';
-                fillSel('new-capacity', capItems, capOf(m));
+                document.getElementById('new-capacity').value = capOf(m);
                 document.getElementById('edit-status').value = m.status === '마감' ? '마감' : '모집중';
                 const v = m.venues || {};
                 renderVenueSelect(v.name);
@@ -957,7 +955,7 @@
                 setDt('dl', defaultDeadline(d));
                 document.getElementById('new-cost-type').value = '무료';   // 기본값: 무료
                 document.getElementById('new-cost-amount').value = '10,000원';
-                fillSel('new-capacity', capItems, 18);
+                document.getElementById('new-capacity').value = 18;
                 const first = venuesCache[0];
                 renderVenueSelect(first ? first.name : '');
                 if (first) onVenueSelect();
@@ -974,7 +972,8 @@
             const matchType = selVal('new-match-type');
             const costType = selVal('new-cost-type');
             const costAmount = costType === '무료' ? '' : document.getElementById('new-cost-amount').value.trim();
-            const capacity = parseInt(selVal('new-capacity'), 10) || 18;
+            const capacity = parseInt(selVal('new-capacity'), 10);
+            if (!capacity || capacity < 1) { alert('정원을 숫자로 입력해주세요. (예: 15)'); return; }
             const matchDate = getDt('md');
             const deadline = getDt('dl');
             const venueName = document.getElementById('new-venue-name').value.trim();
@@ -1134,12 +1133,21 @@
                 registered_by: currentUser ? currentUser.name : '비회원'   // 신청자 (누구의 지인/용병인지)
             };
 
-            let { error } = await supabaseClient.from('match_votes').insert([row]);
-            if (error && /registered_by/i.test(error.message || '')) {
-                // DB에 registered_by 컬럼이 아직 없는 경우: 컬럼 없이 저장하고 안내
-                delete row.registered_by;
+            // DB에 없는 컬럼이 있으면 해당 컬럼만 빼고 다시 저장 (빠진 컬럼은 안내)
+            const dropped = [];
+            let error = null;
+            for (let tries = 0; tries < 6; tries++) {
                 ({ error } = await supabaseClient.from('match_votes').insert([row]));
-                if (!error) alert('⚠️ 신청자 표시를 쓰려면 DB에 registered_by 컬럼을 추가해야 합니다. (안내 참고)');
+                const miss = error && (error.message || '').match(/'([a-z_]+)' column/i);
+                if (miss && miss[1] in row && !['match_id', 'guest_name', 'status'].includes(miss[1])) {
+                    dropped.push(miss[1]);
+                    delete row[miss[1]];
+                    continue;
+                }
+                break;
+            }
+            if (!error && dropped.length) {
+                alert(`⚠️ 신청은 저장됐지만 DB에 ${dropped.join(', ')} 컬럼이 없어 해당 정보는 저장되지 않았습니다.\nSupabase SQL Editor에서 컬럼을 추가해주세요.`);
             }
             if (error) { alert('신청 실패: ' + error.message); return; }
 

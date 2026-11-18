@@ -363,6 +363,11 @@
                 <div>
                     <label class="block text-slate-400 mb-1">자주 쓰는 구장 선택</label>
                     <select id="venue-select" onchange="onVenueSelect()" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white"></select>
+                    <div class="flex gap-2 mt-1.5">
+                        <button type="button" onclick="saveVenueOnly()" class="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-sky-300 font-bold rounded-lg border border-slate-700">💾 구장 정보 저장 (수정)</button>
+                        <button type="button" id="btn-delete-venue" onclick="deleteVenue()" class="hidden py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-rose-300 font-bold rounded-lg border border-slate-700">🗑️ 구장 삭제</button>
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-1">아래 구장 정보를 고친 뒤 저장하면 해당 구장이 수정되고, 새 이름으로 저장하면 자주 쓰는 구장에 추가됩니다.</p>
                 </div>
                 <div>
                     <label class="block text-slate-400 mb-1">구장 이름</label>
@@ -411,7 +416,9 @@
             "E+": 4.0,  "E": 3.5,  "E-": 3.0,
             "F+": 2.5,  "F": 2.0,  "F-": 1.5
         };
-        const guestSkillScore = { '하': 6.0, '중': 7.0, '상': 8.0 };
+        // 지인/용병/가입전 참가 실력 → 등급: 상=B, 중=C, 하=D
+        const skillGrade = { '상': 'B', '중': 'C', '하': 'D' };
+        const guestSkillScore = { '상': scoreMap['B'], '중': scoreMap['C'], '하': scoreMap['D'] };
 
         const WEEK = ['일','월','화','수','목','금','토'];
         const STAFF_ROLES = ['admin', 'sub_admin'];
@@ -887,21 +894,27 @@
         async function loadVenues() {
             const { data } = await supabaseClient.from('venues').select('*');
             const map = new Map();
-            FAVORITE_VENUES.forEach(v => map.set(v.name.trim(), { ...v, id: null }));
             (data || []).forEach(v => {
                 if (!v.name) return;
                 const key = v.name.trim();
-                // 같은 이름이면 DB의 최신(큰 id) 정보로 덮어씀
-                if (!map.has(key) || (map.get(key).id === null) || v.id > map.get(key).id) map.set(key, { ...v });
+                // 같은 이름이 여러 개면 가장 최신(큰 id) 정보를 사용
+                if (!map.has(key) || v.id > map.get(key).id) map.set(key, { ...v });
             });
+            // 저장된 구장이 하나도 없을 때만 기본 예시(FAVORITE_VENUES)를 보여줌
+            if (map.size === 0) FAVORITE_VENUES.forEach(v => map.set(v.name.trim(), { ...v, id: null }));
             venuesCache = Array.from(map.values());
         }
         function renderVenueSelect(selectedName) {
             const items = [['', '✏️ 직접 입력 (새 구장)']].concat(venuesCache.map(v => [v.name, v.name]));
             fillSel('venue-select', items, selectedName || '');
+            updateVenueButtons();
+        }
+        function updateVenueButtons() {
+            document.getElementById('btn-delete-venue').classList.toggle('hidden', !selVal('venue-select'));
         }
         function onVenueSelect() {
             const name = selVal('venue-select');
+            updateVenueButtons();
             const v = venuesCache.find(x => x.name === name);
             if (!v) {
                 ['new-venue-name', 'new-venue-address', 'new-venue-parking', 'new-venue-notes'].forEach(id => document.getElementById(id).value = '');
@@ -912,6 +925,65 @@
             document.getElementById('new-venue-address').value = v.address || '';
             document.getElementById('new-venue-parking').value = v.parking_info || '';
             document.getElementById('new-venue-notes').value = v.notes || '';
+        }
+
+        function readVenueFields() {
+            return {
+                name: document.getElementById('new-venue-name').value.trim(),
+                address: document.getElementById('new-venue-address').value.trim(),
+                parking_info: document.getElementById('new-venue-parking').value.trim(),
+                notes: document.getElementById('new-venue-notes').value.trim()
+            };
+        }
+
+        // 자주 쓰는 구장 저장(수정): 선택한 구장이 있으면 같은 이름의 구장 정보를 모두 수정, 없으면 새로 추가
+        async function saveVenueOnly() {
+            if (!isStaff()) { alert('⚠️ 운영진만 가능합니다.'); return; }
+            const payload = readVenueFields();
+            if (!payload.name) { alert('구장 이름을 입력해주세요.'); return; }
+            const oldName = selVal('venue-select');
+            const cached = venuesCache.find(v => v.name === oldName);
+
+            if (oldName && cached && cached.id) {
+                const { data, error } = await supabaseClient.from('venues').update(payload).eq('name', oldName).select();
+                if (error) { alert('구장 수정 실패: ' + error.message); return; }
+                if (!data || data.length === 0) { alert('구장을 수정할 수 없습니다. (DB의 수정 권한 설정을 확인해주세요)'); return; }
+            } else {
+                const { error } = await supabaseClient.from('venues').insert([payload]);
+                if (error) { alert('구장 저장 실패: ' + error.message); return; }
+            }
+            await loadVenues();
+            renderVenueSelect(payload.name);
+            await fetchMatches();   // 일정 화면의 구장 정보도 갱신
+            alert('구장 정보가 저장되었습니다.');
+        }
+
+        async function deleteVenue() {
+            if (!isStaff()) { alert('⚠️ 운영진만 가능합니다.'); return; }
+            const name = selVal('venue-select');
+            if (!name) return;
+            if (!confirm(`'${name}' 구장을 자주 쓰는 구장에서 삭제할까요?`)) return;
+
+            const { data: rows, error } = await supabaseClient.from('venues').select('id').eq('name', name);
+            if (error) { alert('구장 조회 실패: ' + error.message); return; }
+            if (!rows || rows.length === 0) { alert('저장된 구장이 아니라 삭제할 것이 없습니다.'); return; }
+
+            // 일정에서 사용 중인 구장 기록은 지울 수 없으므로 사용하지 않는 것만 삭제
+            const used = new Set(matchesList.map(m => m.venue_id));
+            const freeIds = rows.map(r => r.id).filter(id => !used.has(id));
+            if (freeIds.length) {
+                const { error: dErr } = await supabaseClient.from('venues').delete().in('id', freeIds);
+                if (dErr) { alert('구장 삭제 실패: ' + dErr.message); return; }
+            }
+            const remaining = rows.length - freeIds.length;
+            ['new-venue-name', 'new-venue-address', 'new-venue-parking', 'new-venue-notes'].forEach(id => document.getElementById(id).value = '');
+            await loadVenues();
+            renderVenueSelect('');
+            if (remaining > 0) {
+                alert(`구장을 삭제했지만, 이미 등록된 일정 ${remaining}건에서 쓰는 구장 기록은 남아 있어 목록에 계속 보일 수 있습니다.\n해당 일정의 구장을 바꾸거나 일정을 삭제하면 완전히 지워집니다.`);
+            } else {
+                alert('구장이 삭제되었습니다.');
+            }
         }
 
         async function openMatchModal(matchId) {
@@ -991,7 +1063,7 @@
             const existing = venuesCache.find(v => v.name.trim() === venueName && v.id);
             let venueId;
             if (existing) {
-                const { error } = await supabaseClient.from('venues').update(venuePayload).eq('id', existing.id);
+                const { error } = await supabaseClient.from('venues').update(venuePayload).eq('name', venueName);
                 if (error) { alert('구장 정보 수정 실패: ' + error.message); return; }
                 venueId = existing.id;
             } else {
@@ -1281,14 +1353,14 @@
         // ==========================================
         function scoreOf(v) {
             const isGuestish = v.guest_type === '용병' || v.guest_type === '지인' || v.guest_type === '가입전 참가';
-            if (isGuestish) return guestSkillScore[v.guest_skill || '중'] ?? 7.0;
+            if (isGuestish) return guestSkillScore[v.guest_skill || '중'] ?? scoreMap['C'];
             const mem = memberOfVote(v);
             const rating = mem ? (mem.rating || 'C') : 'C';
             return scoreMap[rating] !== undefined ? scoreMap[rating] : 6.5;
         }
         function ratingOf(v) {
             const isGuestish = v.guest_type === '용병' || v.guest_type === '지인' || v.guest_type === '가입전 참가';
-            if (isGuestish) return v.guest_skill || '중';
+            if (isGuestish) { const sk = v.guest_skill || '중'; return `${sk}(${skillGrade[sk] || 'C'})`; }
             const mem = memberOfVote(v);
             return mem ? (mem.rating || 'C') : 'C';
         }

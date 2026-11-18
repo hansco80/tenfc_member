@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 매치 & 투표 시스템 v2.26</title>
+    <title>TenFC 운동 일정 & 투표 시스템</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Supabase JS SDK -->
@@ -311,8 +311,8 @@
                     <div class="flex items-center gap-2">
                         <select id="new-match-type" onchange="updateTypePreview()" class="flex-1 bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white">
                             <option value="정기운동">정기운동</option>
-                            <option value="플랩">플랩</option>
                             <option value="자율참여">자율참여</option>
+                            <option value="플랩">플랩</option>
                             <option value="벙개">벙개</option>
                         </select>
                         <span id="type-preview" class="w-9 h-9 rounded-full flex items-center justify-center text-white"></span>
@@ -451,8 +451,8 @@
 
         const TYPE_STYLE = {
             '정기운동': { icon: 'fa-futbol', bg: 'bg-emerald-500', badge: 'bg-emerald-500/20 text-emerald-300', border: 'border-l-emerald-500', text: 'text-emerald-300' },
-            '플랩':     { icon: 'fa-star',   bg: 'bg-sky-500',     badge: 'bg-sky-500/20 text-sky-300',         border: 'border-l-sky-500',     text: 'text-sky-300' },
             '자율참여': { icon: 'fa-hand',   bg: 'bg-amber-500',   badge: 'bg-amber-500/20 text-amber-300',     border: 'border-l-amber-500',   text: 'text-amber-300' },
+            '플랩':     { icon: 'fa-star',   bg: 'bg-sky-500',     badge: 'bg-sky-500/20 text-sky-300',         border: 'border-l-sky-500',     text: 'text-sky-300' },
             '벙개':     { icon: 'fa-bolt',   bg: 'bg-fuchsia-500', badge: 'bg-fuchsia-500/20 text-fuchsia-300', border: 'border-l-fuchsia-500', text: 'text-fuchsia-300' }
         };
         function typeStyle(t) {
@@ -464,6 +464,8 @@
         ];
 
         let currentMatchId = null;
+        let allVotesByMatch = {};   // 달력의 참석 인원 표시용 (일정별 투표 캐시)
+        const titleFromLink = new URLSearchParams(window.location.search).get('id') !== null;
         let matchesList = [];
         let membersData = [];
         let venuesCache = [];
@@ -708,11 +710,20 @@
             renderSchedule();
         }
 
+        async function loadAllVotes() {
+            allVotesByMatch = {};
+            const ids = matchesList.map(m => m.id);
+            if (!ids.length) return;
+            const { data } = await supabaseClient.from('match_votes').select('*').in('match_id', ids);
+            (data || []).forEach(v => { (allVotesByMatch[v.match_id] = allVotesByMatch[v.match_id] || []).push(v); });
+        }
+
         async function fetchMatches() {
             try {
                 const { data, error } = await supabaseClient.from('matches').select('*, venues(*)').order('match_date', { ascending: true });
                 if (error) { console.error(error); return; }
                 matchesList = data || [];
+                await loadAllVotes();
 
                 const urlParams = new URLSearchParams(window.location.search);
                 const matchIdParam = urlParams.get('id');
@@ -764,7 +775,7 @@
             });
             const today = new Date();
             let html = '';
-            for (let i = 0; i < first.getDay(); i++) html += '<div class="min-h-[64px]"></div>';
+            for (let i = 0; i < first.getDay(); i++) html += '<div class="min-h-[64px] md:min-h-[104px]"></div>';
             for (let d = 1; d <= daysInMonth; d++) {
                 const list = byDay[d] || [];
                 const isToday = today.getFullYear() === viewYear && today.getMonth() === viewMonth && today.getDate() === d;
@@ -772,7 +783,7 @@
                 const numColor = dow === 0 ? 'text-rose-400' : dow === 6 ? 'text-sky-400' : 'text-slate-300';
                 const clickAttr = list.length ? `onclick="selectMatch(${list[0].id}, true)"` : '';
                 html += `
-                    <div ${clickAttr} class="min-h-[64px] bg-slate-950 border ${isToday ? 'border-emerald-400' : 'border-slate-800'} rounded-lg p-1 ${list.length ? 'cursor-pointer hover:border-slate-600' : ''}">
+                    <div ${clickAttr} class="min-h-[64px] md:min-h-[104px] bg-slate-950 border ${isToday ? 'border-emerald-400' : 'border-slate-800'} rounded-lg p-1 ${list.length ? 'cursor-pointer hover:border-slate-600' : ''}">
                         <div class="text-[11px] ${numColor} ${isToday ? 'font-black' : ''}">${d}</div>
                         <div class="mt-1 space-y-1">
                             ${list.map(m => {
@@ -780,9 +791,14 @@
                                 const t = new Date(m.match_date);
                                 const sel = currentMatchId === m.id ? 'ring-2 ring-white' : '';
                                 const venue = m.venues ? m.venues.name : '구장 미정';
-                                return `<button type="button" onclick="event.stopPropagation(); selectMatch(${m.id}, true)" title="${esc(m.match_type)} ${pad2(t.getHours())}:${pad2(t.getMinutes())} ${esc(venue)}" class="flex items-center gap-1 w-full">
-                                    <span class="w-5 h-5 shrink-0 rounded-full ${s.bg} text-white flex items-center justify-center text-[10px] ${sel}"><i class="fa-solid ${s.icon}"></i></span>
-                                    <span class="text-[9px] text-slate-400 hidden sm:inline">${pad2(t.getHours())}:${pad2(t.getMinutes())}</span>
+                                const L = computeLists(m, allVotesByMatch[m.id] || []);
+                                return `<button type="button" onclick="event.stopPropagation(); selectMatch(${m.id}, true)" title="${esc(m.match_type)} ${pad2(t.getHours())}:${pad2(t.getMinutes())} ${esc(venue)} · 참석 ${L.confirmed.length}/${L.cap}명" class="block w-full text-left">
+                                    <span class="flex items-center gap-1">
+                                        <span class="w-5 h-5 shrink-0 rounded-full ${s.bg} text-white flex items-center justify-center text-[10px] ${sel}"><i class="fa-solid ${s.icon}"></i></span>
+                                        <span class="text-[9px] text-slate-400 hidden sm:inline">${pad2(t.getHours())}:${pad2(t.getMinutes())}</span>
+                                    </span>
+                                    <span class="hidden md:block text-[10px] text-slate-300 truncate mt-0.5">${esc(venue)}</span>
+                                    <span class="hidden md:block text-[10px] font-bold ${s.text}">참석 ${L.confirmed.length}/${L.cap}${L.waiting.length ? ` <span class="text-amber-400 font-normal">(대기 ${L.waiting.length})</span>` : ''}</span>
                                 </button>`;
                             }).join('')}
                         </div>
@@ -820,6 +836,14 @@
             }).join('');
         }
 
+        // 공유 링크(?id=)로 접속한 경우 브라우저 탭 제목을 '일시 + 구장명 매치'로 변경
+        function setMatchTitle(m) {
+            if (!titleFromLink || !m) return;
+            const d = new Date(m.match_date);
+            const venue = m.venues ? m.venues.name : '구장 미정';
+            document.title = `${d.getMonth() + 1}월${d.getDate()}일 (${WEEK[d.getDay()]}) ${pad2(d.getHours())}:${pad2(d.getMinutes())} ${venue} 매치`;
+        }
+
         async function selectMatch(matchId, scroll) {
             currentMatchId = matchId;
             renderSchedule();
@@ -828,6 +852,7 @@
             if (!match) return;
 
             document.getElementById('match-detail-section').classList.remove('hidden');
+            setMatchTitle(match);
 
             const s = typeStyle(match.match_type);
             const badge = document.getElementById('detail-type-badge');
@@ -1186,8 +1211,11 @@
             if (isClosed(m)) { alert('투표가 마감되었습니다.'); return; }
             if (voting) return;
 
-            const voterName = currentUser ? currentUser.name : prompt('비회원 투표입니다. 성명을 입력해주세요:');
-            if (!voterName) return;
+            if (!currentUser) {
+                alert('참석 / 미정 / 불참 버튼은 정회원 전용입니다.\n\n■ 정회원이시라면\n   상단의 [🔑 로그인] 후 투표해 주세요.\n\n■ 지인 / 용병 / 가입전 참가자라면\n   아래 [지인 / 용병 / 가입전 참가 신청]에서 신청해 주세요.');
+                return;
+            }
+            const voterName = currentUser.name;
             const matchId = currentMatchId;
 
             let assignedGuestType = '정회원';
@@ -1275,7 +1303,9 @@
         async function loadMatchVotes(matchId) {
             const { data } = await supabaseClient.from('match_votes').select('*').eq('match_id', matchId).order('voted_at', { ascending: true });
             currentMatchVotes = data || [];
+            allVotesByMatch[matchId] = currentMatchVotes;
             renderVoteLists();
+            renderSchedule();   // 달력/목록의 참석 인원 갱신
         }
 
         async function deleteVoteRecord(voteId) {

@@ -217,14 +217,14 @@
                             </label>
                             <button onclick="runTeamFromMatch()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs transition shadow-md whitespace-nowrap">⚡ 이 일정으로 팀 짜기</button>
                         </div>
-                        <details class="bg-slate-900 rounded-lg border border-slate-800">
+                        <details open class="bg-slate-900 rounded-lg border border-slate-800">
                             <summary class="p-3 text-xs font-bold text-sky-300 flex justify-between items-center">
-                                <span>② 또는 참석/대기 명단 텍스트를 붙여넣어 팀 짜기</span>
+                                <span>② 일정과 상관없이 직접 붙여넣기 (이름만 / 팀 편성 그대로)</span>
                                 <i class="fa-solid fa-chevron-down chev text-xs"></i>
                             </summary>
                             <div class="px-3 pb-3 space-y-2">
-                                <textarea id="team-paste" rows="7" placeholder="일정 화면의 [참석·대기 명단 텍스트 복사]로 복사한 내용을 붙여넣으세요.&#10;(수정·추가·삭제한 명단도 그대로 사용할 수 있습니다)" class="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-xs text-white font-mono"></textarea>
-                                <button onclick="runTeamFromText()" class="w-full py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg text-xs transition">📋 붙여넣은 명단으로 팀 짜기</button>
+                                <textarea id="team-paste" rows="7" placeholder="■ 이름만 붙여넣으면 자동으로 팀을 짭니다.&#10;오한결 박성복 박종민 …  (줄바꿈·띄어쓰기·쉼표·/ 모두 가능)&#10;&#10;■ 팀 편성을 붙여넣으면 그대로 반영됩니다. (*는 팀장)&#10;⚽ 1팀&#10;오한결(80)* / 박성복(81) / 박종민(84)&#10;⚽ 2팀&#10;장현호(93)* / 이동윤(81)" class="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-xs text-white font-mono"></textarea>
+                                <button onclick="runTeamFromText()" class="w-full py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg text-xs transition">📋 붙여넣은 내용으로 팀 구성하기</button>
                             </div>
                         </details>
                     </div>
@@ -1293,7 +1293,12 @@
             const normal = regularPool.filter(e => e.v.guest_type !== '가입전 참가');
             const preJoin = regularPool.filter(e => e.v.guest_type === '가입전 참가');
             const ordered = [...normal, ...preJoin];
-            return { cap, confirmed: ordered.slice(0, cap), waiting: [...ordered.slice(cap), ...guestPool], declined };
+            // 대기 순번은 투표/신청 시각 순서 (정원 마감 후 참석한 정회원도 대기 맨 뒤 순번)
+            const waiting = [...ordered.slice(cap), ...guestPool]
+                .map((e, i) => ({ e, i }))
+                .sort((a, b) => (new Date(a.e.v.voted_at) - new Date(b.e.v.voted_at)) || (a.i - b.i))
+                .map(x => x.e);
+            return { cap, confirmed: ordered.slice(0, cap), waiting, declined };
         }
 
         function renderVoteLists() {
@@ -1373,7 +1378,7 @@
         function sortTeam(key) {
             teamDataState[key] = teamDataState[key]
                 .map((v, i) => ({ v, i }))
-                .sort((a, b) => (roleRank(a.v) - roleRank(b.v)) || (a.i - b.i))
+                .sort((a, b) => ((a.v.pinLeader ? -1 : roleRank(a.v)) - (b.v.pinLeader ? -1 : roleRank(b.v))) || (a.i - b.i))
                 .map(x => x.v);
         }
 
@@ -1405,16 +1410,72 @@
             setTeamSource(people, `📌 팀짜기 기준: ${fmtShort(new Date(m.match_date))} ${m.match_type} · 총 ${people.length}명 (참석 ${L.confirmed.length}${includeWait ? ` + 대기 ${L.waiting.length}` : ''})`);
         }
 
-        // 붙여넣은 명단 텍스트 해석
+        // ---------- 붙여넣기 명단/팀 편성 해석 (일정과 무관하게 사용) ----------
+        const ROSTER_TYPES = ['가입전 참가', '정회원', '용병', '지인'];
+        const ITEM_PREFIX = /^(\d+\s*[.)]|[-•·]|\[대기\s*\d+번\])\s*/;
+        let pasteSeq = 0;
+
+        // 한 명 해석: 이름, (출생년도), * (팀장), 구분(용병/지인/…), 실력:상/중/하
+        function parseOneEntry(text) {
+            const nm = text.match(/^([^\s(\/*,，、]+)/);
+            if (!nm) return null;
+            const birthM = text.match(/\((\d{2}|(?:19|20)\d{2})\)/);
+            return {
+                id: 'p' + (pasteSeq++),
+                guest_name: nm[1],
+                guest_birth: birthM ? birthM[1] : '',
+                guest_type: ROSTER_TYPES.find(t => text.includes(t)) || '정회원',
+                guest_skill: ((text.match(/실력\s*[:：]?\s*([하중상])/) || [])[1]) || '중',
+                status: '참석',
+                _leader: text.includes('*')
+            };
+        }
+        // 한 줄에서 여러 명 해석: "오한결(80)* / 박성복(81)", "오한결 박성복", "1. 홍길동(90) / 정회원" 모두 지원
+        function parseEntries(raw) {
+            const body = raw.replace(ITEM_PREFIX, '').trim();
+            if (!body) return [];
+            if (/(정회원|용병|지인|가입전 참가|실력)/.test(body)) { const p = parseOneEntry(body); return p ? [p] : []; }
+            const out = [];
+            body.split(/[\/,，、\s]+/).filter(Boolean).forEach(tok => {
+                const last = out[out.length - 1];
+                const bm = tok.match(/^\((\d{2}|(?:19|20)\d{2})\)(\*?)$/);
+                if (bm && last) { if (!last.guest_birth) last.guest_birth = bm[1]; if (bm[2]) last._leader = true; return; }
+                if (tok === '*' && last) { last._leader = true; return; }
+                const p = parseOneEntry(tok);
+                if (p) out.push(p);
+            });
+            return out;
+        }
+        function teamHeaderNo(line) {
+            const m = line.replace(/^[^0-9A-Za-z가-힣]+/, '').match(/^(\d+)\s*팀/);
+            return m ? parseInt(m[1], 10) : null;
+        }
+
         function parseRosterText(text, includeWait) {
-            const types = ['가입전 참가', '정회원', '용병', '지인'];
-            const itemPrefix = /^(\d+\s*[.)]|[-•*·]|\[대기\s*\d+번\])\s*/;
             const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+
+            // ① "⚽ 1팀 / 2팀 / 3팀" 형식의 팀 편성 텍스트
+            if (lines.some(l => teamHeaderNo(l) !== null)) {
+                const teams = { 1: [], 2: [], 3: [] };
+                let cur = null, extra = false;
+                lines.forEach(line => {
+                    const no = teamHeaderNo(line);
+                    if (no !== null) {
+                        if (no >= 1 && no <= 3) cur = no; else { cur = null; extra = true; }
+                        const rest = line.replace(/^[^0-9A-Za-z가-힣]*\d+\s*팀\s*[:：\-]?\s*/, '');
+                        if (cur && rest) teams[cur].push(...parseEntries(rest));
+                        return;
+                    }
+                    if (cur) teams[cur].push(...parseEntries(line));
+                });
+                return { mode: 'teams', teams, extra };
+            }
+
+            // ② 이름만 / 참석·대기 명단 (일정 화면에서 복사한 텍스트 포함)
             let section = 'att', sawHeader = false;
             const att = [], wait = [];
             lines.forEach(line => {
-                const isItem = itemPrefix.test(line);
-                if (!isItem) {
+                if (!ITEM_PREFIX.test(line)) {
                     if (/^📅/.test(line)) return;
                     if (/불참/.test(line)) { section = 'out'; sawHeader = true; return; }
                     if (/대기/.test(line)) { section = 'wait'; sawHeader = true; return; }
@@ -1422,29 +1483,42 @@
                     if (sawHeader) return;   // 헤더 이후의 알 수 없는 줄은 무시
                 }
                 if (section === 'out') return;
-                const body = line.replace(itemPrefix, '');
-                const nm = body.match(/^([^\s(\/*,]+)\*?(?:\((\d{2}|(?:19|20)\d{2})\))?/);
-                if (!nm) return;
-                const person = {
-                    guest_name: nm[1],
-                    guest_birth: nm[2] || '',
-                    guest_type: types.find(t => body.includes(t)) || '정회원',
-                    guest_skill: ((body.match(/실력\s*[:：]?\s*([하중상])/) || [])[1]) || '중',
-                    status: '참석'
-                };
-                (section === 'wait' ? wait : att).push(person);
+                (section === 'wait' ? wait : att).push(...parseEntries(line));
             });
-            const all = includeWait ? [...att, ...wait] : att;
-            all.forEach((p, i) => { p.id = 'p' + i; });
-            return { people: all, att: att.length, wait: wait.length };
+            const people = includeWait ? [...att, ...wait] : att;
+            return { mode: 'list', people, att: att.length, wait: wait.length };
         }
+
         function runTeamFromText() {
             const text = document.getElementById('team-paste').value.trim();
-            if (!text) { alert('붙여넣은 명단이 없습니다.'); return; }
+            if (!text) { alert('붙여넣은 내용이 없습니다.'); return; }
             const includeWait = document.getElementById('team-include-waiting').checked;
             const r = parseRosterText(text, includeWait);
+
+            if (r.mode === 'teams') {
+                teamDataState = { team1: [], team2: [], team3: [] };
+                const flat = [];
+                [1, 2, 3].forEach(n => {
+                    const arr = r.teams[n];
+                    if (!arr.length) return;
+                    let li = arr.findIndex(p => p._leader);   // * 표시가 있으면 팀장, 없으면 첫 번째 사람
+                    if (li < 0) li = 0;
+                    arr.forEach((p, i) => { p.pinLeader = (i === li); delete p._leader; });
+                    arr.unshift(arr.splice(li, 1)[0]);
+                    teamDataState['team' + n] = arr;
+                    flat.push(...arr);
+                });
+                if (flat.length === 0) { alert('팀 편성에서 인원을 찾지 못했습니다. 형식을 확인해주세요.'); return; }
+                if (r.extra) alert('현재 1~3팀까지만 지원합니다. 4팀 이후는 반영되지 않았습니다.');
+                teamSource = { people: flat, label: '' };
+                teamSource.label = `📌 팀짜기 기준: 붙여넣은 팀 편성 · 총 ${flat.length}명 (1팀 ${teamDataState.team1.length} / 2팀 ${teamDataState.team2.length} / 3팀 ${teamDataState.team3.length})`;
+                document.getElementById('team-source-label').innerText = teamSource.label;
+                renderAllTeams();
+                return;
+            }
+
             if (r.people.length === 0) { alert('명단에서 인원을 찾지 못했습니다. 형식을 확인해주세요.'); return; }
-            setTeamSource(r.people, `📌 팀짜기 기준: 붙여넣은 명단 · 총 ${r.people.length}명 (참석 ${r.att}${includeWait ? ` + 대기 ${r.wait}` : ''})`);
+            setTeamSource(r.people, `📌 팀짜기 기준: 붙여넣은 명단 · 총 ${r.people.length}명${r.wait && includeWait ? ` (참석 ${r.att} + 대기 ${r.wait})` : ''} → 자동 편성`);
         }
 
         // 'AI 자동 팀 짜기 재실행' 버튼: 현재 기준 명단으로 다시 편성
@@ -1573,6 +1647,7 @@
             const idx = teamDataState[from].findIndex(v => String(v.id) === String(id));
             if (idx < 0) return;
             const moved = teamDataState[from].splice(idx, 1)[0];
+            delete moved.pinLeader;
             teamDataState[to].push(moved);
             sortTeam(to);   // 운영진은 항상 맨 위(팀장)
             renderAllTeams();

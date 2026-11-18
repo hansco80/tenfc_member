@@ -97,6 +97,7 @@
                     <div class="flex gap-1.5 flex-wrap">
                         <button onclick="setFilter('all')" id="filter-all" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white transition">전체 인원</button>
                         <button onclick="setFilter('unvoted')" id="filter-unvoted" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-700 text-slate-300 hover:bg-slate-600 transition">내 미투표만</button>
+                        <button onclick="setFilter('urgent')" id="filter-urgent" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-700 text-slate-300 hover:bg-slate-600 transition">⭐ 필수평가 (2주경과)</button>
                         <button onclick="setFilter('conflict')" id="filter-conflict" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-700 text-slate-300 hover:bg-slate-600 transition">🔥 의견엇갈림 / !·? 시그널</button>
                     </div>
                     <div class="text-[11px] text-slate-400">
@@ -528,7 +529,6 @@
 
                         const hist = Array.isArray(found.history) ? found.history : [];
 
-                        // 💡 2주(14일) 경과 여부 체크 계산
                         let isOutdated = false;
                         if (hist.length > 0) {
                             const lastEntry = hist[hist.length - 1];
@@ -627,12 +627,14 @@
 
         function setFilter(filterType) {
             currentFilter = filterType;
-            ['all', 'unvoted', 'conflict'].forEach(f => {
+            ['all', 'unvoted', 'urgent', 'conflict'].forEach(f => {
                 const btn = document.getElementById(`filter-${f}`);
-                if (f === filterType) {
-                    btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white transition';
-                } else {
-                    btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-700 text-slate-300 hover:bg-slate-600 transition';
+                if (btn) {
+                    if (f === filterType) {
+                        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white transition';
+                    } else {
+                        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-700 text-slate-300 hover:bg-slate-600 transition';
+                    }
                 }
             });
             renderSessionBoard();
@@ -749,6 +751,7 @@
                     const myVote = sessionVotes.find(v => v.player_name === p.name && v.voter_name === currentUser.name);
                     const evalRes = evaluatePlayerResult(p.name);
                     if (currentFilter === 'unvoted') return !myVote;
+                    if (currentFilter === 'urgent') return p.isOutdated;
                     if (currentFilter === 'conflict') return evalRes.hasConflictOrSignal;
                     return true;
                 });
@@ -806,19 +809,18 @@
                     const disableTwoStep = currentSession.mode === 2;
                     const disabledAttr = (isCompleted || !isAttendingAdmin) ? 'disabled' : '';
 
-                    // 💡 실시간으로 최신 DB 멤버 데이터(`membersData`)에서 해당 멤버의 `history`를 찾아 정확히 표시
                     const liveMember = membersData.find(m => m.name === p.name);
                     const hist = liveMember && Array.isArray(liveMember.history) ? liveMember.history : (Array.isArray(p.history) ? p.history : []);
                     
                     let historyText = '기록 없음';
                     let lastEvalDate = '없음';
                     if (hist.length > 0) {
-                        const recent3 = hist.slice(-3); // 최근 3개
-                        historyText = recent3.map(h => `${h.date}:${reverseScoreToGrade(h.score)}`).join(' → ');
+                        const recent3 = hist.slice(-3);
+                        // 💡 1. 날짜를 제외하고 오직 등급 변화 흐름만 보기 좋게 나열 (예: A- → B+ → B+)
+                        historyText = recent3.map(h => reverseScoreToGrade(h.score)).join(' → ');
                         lastEvalDate = hist[hist.length - 1].date;
                     }
 
-                    // 💡 2주(14일) 경과 인원 강조 카드 클래스 적용
                     const isUrgent = p.isOutdated;
                     const cardBorderClass = isUrgent ? 'urgent-eval-card bg-slate-900/95 border-amber-500/80' : (myVal !== null ? 'bg-slate-900/90 border-slate-700' : 'bg-slate-900/40 border-amber-500/30');
 
@@ -834,7 +836,7 @@
                                     <span class="text-[11px] text-slate-400">최근평가일: <strong class="text-slate-200">${lastEvalDate}</strong></span>
                                 </div>
                                 <div class="mt-1">
-                                    <span class="text-amber-300/90 font-mono text-[11px]">변천사(최근): ${historyText}</span>
+                                    <span class="text-emerald-400 font-bold font-mono text-xs">변천사: ${historyText}</span>
                                 </div>
                                 <div class="flex flex-wrap gap-2 mt-1 text-[11px] text-slate-300">
                                     <span class="bg-slate-800 px-2 py-0.5 rounded">소속팀 순위: <strong class="text-sky-400">${p.teamRank}</strong></span>
@@ -913,7 +915,6 @@
             return '';
         }
 
-        // 💡 1. 평점 버튼 한 번 더 누르면 미투표 상태로 초기화(삭제)되도록 토글 구현
         async function castVote(playerName, voteValue) {
             if (currentSession.status === 'completed') return;
             if (!currentSession.attending_admins.includes(currentUser.name)) {
@@ -924,7 +925,6 @@
             const existing = sessionVotes.find(v => v.player_name === playerName && v.voter_name === currentUser.name);
 
             if (existing && existing.vote_value === voteValue) {
-                // 동일한 버튼 재클릭 시 투표 내역 삭제(초기화)
                 const { error } = await supabaseClient
                     .from('rating_votes')
                     .delete()

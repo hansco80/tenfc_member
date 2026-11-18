@@ -257,7 +257,7 @@
             else showList(false);
         }
 
-        // ---------- 로그인 (match.html과 동일) ----------
+        // ---------- 로그인 및 ?view= 우회 접속 지원 ----------
         const loginRecordedNames = new Set();
         async function recordLoginSession(user) {
             if (!user || !user.name || user.name === '테스트' || loginRecordedNames.has(user.name)) return;
@@ -276,10 +276,23 @@
         async function fetchMembers() {
             const { data } = await supabaseClient.from('members').select('*');
             if (data) membersData = data;
-            const loggedName = localStorage.getItem('tenfc_logged_user');
-            currentUser = loggedName ? (membersData.find(m => m.name === loggedName) || null) : null;
+
+            const savedName = localStorage.getItem('tenfc_logged_user');
+            const viewName = new URLSearchParams(window.location.search).get('view');
+            let targetUser = savedName ? (membersData.find(m => m.name === savedName) || null) : null;
+
+            // 💡 주관리자(admin)로 로그인된 상태에서 ?view=회원명 접속 시 해당 회원으로 전환
+            if (viewName && targetUser && targetUser.role === 'admin') {
+                const viewTarget = membersData.find(m => m.name === viewName && !m.isWithdrawn && !m.is_withdrawn);
+                if (viewTarget) {
+                    targetUser = viewTarget;
+                    localStorage.setItem('tenfc_logged_user', targetUser.name);
+                }
+            }
+
+            currentUser = targetUser;
             if (currentUser && (currentUser.isWithdrawn || currentUser.is_withdrawn)) currentUser = null;
-            if (currentUser) await recordLoginSession(currentUser);
+            if (currentUser && !viewName) await recordLoginSession(currentUser);
 
             if (currentUser) {
                 let roleName = '정회원';
@@ -422,7 +435,6 @@
             lastClosedState = null;
             document.title = `🗳️ ${p.title}`;
             if (push) history.pushState({}, '', `?id=${id}`);
-            // 내 기존 투표를 선택 상태로
             selected = new Set();
             if (currentUser) {
                 const key = await voterKey(p, currentUser.name);
@@ -447,7 +459,6 @@
             const total = participants(p.id).size;
             const isAdminUser = isCreator();
 
-            // 투표 영역
             let voteHtml = '';
             if (closed) {
                 voteHtml = '<p class="text-xs text-rose-300 bg-rose-500/10 border border-rose-500/20 rounded-lg p-3">🔒 마감된 투표입니다.</p>';
@@ -471,7 +482,6 @@
                     <p class="text-[11px] text-slate-500">${p.allow_multiple ? '여러 개를 선택할 수 있습니다. ' : '하나만 선택할 수 있습니다. '}마감 전까지 언제든 변경할 수 있습니다.</p>`;
             }
 
-            // 결과 영역
             let resultHtml = '';
             if (!currentUser) {
                 resultHtml = '<p class="text-xs text-slate-400 text-center py-4">로그인하면 투표 결과를 볼 수 있습니다.</p>';
@@ -565,6 +575,8 @@
         }
 
         function setChartType(t) { chartType = t; renderDetail(); }
+        
+        // 💡 원그래프 툴팁 퍼센트(%) 표시 기능 적용 완료
         function drawChart(p) {
             const el = document.getElementById('poll-chart');
             if (!el) return;
@@ -590,7 +602,22 @@
                 chart = new Chart(el, {
                     type: 'pie',
                     data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: '#0f172a', borderWidth: 2 }] },
-                    options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#e2e8f0' } } } }
+                    options: { 
+                        maintainAspectRatio: false, 
+                        plugins: { 
+                            legend: { position: 'bottom', labels: { color: '#e2e8f0' } },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(ctx) {
+                                        const val = ctx.parsed || 0;
+                                        const sum = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                        const pct = sum ? ((val / sum) * 100).toFixed(1) : 0;
+                                        return ` ${ctx.label}: ${val}표 (${pct}%)`;
+                                    }
+                                }
+                            }
+                        } 
+                    }
                 });
             }
         }
@@ -613,7 +640,6 @@
             if (!canVote()) { alert('정회원 로그인 후 투표할 수 있습니다.'); return; }
             if (selected.size === 0) { alert('항목을 선택해주세요.'); return; }
 
-            // 마감 여부를 최신 상태로 다시 확인
             const { data: fresh } = await supabaseClient.from('polls').select('*').eq('id', p.id).maybeSingle();
             if (fresh) Object.assign(p, fresh);
             if (isClosed(p)) { alert('투표가 마감되었습니다.'); renderDetail(); return; }
@@ -621,7 +647,6 @@
             submitting = true;
             try {
                 const key = await voterKey(p, currentUser.name);
-                // 1인 1투표: 기존 투표를 지우고 마지막 선택만 저장
                 const { error: dErr } = await supabaseClient.from('poll_votes').delete().eq('poll_id', p.id).eq('voter', key);
                 if (dErr) { alert('투표 저장 실패: ' + dErr.message); return; }
                 const rows = Array.from(selected).map(optId => ({ poll_id: p.id, option_id: optId, voter: key }));
@@ -773,7 +798,6 @@
             document.getElementById('c-title').value = p.title;
             document.getElementById('c-desc').value = p.description || '';
             document.getElementById('c-show').value = p.show_results || 'always';
-            // 투표 방식/항목은 이미 참여한 사람이 있을 수 있어 수정할 수 없음
             document.getElementById('c-anon').value = p.is_anonymous ? '1' : '0';
             document.getElementById('c-multi').value = p.allow_multiple ? '1' : '0';
             document.getElementById('c-anon').disabled = true;

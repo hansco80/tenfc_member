@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 매치 & 투표 시스템</title>
+    <title>TenFC 매치 & 투표 시스템 v2.26</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Supabase JS SDK -->
@@ -34,7 +34,7 @@
         <!-- 헤더 섹션 -->
         <header class="flex flex-col md:flex-row justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-xl gap-4">
             <div>
-                <h1 class="text-2xl font-black text-emerald-400">⚽ TenFC Match Hub</h1>
+                <h1 class="text-2xl font-black text-emerald-400">⚽ TenFC Match Hub <span class="text-xs text-slate-500 font-normal">v2.26</span></h1>
                 <p class="text-xs text-slate-400">접속자: <span id="current-user-badge" class="text-emerald-400 font-bold">비회원 (방문자)</span></p>
             </div>
             <div class="flex gap-2 flex-wrap">
@@ -989,10 +989,8 @@
             (data || []).forEach(v => {
                 if (!v.name) return;
                 const key = v.name.trim();
-                // 같은 이름이 여러 개면 가장 최신(큰 id) 정보를 사용
                 if (!map.has(key) || v.id > map.get(key).id) map.set(key, { ...v });
             });
-            // 저장된 구장이 하나도 없을 때만 기본 예시(FAVORITE_VENUES)를 보여줌
             if (map.size === 0) FAVORITE_VENUES.forEach(v => map.set(v.name.trim(), { ...v, id: null }));
             venuesCache = Array.from(map.values());
         }
@@ -1028,7 +1026,6 @@
             };
         }
 
-        // 자주 쓰는 구장 저장(수정): 선택한 구장이 있으면 같은 이름의 구장 정보를 모두 수정, 없으면 새로 추가
         async function saveVenueOnly() {
             if (!isStaff()) { alert('⚠️ 운영진만 가능합니다.'); return; }
             const payload = readVenueFields();
@@ -1039,14 +1036,14 @@
             if (oldName && cached && cached.id) {
                 const { data, error } = await supabaseClient.from('venues').update(payload).eq('name', oldName).select();
                 if (error) { alert('구장 수정 실패: ' + error.message); return; }
-                if (!data || data.length === 0) { alert('구장을 수정할 수 없습니다. (DB의 수정 권한 설정을 확인해주세요)'); return; }
+                if (!data || data.length === 0) { alert('구장을 수정할 수 없습니다.'); return; }
             } else {
                 const { error } = await supabaseClient.from('venues').insert([payload]);
                 if (error) { alert('구장 저장 실패: ' + error.message); return; }
             }
             await loadVenues();
             renderVenueSelect(payload.name);
-            await fetchMatches();   // 일정 화면의 구장 정보도 갱신
+            await fetchMatches();
             alert('구장 정보가 저장되었습니다.');
         }
 
@@ -1060,7 +1057,6 @@
             if (error) { alert('구장 조회 실패: ' + error.message); return; }
             if (!rows || rows.length === 0) { alert('저장된 구장이 아니라 삭제할 것이 없습니다.'); return; }
 
-            // 일정에서 사용 중인 구장 기록은 지울 수 없으므로 사용하지 않는 것만 삭제
             const used = new Set(matchesList.map(m => m.venue_id));
             const freeIds = rows.map(r => r.id).filter(id => !used.has(id));
             if (freeIds.length) {
@@ -1072,7 +1068,7 @@
             await loadVenues();
             renderVenueSelect('');
             if (remaining > 0) {
-                alert(`구장을 삭제했지만, 이미 등록된 일정 ${remaining}건에서 쓰는 구장 기록은 남아 있어 목록에 계속 보일 수 있습니다.\n해당 일정의 구장을 바꾸거나 일정을 삭제하면 완전히 지워집니다.`);
+                alert(`구장을 삭제했지만, 이미 등록된 일정 ${remaining}건에서 쓰는 구장 기록은 남아 있습니다.`);
             } else {
                 alert('구장이 삭제되었습니다.');
             }
@@ -1082,7 +1078,6 @@
             if (!isStaff()) { alert('⚠️ 일정 등록·수정은 운영진만 가능합니다.'); return; }
             editingMatchId = matchId || null;
             await loadVenues();
-
 
             if (editingMatchId) {
                 const m = matchesList.find(x => x.id === editingMatchId);
@@ -1117,7 +1112,7 @@
                 setDt('md', d);
                 dlTouched = false;
                 setDt('dl', defaultDeadline(d));
-                document.getElementById('new-cost-type').value = '무료';   // 기본값: 무료
+                document.getElementById('new-cost-type').value = '무료';
                 document.getElementById('new-cost-amount').value = '10,000원';
                 document.getElementById('new-capacity').value = 18;
                 const first = venuesCache[0];
@@ -1137,7 +1132,7 @@
             const costType = selVal('new-cost-type');
             const costAmount = costType === '무료' ? '' : document.getElementById('new-cost-amount').value.trim();
             const capacity = parseInt(selVal('new-capacity'), 10);
-            if (!capacity || capacity < 1) { alert('정원을 숫자로 입력해주세요. (예: 15)'); return; }
+            if (!capacity || capacity < 1) { alert('정원을 숫자로 입력해주세요.'); return; }
             const matchDate = getDt('md');
             const deadline = getDt('dl');
             const venueName = document.getElementById('new-venue-name').value.trim();
@@ -1150,7 +1145,6 @@
                 if (!confirm('투표 마감 시간이 운동 시작 이후입니다. 그대로 저장할까요?')) return;
             }
 
-            // 구장: 같은 이름이 있으면 재사용(정보 갱신), 없으면 새로 등록
             const venuePayload = { name: venueName, address: venueAddress, parking_info: parkingInfo, notes: venueNotes };
             const existing = venuesCache.find(v => v.name.trim() === venueName && v.id);
             let venueId;
@@ -1160,7 +1154,7 @@
                 venueId = existing.id;
             } else {
                 const { data, error } = await supabaseClient.from('venues').insert([venuePayload]).select();
-                if (error || !data || !data[0]) { alert('구장 등록 실패' + (error ? ': ' + error.message : '')); return; }
+                if (error || !data || !data[0]) { alert('구장 등록 실패'); return; }
                 venueId = data[0].id;
             }
 
@@ -1234,40 +1228,30 @@
                 const { data: rows, error: selErr } = await supabaseClient.from('match_votes').select('*').eq('match_id', matchId).eq('guest_name', voterName).order('voted_at', { ascending: true });
                 if (selErr) { alert('투표 조회 실패: ' + selErr.message); return; }
 
-                // 본인 투표 행만 대상 (신청으로 등록된 지인/용병 행은 연락처·신청자 정보가 있어 제외)
                 const mine = (rows || []).filter(r => !r.guest_phone && !r.registered_by);
 
                 if (mine.length > 0) {
                     const latest = mine[mine.length - 1];
                     if (mine.length === 1 && latest.status === status) { alert(`이미 [${status}]로 투표하셨습니다.`); return; }
 
-                    // 1인 1투표: 한 행만 남기고 중복 행은 삭제
                     const keep = mine[0];
                     const extraIds = mine.slice(1).map(r => r.id);
                     if (extraIds.length) {
-                        const { error: delErr } = await supabaseClient.from('match_votes').delete().in('id', extraIds);
-                        if (delErr) { alert('중복 투표 정리 실패: ' + delErr.message); return; }
+                        await supabaseClient.from('match_votes').delete().in('id', extraIds);
                     }
                     const votedAt = (latest.status === status) ? latest.voted_at : new Date().toISOString();
                     const { data: upd, error: updErr } = await supabaseClient.from('match_votes')
                         .update({ status: status, guest_type: assignedGuestType, voted_at: votedAt })
                         .eq('id', keep.id).select();
-                    if (updErr) { alert('투표 반영 실패: ' + updErr.message); return; }
-                    if (!upd || upd.length === 0) {
-                        // 수정 권한이 막혀 있으면 삭제 후 다시 등록
-                        const { data: del, error: dErr } = await supabaseClient.from('match_votes').delete().eq('id', keep.id).select();
-                        if (dErr || !del || del.length === 0) { alert('투표를 변경할 수 없습니다. (DB의 수정/삭제 권한 설정을 확인해주세요)'); return; }
-                        const { error: insErr } = await insertVote();
-                        if (insErr) { alert('투표 반영 실패: ' + insErr.message); return; }
+                    if (updErr || !upd || upd.length === 0) {
+                        await supabaseClient.from('match_votes').delete().eq('id', keep.id);
+                        await insertVote();
                     }
                 } else {
-                    const { error } = await insertVote();
-                    if (error) { alert('투표 반영 실패: ' + error.message); return; }
+                    await insertVote();
                 }
 
-                let msg = `투표가 반영되었습니다: [${status}]`;
-                if (status === '미정') msg += '\n\n※ 운동 6시간 전까지는 참석 (미정)으로, 이후에는 불참 (미정)으로 자동 변경됩니다.';
-                alert(msg);
+                alert(`투표가 반영되었습니다: [${status}]`);
                 await loadMatchVotes(matchId);
             } finally {
                 voting = false;
@@ -1294,25 +1278,10 @@
                 guest_skill: skill,
                 status: '참석',
                 voted_at: new Date().toISOString(),
-                registered_by: currentUser ? currentUser.name : '비회원'   // 신청자 (누구의 지인/용병인지)
+                registered_by: currentUser ? currentUser.name : '비회원'
             };
 
-            // DB에 없는 컬럼이 있으면 해당 컬럼만 빼고 다시 저장 (빠진 컬럼은 안내)
-            const dropped = [];
-            let error = null;
-            for (let tries = 0; tries < 6; tries++) {
-                ({ error } = await supabaseClient.from('match_votes').insert([row]));
-                const miss = error && (error.message || '').match(/'([a-z_]+)' column/i);
-                if (miss && miss[1] in row && !['match_id', 'guest_name', 'status'].includes(miss[1])) {
-                    dropped.push(miss[1]);
-                    delete row[miss[1]];
-                    continue;
-                }
-                break;
-            }
-            if (!error && dropped.length) {
-                alert(`⚠️ 신청은 저장됐지만 DB에 ${dropped.join(', ')} 컬럼이 없어 해당 정보는 저장되지 않았습니다.\nSupabase SQL Editor에서 컬럼을 추가해주세요.`);
-            }
+            const { error } = await supabaseClient.from('match_votes').insert([row]);
             if (error) { alert('신청 실패: ' + error.message); return; }
 
             alert(`[${type}] ${name} 님의 신청이 접수되었습니다!`);
@@ -1328,10 +1297,29 @@
             renderVoteLists();
         }
 
-        // 명단 한 줄 만들기
+        // 🛡️ 관리자 개별 투표/신청 기록 삭제 함수
+        async function deleteVoteRecord(voteId) {
+            if (!isStaff()) {
+                alert('⚠️ 운영진만 삭제할 수 있습니다.');
+                return;
+            }
+            if (!confirm('해당 투표 및 참가 신청 내역을 정말 삭제하시겠습니까?')) return;
+
+            const { error } = await supabaseClient.from('match_votes').delete().eq('id', voteId);
+            if (error) {
+                alert('삭제 실패: ' + error.message);
+                return;
+            }
+
+            alert('삭제되었습니다.');
+            if (currentMatchId) {
+                await loadMatchVotes(currentMatchId);
+            }
+        }
+
+        // 명단 한 줄 만들기 (관리자용 삭제 버튼 ✕ 포함)
         function voteLi(v, opts) {
             const staff = isStaff();
-            // 수정: 운영진이거나, 로그인한 사용자가 있고 게스트(용병/지인)가 아닌 정회원인 경우 전체 이름 표시
             const isRegularMember = currentUser && currentUser.role !== 'guest' && currentUser.role !== 'acquaintance';
             const showFullName = staff || isRegularMember;
 
@@ -1339,7 +1327,6 @@
             const isGuestish = v.guest_type === '용병' || v.guest_type === '지인' || v.guest_type === '가입전 참가';
             const birth = getBirthOf(v);
 
-            // 연락처 앞에 'OO년생' 표기: (90년생, 5678, 실력:중)
             const parts = [];
             if (birth && (isGuestish || currentUser)) parts.push(`${birth}년생`);
             if (isGuestish && v.guest_phone) parts.push(esc(staff ? v.guest_phone : getMaskedPhone(v.guest_phone)));
@@ -1350,13 +1337,15 @@
             const by = (isGuestish && v.registered_by) ? ` <span class="text-[10px] text-violet-400">· 신청: ${esc(staff ? v.registered_by : maskName(v.registered_by))}</span>` : '';
             const time = v.voted_at ? ` <span class="text-[10px] text-sky-400">${fmtVoteTime(v.voted_at)}</span>` : '';
 
-            return `<li>${opts.prefix} ${name} (${esc(v.guest_type || '정회원')})${tentative}${detail}${by}${time}</li>`;
+            // 💡 관리자인 경우 이름 제일 우측에 삭제(✕) 버튼 추가
+            const deleteBtn = staff ? ` <button onclick="deleteVoteRecord('${v.id}')" class="ml-1.5 px-1.5 py-0.5 bg-rose-600/80 hover:bg-rose-600 text-white rounded text-[10px] font-bold transition shrink-0" title="이 신청/투표 삭제">✕</button>` : '';
+
+            return `<li class="flex justify-between items-center py-0.5"><span>${opts.prefix} ${name} (${esc(v.guest_type || '정회원')})${tentative}${detail}${by}${time}</span>${deleteBtn}</li>`;
         }
 
         let lastLists = null;
         let teamSource = { people: [], label: '' };
 
-        // 1인 1투표: 같은 사람(이름+연락처+신청자)의 투표가 여러 개면 가장 마지막 투표만 인정
         function dedupeVotes(votes) {
             const map = new Map();
             (votes || []).forEach(v => {
@@ -1379,8 +1368,8 @@
                 if (v.status === '참석') {
                     (isGuestType(v) ? guestPool : regularPool).push({ v, tentative: false });
                 } else if (v.status === '미정') {
-                    if (afterCut) declined.push({ v, tentative: true });                 // 운동 6시간 이내 → 불참(미정)
-                    else (isGuestType(v) ? guestPool : regularPool).push({ v, tentative: true });  // 그 전까지 → 참석(미정)
+                    if (afterCut) declined.push({ v, tentative: true });
+                    else (isGuestType(v) ? guestPool : regularPool).push({ v, tentative: true });
                 } else if (v.status === '불참') {
                     declined.push({ v, tentative: false });
                 }
@@ -1389,7 +1378,6 @@
             const normal = regularPool.filter(e => e.v.guest_type !== '가입전 참가');
             const preJoin = regularPool.filter(e => e.v.guest_type === '가입전 참가');
             const ordered = [...normal, ...preJoin];
-            // 대기 순번은 투표/신청 시각 순서 (정원 마감 후 참석한 정회원도 대기 맨 뒤 순번)
             const waiting = [...ordered.slice(cap), ...guestPool]
                 .map((e, i) => ({ e, i }))
                 .sort((a, b) => (new Date(a.e.v.voted_at) - new Date(b.e.v.voted_at)) || (a.i - b.i))
@@ -1418,26 +1406,7 @@
                 ? L.declined.map(e => voteLi(e.v, { prefix: '-', tentative: e.tentative, declined: true })).join('')
                 : '<li>불참 투표가 없습니다.</li>';
         }
-// 관리자 개별 투표/신청 기록 삭제 함수
-async function deleteVoteRecord(voteId) {
-    if (!isStaff()) {
-        alert('⚠️ 운영진만 삭제할 수 있습니다.');
-        return;
-    }
-    if (!confirm('해당 투표 및 참가 신청 내역을 정말 삭제하시겠습니까?')) return;
 
-    const { error } = await supabaseClient.from('match_votes').delete().eq('id', voteId);
-    if (error) {
-        alert('삭제 실패: ' + error.message);
-        return;
-    }
-
-    alert('삭제되었습니다.');
-    if (currentMatchId) {
-        await loadMatchVotes(currentMatchId); // 명단 새로고침
-    }
-}
-        // 일정별 참석/대기 명단 텍스트 (팀짜기 화면에 붙여넣어 사용 가능)
         function buildRosterText(m, L) {
             const line = (e, i) => {
                 const v = e.v;
@@ -1457,7 +1426,7 @@ async function deleteVoteRecord(voteId) {
             const m = currentMatch();
             if (!m || !lastLists) return;
             navigator.clipboard.writeText(buildRosterText(m, lastLists)).then(() => {
-                alert('참석/대기 명단 텍스트가 복사되었습니다.\n팀짜기 화면의 "명단 붙여넣기"에 그대로 붙여넣을 수 있습니다.');
+                alert('참석/대기 명단 텍스트가 복사되었습니다.');
             });
         }
         function goTeamBuild() {
@@ -1488,7 +1457,6 @@ async function deleteVoteRecord(voteId) {
             if (!mem) return 9;
             return mem.role === 'admin' ? 0 : (mem.role === 'sub_admin' ? 1 : 9);
         }
-        // 운영진을 팀 맨 위로 (나머지 순서는 유지) → 맨 위가 팀장
         function sortTeam(key) {
             teamDataState[key] = teamDataState[key]
                 .map((v, i) => ({ v, i }))
@@ -1509,7 +1477,6 @@ async function deleteVoteRecord(voteId) {
             buildTeams(people);
         }
 
-        // 선택한 일정의 참석(+대기) 명단으로 팀 짜기
         async function runTeamFromMatch() {
             const id = parseInt(selVal('team-match-select'), 10);
             const m = matchesList.find(x => x.id === id);
@@ -1521,15 +1488,13 @@ async function deleteVoteRecord(voteId) {
             const entries = includeWait ? [...L.confirmed, ...L.waiting] : [...L.confirmed];
             const people = entries.map(e => e.v);
             if (people.length === 0) { alert('이 일정에는 팀을 짤 참석 인원이 없습니다.'); return; }
-            setTeamSource(people, `📌 팀짜기 기준: ${fmtShort(new Date(m.match_date))} ${m.match_type} · 총 ${people.length}명 (참석 ${L.confirmed.length}${includeWait ? ` + 대기 ${L.waiting.length}` : ''})`);
+            setTeamSource(people, `📌 팀짜기 기준: ${fmtShort(new Date(m.match_date))} ${m.match_type} · 총 ${people.length}명`);
         }
 
-        // ---------- 붙여넣기 명단/팀 편성 해석 (일정과 무관하게 사용) ----------
         const ROSTER_TYPES = ['가입전 참가', '정회원', '용병', '지인'];
         const ITEM_PREFIX = /^(\d+\s*[.)]|[-•·]|\[대기\s*\d+번\])\s*/;
         let pasteSeq = 0;
 
-        // 한 명 해석: 이름, (출생년도), * (팀장), 구분(용병/지인/…), 실력:상/중/하
         function parseOneEntry(text) {
             const nm = text.match(/^([^\s(\/*,，、]+)/);
             if (!nm) return null;
@@ -1544,7 +1509,6 @@ async function deleteVoteRecord(voteId) {
                 _leader: text.includes('*')
             };
         }
-        // 한 줄에서 여러 명 해석: "오한결(80)* / 박성복(81)", "오한결 박성복", "1. 홍길동(90) / 정회원" 모두 지원
         function parseEntries(raw) {
             const body = raw.replace(ITEM_PREFIX, '').trim();
             if (!body) return [];
@@ -1568,7 +1532,6 @@ async function deleteVoteRecord(voteId) {
         function parseRosterText(text, includeWait) {
             const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
 
-            // ① "⚽ 1팀 / 2팀 / 3팀" 형식의 팀 편성 텍스트
             if (lines.some(l => teamHeaderNo(l) !== null)) {
                 const teams = { 1: [], 2: [], 3: [] };
                 let cur = null, extra = false;
@@ -1585,7 +1548,6 @@ async function deleteVoteRecord(voteId) {
                 return { mode: 'teams', teams, extra };
             }
 
-            // ② 이름만 / 참석·대기 명단 (일정 화면에서 복사한 텍스트 포함)
             let section = 'att', sawHeader = false;
             const att = [], wait = [];
             lines.forEach(line => {
@@ -1594,7 +1556,7 @@ async function deleteVoteRecord(voteId) {
                     if (/불참/.test(line)) { section = 'out'; sawHeader = true; return; }
                     if (/대기/.test(line)) { section = 'wait'; sawHeader = true; return; }
                     if (/참석/.test(line)) { section = 'att'; sawHeader = true; return; }
-                    if (sawHeader) return;   // 헤더 이후의 알 수 없는 줄은 무시
+                    if (sawHeader) return;
                 }
                 if (section === 'out') return;
                 (section === 'wait' ? wait : att).push(...parseEntries(line));
@@ -1615,27 +1577,24 @@ async function deleteVoteRecord(voteId) {
                 [1, 2, 3].forEach(n => {
                     const arr = r.teams[n];
                     if (!arr.length) return;
-                    let li = arr.findIndex(p => p._leader);   // * 표시가 있으면 팀장, 없으면 첫 번째 사람
+                    let li = arr.findIndex(p => p._leader);
                     if (li < 0) li = 0;
                     arr.forEach((p, i) => { p.pinLeader = (i === li); delete p._leader; });
                     arr.unshift(arr.splice(li, 1)[0]);
                     teamDataState['team' + n] = arr;
                     flat.push(...arr);
                 });
-                if (flat.length === 0) { alert('팀 편성에서 인원을 찾지 못했습니다. 형식을 확인해주세요.'); return; }
-                if (r.extra) alert('현재 1~3팀까지만 지원합니다. 4팀 이후는 반영되지 않았습니다.');
-                teamSource = { people: flat, label: '' };
-                teamSource.label = `📌 팀짜기 기준: 붙여넣은 팀 편성 · 총 ${flat.length}명 (1팀 ${teamDataState.team1.length} / 2팀 ${teamDataState.team2.length} / 3팀 ${teamDataState.team3.length})`;
+                if (flat.length === 0) { alert('팀 편성에서 인원을 찾지 못했습니다.'); return; }
+                teamSource = { people: flat, label: `📌 팀짜기 기준: 붙여넣은 팀 편성 · 총 ${flat.length}명` };
                 document.getElementById('team-source-label').innerText = teamSource.label;
                 renderAllTeams();
                 return;
             }
 
-            if (r.people.length === 0) { alert('명단에서 인원을 찾지 못했습니다. 형식을 확인해주세요.'); return; }
-            setTeamSource(r.people, `📌 팀짜기 기준: 붙여넣은 명단 · 총 ${r.people.length}명${r.wait && includeWait ? ` (참석 ${r.att} + 대기 ${r.wait})` : ''} → 자동 편성`);
+            if (r.people.length === 0) { alert('명단에서 인원을 찾지 못했습니다.'); return; }
+            setTeamSource(r.people, `📌 팀짜기 기준: 붙여넣은 명단 · 총 ${r.people.length}명`);
         }
 
-        // 'AI 자동 팀 짜기 재실행' 버튼: 현재 기준 명단으로 다시 편성
         function runAutoBalance() {
             if (!teamSource.people.length) { alert('먼저 팀을 짤 일정을 선택하거나 명단을 붙여넣어 주세요.'); return; }
             buildTeams(teamSource.people);
@@ -1654,7 +1613,6 @@ async function deleteVoteRecord(voteId) {
                 teamDataState[best].push(v);
             };
 
-            // 운영진 우선: 1·2·3팀 팀장으로 한 명씩 배치 (4번째 이후 운영진은 균형 배치)
             const staff = attending.filter(isStaffVote).sort((a, b) => roleRank(a) - roleRank(b));
             const others = attending.filter(v => !isStaffVote(v)).sort((a, b) => scoreOf(b) - scoreOf(a));
             staff.forEach((v, i) => { if (i < 3) teamDataState[keys[i]].push(v); else pushGreedy(v); });
@@ -1675,7 +1633,7 @@ async function deleteVoteRecord(voteId) {
             const teamArr = teamDataState[teamKey];
 
             if (teamArr.length === 0) {
-                zone.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">인원 없음 (이곳으로 드래그 하세요)</p>`;
+                zone.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">인원 없음</p>`;
                 document.getElementById(scoreId).innerText = '0.0';
                 document.getElementById(avgId).innerText = '0.0';
                 return;
@@ -1709,13 +1667,12 @@ async function deleteVoteRecord(voteId) {
             document.getElementById(avgId).innerText = (totalScore / teamArr.length).toFixed(2);
         }
 
-        // 드래그 앤 드롭 (포인터 이벤트 방식: 마우스/터치 모두 동작)
         let dragState = null;
         function onDragDown(e) {
             const card = e.target.closest('.draggable-item');
             if (!card || e.target.closest('button')) return;
             if (e.pointerType === 'mouse' && e.button !== 0) return;
-            if (e.pointerType !== 'mouse' && !e.target.closest('.drag-handle')) return;   // 터치는 손잡이(⋮⋮)로만 드래그
+            if (e.pointerType !== 'mouse' && !e.target.closest('.drag-handle')) return;
             e.preventDefault();
             const rect = card.getBoundingClientRect();
             dragState = { id: card.dataset.id, from: card.dataset.team, card, ghost: null, over: null,
@@ -1763,11 +1720,10 @@ async function deleteVoteRecord(voteId) {
             const moved = teamDataState[from].splice(idx, 1)[0];
             delete moved.pinLeader;
             teamDataState[to].push(moved);
-            sortTeam(to);   // 운영진은 항상 맨 위(팀장)
+            sortTeam(to);
             renderAllTeams();
         }
 
-        // 카톡 복붙 명단: 팀장은 이름* , 모든 인원 이름 뒤 (출생년도) — 명단 생성 시에만 적용
         function kakaoName(m, idx) {
             const b = getBirthOf(m);
             return `${m.guest_name}${idx === 0 ? '*' : ''}${b ? `(${b})` : ''}`;

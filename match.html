@@ -139,13 +139,13 @@
                 </div>
 
                 <!-- 지인 / 용병 / 가입전 참가 신청 영역 (접기/펼치기) -->
-                <details class="bg-slate-950 rounded-xl border border-slate-800">
+                <details id="guest-section-details" class="bg-slate-950 rounded-xl border border-slate-800">
                     <summary class="p-4 flex justify-between items-center">
                         <h3 class="font-bold text-xs text-amber-400 uppercase tracking-wider"><i class="fa-solid fa-user-plus mr-1"></i> 지인 / 용병 / 가입전 참가 신청</h3>
                         <i class="fa-solid fa-chevron-down chev text-amber-400 text-xs"></i>
                     </summary>
                     <div class="px-4 pb-4 space-y-3">
-                        <p class="text-[11px] text-slate-400">※ 모든 항목은 필수 입력입니다.</p>
+                        <p id="guest-notice-text" class="text-[11px] text-slate-400">※ 모든 항목은 필수 입력입니다.</p>
                         <div class="grid grid-cols-1 md:grid-cols-5 gap-2">
                             <select id="guest-type" class="bg-slate-900 border border-slate-800 p-2 rounded-lg text-xs text-white">
                                 <option value="용병">용병</option>
@@ -465,12 +465,10 @@
             { name: '동백2동 행정복지센터 다목적구장', address: '용인시 기흥구 동백동', parking_info: '지하 주차장 2시간 무료 지원', notes: '풋살화(TF화) 전용' }
         ];
 
-        // 카톡 미리보기용 공유 주소 (Cloudflare Worker 주소를 넣으세요. 예: 'https://tenfc-share.내계정.workers.dev/')
-        // 비워두면 기존처럼 match.html 주소가 공유됩니다.
         const SHARE_BASE = 'https://tenfc-share.mr-hansoh.workers.dev/';
 
         let currentMatchId = null;
-        let allVotesByMatch = {};   // 달력의 참석 인원 표시용 (일정별 투표 캐시)
+        let allVotesByMatch = {};
         const titleFromLink = new URLSearchParams(window.location.search).get('id') !== null;
         let matchesList = [];
         let membersData = [];
@@ -525,7 +523,10 @@
             return normBirth(m.birth_year ?? m.birth ?? m.birthday ?? m.birth_date ?? m.birthyear);
         }
         function memberOfVote(v) {
-            if (v.guest_type === '용병' || v.guest_type === '지인' || v.guest_type === '가입전 참가') return null;
+            if (['용병', '지인', '가입전 참가', '정회원', '당근', '플랩', '오픈톡'].includes(v.guest_type) && v.registered_by) {
+                // 수동 등록된 정회원 등의 경우 체크
+            }
+            if (['용병', '지인', '가입전 참가'].includes(v.guest_type)) return null;
             return membersData.find(m => m.name === v.guest_name) || null;
         }
         function getBirthOf(v) {
@@ -565,8 +566,6 @@
             setInterval(tick, 1000);
         });
 
-        // 로그인 횟수 기록 (index.html의 recordLoginSession과 동일 규칙: 하루 1회만 +1, 마지막 접속시각은 매번 갱신)
-        // 한국시간(KST, UTC+9) 기준 날짜 문자열 (YYYY-MM-DD)
         function kstDateStr(dateLike) {
             return new Date(new Date(dateLike).getTime() + 9 * 3600 * 1000).toISOString().split('T')[0];
         }
@@ -575,7 +574,6 @@
             if (!user || !user.name || user.name === '테스트' || loginRecordedNames.has(user.name)) return;
             loginRecordedNames.add(user.name);
             try {
-                // 다른 페이지(통합 페이지)에서 이미 기록했을 수 있으므로 최신 값을 다시 읽어 계산
                 const { data: row } = await supabaseClient.from('members').select('login_count, last_login_at').eq('name', user.name).maybeSingle();
                 const lastLoginAt = row ? row.last_login_at : user.last_login_at;
                 let count = (row ? row.login_count : user.login_count) || 0;
@@ -604,7 +602,6 @@
                     const loggedName = localStorage.getItem('tenfc_logged_user');
                     if (loggedName) {
                         currentUser = membersData.find(m => m.name === loggedName);
-                        // 이미 로그인된 상태로 이 페이지를 연 경우에도 접속 기록 (탈퇴 회원 제외)
                         if (currentUser && !(currentUser.isWithdrawn || currentUser.is_withdrawn)) await recordLoginSession(currentUser);
                     }
                 }
@@ -626,8 +623,34 @@
                     document.getElementById('btn-logout').classList.add('hidden');
                 }
                 document.getElementById('btn-create').classList.toggle('hidden', !isStaff());
+                updateGuestTypeOptions();
             } catch (err) {
                 console.error('회원 정보 조회 중 예외 발생:', err);
+            }
+        }
+
+        // 운영진 여부에 따라 게스트 신청 폼의 '구분' 옵션 동적 갱신
+        function updateGuestTypeOptions() {
+            const selectEl = document.getElementById('guest-type');
+            if (!selectEl) return;
+            const staff = isStaff();
+            
+            if (staff) {
+                selectEl.innerHTML = `
+                    <option value="용병">용병</option>
+                    <option value="지인">지인</option>
+                    <option value="가입전 참가">가입전 참가</option>
+                    <option value="정회원">정회원 (운영진 전용)</option>
+                    <option value="당근">당근 (운영진 전용)</option>
+                    <option value="플랩">플랩 (운영진 전용)</option>
+                    <option value="오픈톡">오픈톡 (운영진 전용)</option>
+                `;
+            } else {
+                selectEl.innerHTML = `
+                    <option value="용병">용병</option>
+                    <option value="지인">지인</option>
+                    <option value="가입전 참가">가입전 참가</option>
+                `;
             }
         }
 
@@ -666,7 +689,7 @@
             }
 
             localStorage.setItem('tenfc_logged_user', user.name);
-            await recordLoginSession(user);   // 로그인 횟수 반영 (통합 페이지와 동일 컬럼)
+            await recordLoginSession(user);
             if (window.location.search.includes('view=')) {
                 const url = new URL(window.location.href);
                 url.searchParams.delete('view');
@@ -873,7 +896,6 @@
             }).join('');
         }
 
-        // 공유 링크(?id=)로 접속한 경우 브라우저 탭 제목을 '일시 + 구장명 매치'로 변경
         function setMatchTitle(m) {
             if (!titleFromLink || !m) return;
             const d = new Date(m.match_date);
@@ -917,12 +939,35 @@
             document.getElementById('btn-copy-roster').classList.toggle('hidden', !isStaff());
             document.getElementById('btn-goto-team').classList.toggle('hidden', !(currentUser && currentUser.role === 'admin'));
 
+            // 운동 시간 6시간 전인 경우 용병 신청 섹션 제어
+            checkGuestSectionAvailability(match);
+
             lastAfterCut = null;
             lastClosed = null;
             tick();
             await loadMatchVotes(matchId);
 
             if (scroll) document.getElementById('match-detail-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // 운동 6시간 전 용병/지인 등 신청 부분 마감 처리
+        function checkGuestSectionAvailability(match) {
+            const guestDetails = document.getElementById('guest-section-details');
+            const noticeText = document.getElementById('guest-notice-text');
+            if (!match || !guestDetails) return;
+
+            const afterCut = isAfterCutoff(match);
+            const staff = isStaff();
+
+            if (afterCut && !staff) {
+                // 일반 사용자의 경우 6시간 남았거나 지났으면 신청 불가 처리
+                guestDetails.open = false;
+                guestDetails.style.opacity = '0.5';
+                noticeText.innerHTML = '<span class="text-rose-400 font-bold">⚠️ 운동 시작 6시간 전부터는 일반 용병/지인 신청이 마감되었습니다. (운영진은 수동 등록 가능)</span>';
+            } else {
+                guestDetails.style.opacity = '1';
+                noticeText.innerHTML = staff ? '<span class="text-emerald-400">💡 [운영진 모드] 필수값 없이 수동 등록 및 정회원/당근/플랩/오픈톡 선택이 가능합니다.</span>' : '※ 모든 항목은 필수 입력입니다.';
+            }
         }
 
         function copyShareLink() {
@@ -961,7 +1006,7 @@
 
             if (lastClosed !== closed) {
                 lastClosed = closed;
-                document.getElementById('vote-btn-maybe').disabled = closed;   // 마감 후에는 미정 선택 불가 (미정 인원만 참석/불참으로 변경 가능)
+                document.getElementById('vote-btn-maybe').disabled = closed;
                 document.getElementById('vote-btn-attend').disabled = false;
                 document.getElementById('vote-btn-absent').disabled = false;
                 renderSchedule();
@@ -970,7 +1015,10 @@
             if (lastAfterCut !== afterCut) {
                 const first = lastAfterCut === null;
                 lastAfterCut = afterCut;
-                if (!first) renderVoteLists();
+                if (!first) {
+                    renderVoteLists();
+                    checkGuestSectionAvailability(m);
+                }
             }
         }
 
@@ -1277,7 +1325,6 @@
 
                 const mine = (rows || []).filter(r => !r.guest_phone && !r.registered_by);
 
-                // 투표 마감 후에는 '미정'으로 투표한 사람만, 운동 시작 6시간 전까지 참석/불참으로 변경 가능
                 if (isClosed(m)) {
                     const cur = mine.length ? mine[mine.length - 1].status : null;
                     if (cur !== '미정' || status === '미정') {
@@ -1321,25 +1368,37 @@
         async function applyGuest() {
             const m = currentMatch();
             if (!m) return;
+            const staff = isStaff();
+
+            // 운동 시작 6시간 전인 경우 일반 사용자 신청 차단
+            if (isAfterCutoff(m) && !staff) {
+                alert('⚠️ 운동 시작 6시간 전부터는 일반 용병/지인 신청이 마감되었습니다.');
+                return;
+            }
+
             const type = document.getElementById('guest-type').value;
             const name = document.getElementById('guest-name').value.trim();
             const birth = document.getElementById('guest-birth').value.trim();
             const phone = document.getElementById('guest-phone').value.trim();
             const skill = document.getElementById('guest-skill').value;
 
-            // 모든 항목 필수 입력
-            if (!name) { alert('성명을 입력해주세요.'); document.getElementById('guest-name').focus(); return; }
-            if (!/^(\d{2}|(19|20)\d{2})$/.test(birth)) { alert('출생년도를 입력해주세요. (예: 98 또는 1998)'); document.getElementById('guest-birth').focus(); return; }
-            if (!/^\d{10,11}$/.test(phone.replace(/[^0-9]/g, ''))) { alert('연락처를 정확히 입력해주세요. (예: 010-1234-5678)'); document.getElementById('guest-phone').focus(); return; }
-            if (!skill) { alert('실력을 선택해주세요.'); document.getElementById('guest-skill').focus(); return; }
+            // 운영진 수동 등록인 경우 필수값 체크 건너뜀
+            if (!staff) {
+                if (!name) { alert('성명을 입력해주세요.'); document.getElementById('guest-name').focus(); return; }
+                if (!/^(\d{2}|(19|20)\d{2})$/.test(birth)) { alert('출생년도를 입력해주세요. (예: 98 또는 1998)'); document.getElementById('guest-birth').focus(); return; }
+                if (!/^\d{10,11}$/.test(phone.replace(/[^0-9]/g, ''))) { alert('연락처를 정확히 입력해주세요. (예: 010-1234-5678)'); document.getElementById('guest-phone').focus(); return; }
+                if (!skill) { alert('실력을 선택해주세요.'); document.getElementById('guest-skill').focus(); return; }
+            } else {
+                if (!name) { alert('성명을 입력해주세요.'); document.getElementById('guest-name').focus(); return; }
+            }
 
             const row = {
                 match_id: currentMatchId,
                 guest_type: type,
                 guest_name: name,
-                guest_birth: birth,
-                guest_phone: phone,
-                guest_skill: skill,
+                guest_birth: birth || '미입력',
+                guest_phone: phone || '미입력',
+                guest_skill: skill || '중',
                 status: '참석',
                 voted_at: new Date().toISOString(),
                 registered_by: currentUser ? currentUser.name : '비회원'
@@ -1361,7 +1420,7 @@
             currentMatchVotes = data || [];
             allVotesByMatch[matchId] = currentMatchVotes;
             renderVoteLists();
-            renderSchedule();   // 달력/목록의 참석 인원 갱신
+            renderSchedule();
         }
 
         async function deleteVoteRecord(voteId) {
@@ -1383,7 +1442,6 @@
             }
         }
 
-        // 🔄 관리자 전용: 대기자 ⇄ 참석 명단 강제 토글 이동 함수
         async function forceToggleVote(voteId, currentStatus, isCurrentlyWaiting) {
             if (!isStaff()) {
                 alert('⚠️ 운영진만 명단을 이동할 수 있습니다.');
@@ -1393,10 +1451,8 @@
             try {
                 let updatePayload = {};
                 if (isCurrentlyWaiting) {
-                    // 대기자 -> 참석 명단으로 강제 이동
                     updatePayload = { status: '참석', guest_type: '정회원' };
                 } else {
-                    // 참석 명단 -> 대기자 명단으로 강제 이동 (guest_type을 대기자로 전환하여 대기열로 빠지게 함)
                     updatePayload = { status: '참석', guest_type: '대기자' };
                 }
 
@@ -1417,20 +1473,19 @@
             const showFullName = staff || isRegularMember;
 
             const name = esc(showFullName ? v.guest_name : maskName(v.guest_name));
-            const isGuestish = v.guest_type === '용병' || v.guest_type === '지인' || v.guest_type === '가입전 참가' || v.guest_type === '대기자';
+            const isGuestish = ['용병', '지인', '가입전 참가', '대기자', '정회원', '당근', '플랩', '오픈톡'].includes(v.guest_type);
             const birth = getBirthOf(v);
 
             const parts = [];
-            if (birth) parts.push(`${birth}년생`);   // 비회원 조회 시에도 출생년도 표시
-            if (isGuestish && v.guest_phone) parts.push(esc(staff ? v.guest_phone : getMaskedPhone(v.guest_phone)));
-            if (isGuestish && v.guest_phone && v.guest_skill) parts.push(`실력:${esc(v.guest_skill || '중')}`);
+            if (birth && birth !== '미입력') parts.push(`${birth}년생`);
+            if (isGuestish && v.guest_phone && v.guest_phone !== '미입력') parts.push(esc(staff ? v.guest_phone : getMaskedPhone(v.guest_phone)));
+            if (isGuestish && v.guest_skill) parts.push(`실력:${esc(v.guest_skill || '중')}`);
             const detail = parts.length ? ` <span class="text-[10px] text-amber-400">(${parts.join(', ')})</span>` : '';
 
             const tentative = opts.tentative ? ` <span class="text-[10px] font-bold text-amber-400">${opts.declined ? '(불참·미정)' : '(미정)'}</span>` : '';
-            const by = (v.registered_by && v.registered_by !== '비회원') ? ` <span class="text-[10px] text-violet-400">· 신청: ${esc(showFullName ? v.registered_by : maskName(v.registered_by))}</span>` : '';
+            const by = (v.registered_by && v.registered_by !== '비회원') ? ` <span class="text-[10px] text-violet-400">· 등록: ${esc(showFullName ? v.registered_by : maskName(v.registered_by))}</span>` : '';
             const time = v.voted_at ? ` <span class="text-[10px] text-sky-400">${fmtVoteTime(v.voted_at)}</span>` : '';
 
-            // 관리자 전용 토글 버튼 및 삭제 버튼 (확정 명단에는 '대기자로' 버튼, 대기자 명단에는 '참석시키기' 버튼 제공)
             let adminButtons = '';
             if (staff) {
                 if (opts.isWaitingList) {
@@ -1460,7 +1515,8 @@
         function computeLists(m, votes) {
             const cap = capOf(m);
             const afterCut = isAfterCutoff(m);
-            const isGuestType = v => v.guest_type === '용병' || v.guest_type === '지인' || v.guest_type === '대기자';
+            // 일반 용병, 지인, 대기자 분류
+            const isGuestType = v => ['용병', '지인', '대기자'].includes(v.guest_type);
 
             const regularPool = [];
             const guestPool = [];
@@ -1512,12 +1568,12 @@
             const line = (e, i) => {
                 const v = e.v;
                 const b = getBirthOf(v);
-                const isGuestish = ['용병', '지인', '가입전 참가', '대기자'].includes(v.guest_type) || !!v.guest_phone || !!v.registered_by;
-                const parts = [`${i + 1}. ${v.guest_name}${b ? `(${b})` : ''}`, v.guest_type || '정회원'];
+                const isGuestish = ['용병', '지인', '가입전 참가', '대기자', '정회원', '당근', '플랩', '오픈톡'].includes(v.guest_type) || !!v.guest_phone || !!v.registered_by;
+                const parts = [`${i + 1}. ${v.guest_name}${b && b !== '미입력' ? `(${b})` : ''}`, v.guest_type || '정회원'];
                 if (isGuestish) parts.push(`실력:${v.guest_skill || '중'}`);
                 if (e.tentative) parts.push('미정');
-                if (v.guest_phone) parts.push(`연락처:${v.guest_phone}`);          // 연락처 전체
-                if (v.registered_by) parts.push(`신청:${v.registered_by}`);        // 신청자
+                if (v.guest_phone && v.guest_phone !== '미입력') parts.push(`연락처:${v.guest_phone}`);
+                if (v.registered_by) parts.push(`등록:${v.registered_by}`);
                 return parts.join(' / ');
             };
             return `📅 ${fmtShort(new Date(m.match_date))} ${m.match_type} (정원 ${L.cap}명)\n\n` +
@@ -1539,14 +1595,14 @@
         }
 
         function scoreOf(v) {
-            const isGuestish = v.guest_type === '용병' || v.guest_type === '지인' || v.guest_type === '가입전 참가';
+            const isGuestish = ['용병', '지인', '가입전 참가', '당근', '플랩', '오픈톡'].includes(v.guest_type);
             if (isGuestish) return guestSkillScore[v.guest_skill || '중'] ?? scoreMap['C'];
             const mem = memberOfVote(v);
             const rating = mem ? (mem.rating || 'C') : 'C';
             return scoreMap[rating] !== undefined ? scoreMap[rating] : 6.5;
         }
         function ratingOf(v) {
-            const isGuestish = v.guest_type === '용병' || v.guest_type === '지인' || v.guest_type === '가입전 참가';
+            const isGuestish = ['용병', '지인', '가입전 참가', '당근', '플랩', '오픈톡'].includes(v.guest_type);
             if (isGuestish) { const sk = v.guest_skill || '중'; return `${sk}(${skillGrade[sk] || 'C'})`; }
             const mem = memberOfVote(v);
             return mem ? (mem.rating || 'C') : 'C';
@@ -1590,7 +1646,7 @@
             setTeamSource(people, `📌 팀짜기 기준: ${fmtShort(new Date(m.match_date))} ${m.match_type} · 총 ${people.length}명`);
         }
 
-        const ROSTER_TYPES = ['가입전 참가', '정회원', '용병', '지인'];
+        const ROSTER_TYPES = ['가입전 참가', '정회원', '용병', '지인', '당근', '플랩', '오픈톡'];
         const ITEM_PREFIX = /^(\d+\s*[.)]|[-•·]|\[대기\s*\d+번\])\s*/;
         let pasteSeq = 0;
 
@@ -1611,7 +1667,7 @@
         function parseEntries(raw) {
             const body = raw.replace(ITEM_PREFIX, '').trim();
             if (!body) return [];
-            if (/(정회원|용병|지인|가입전 참가|실력)/.test(body)) { const p = parseOneEntry(body); return p ? [p] : []; }
+            if (/(정회원|용병|지인|가입전 참가|당근|플랩|오픈톡|실력)/.test(body)) { const p = parseOneEntry(body); return p ? [p] : []; }
             const out = [];
             body.split(/[\/,，、\s]+/).filter(Boolean).forEach(tok => {
                 const last = out[out.length - 1];
@@ -1744,7 +1800,7 @@
                 const score = scoreOf(member);
                 totalScore += score;
                 const b = getBirthOf(member);
-                const birthStr = b ? `(${b})` : '';
+                const birthStr = b && b !== '미입력' ? `(${b})` : '';
                 const leader = idx === 0 ? '<span class="text-[10px] px-1.5 py-0.5 bg-amber-500/20 text-amber-300 rounded font-bold mr-1">👑 팀장</span>' : '';
                 const moveBtns = ['team1', 'team2', 'team3'].filter(k => k !== teamKey).map(k =>
                     `<button type="button" onclick="moveMember('${member.id}', '${teamKey}', '${k}')" class="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-[10px] text-slate-300 border border-slate-700">→${k.replace('team', '')}팀</button>`
@@ -1825,7 +1881,7 @@
 
         function kakaoName(m, idx) {
             const b = getBirthOf(m);
-            return `${m.guest_name}${idx === 0 ? '*' : ''}${b ? `(${b})` : ''}`;
+            return `${m.guest_name}${idx === 0 ? '*' : ''}${b && b !== '미입력' ? `(${b})` : ''}`;
         }
         function updateKakaoPreview() {
             const block = (label, arr) => `⚽ ${label}\n` + (arr.length > 0 ? arr.map((m, i) => kakaoName(m, i)).join(' / ') : '없음');

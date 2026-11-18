@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 운동 일정 & 투표 시스템</title>
+    <title>TenFC 매치 & 투표 시스템</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Supabase JS SDK -->
@@ -34,7 +34,7 @@
         <!-- 헤더 섹션 -->
         <header class="flex flex-col md:flex-row justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-xl gap-4">
             <div>
-                <h1 class="text-2xl font-black text-emerald-400">⚽ TenFC Match Hub <span class="text-xs text-slate-500 font-normal">v2.26</span></h1>
+                <h1 class="text-2xl font-black text-emerald-400">⚽ TenFC Match Hub</h1>
                 <p class="text-xs text-slate-400">접속자: <span id="current-user-badge" class="text-emerald-400 font-bold">비회원 (방문자)</span></p>
             </div>
             <div class="flex gap-2 flex-wrap">
@@ -463,6 +463,10 @@
             { name: '동백2동 행정복지센터 다목적구장', address: '용인시 기흥구 동백동', parking_info: '지하 주차장 2시간 무료 지원', notes: '풋살화(TF화) 전용' }
         ];
 
+        // 카톡 미리보기용 공유 주소 (Cloudflare Worker 주소를 넣으세요. 예: 'https://tenfc-share.내계정.workers.dev/')
+        // 비워두면 기존처럼 match.html 주소가 공유됩니다.
+        const SHARE_BASE = 'https://tenfc-share.mr-hansoh.workers.dev/';
+
         let currentMatchId = null;
         let allVotesByMatch = {};   // 달력의 참석 인원 표시용 (일정별 투표 캐시)
         const titleFromLink = new URLSearchParams(window.location.search).get('id') !== null;
@@ -875,7 +879,7 @@
             }
             document.getElementById('venue-cost').innerText = `비용: ${match.cost_type === '무료' ? '무료' : (match.cost_amount || '유료')}`;
 
-            document.getElementById('share-link-input').value = `${window.location.origin}${window.location.pathname}?id=${match.id}`;
+            document.getElementById('share-link-input').value = SHARE_BASE ? `${SHARE_BASE}?id=${match.id}` : `${window.location.origin}${window.location.pathname}?id=${match.id}`;
             document.getElementById('btn-edit-match').classList.toggle('hidden', !isStaff());
             document.getElementById('btn-copy-roster').classList.toggle('hidden', !isStaff());
             document.getElementById('btn-goto-team').classList.toggle('hidden', !(currentUser && currentUser.role === 'admin'));
@@ -1371,7 +1375,7 @@
             const detail = parts.length ? ` <span class="text-[10px] text-amber-400">(${parts.join(', ')})</span>` : '';
 
             const tentative = opts.tentative ? ` <span class="text-[10px] font-bold text-amber-400">${opts.declined ? '(불참·미정)' : '(미정)'}</span>` : '';
-            const by = (v.registered_by && v.registered_by !== '비회원') ? ` <span class="text-[10px] text-violet-400">· 신청: ${esc(staff ? v.registered_by : maskName(v.registered_by))}</span>` : '';
+            const by = (v.registered_by && v.registered_by !== '비회원') ? ` <span class="text-[10px] text-violet-400">· 신청: ${esc(showFullName ? v.registered_by : maskName(v.registered_by))}</span>` : '';
             const time = v.voted_at ? ` <span class="text-[10px] text-sky-400">${fmtVoteTime(v.voted_at)}</span>` : '';
 
             // 관리자 전용 토글 버튼 및 삭제 버튼 (확정 명단에는 '대기자로' 버튼, 대기자 명단에는 '참석시키기' 버튼 제공)

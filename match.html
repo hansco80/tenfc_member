@@ -188,9 +188,11 @@
                     </ul>
                 </div>
 
+                <!-- 운영진 전용 버튼 그룹 -->
                 <div class="flex flex-wrap gap-2">
                     <button id="btn-copy-roster" onclick="copyRosterText()" class="hidden px-4 py-2 bg-slate-800 hover:bg-slate-700 text-sky-300 font-bold rounded-xl text-xs transition border border-slate-700">📋 참석·대기 명단 텍스트 복사</button>
                     <button id="btn-goto-team" onclick="goTeamBuild()" class="hidden px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs transition shadow-md">⚽ 이 일정으로 팀짜기</button>
+                    <button id="btn-copy-promo" onclick="copyPromoText()" class="hidden px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-md">📢 오픈톡방 홍보용 맞춤글</button>
                 </div>
 
                 <!-- 비회원 안내 및 당근 카페 링크 -->
@@ -523,9 +525,6 @@
             return normBirth(m.birth_year ?? m.birth ?? m.birthday ?? m.birth_date ?? m.birthyear);
         }
         function memberOfVote(v) {
-            if (['용병', '지인', '가입전 참가', '정회원', '당근', '플랩', '오픈톡'].includes(v.guest_type) && v.registered_by) {
-                // 수동 등록된 정회원 등의 경우 체크
-            }
             if (['용병', '지인', '가입전 참가'].includes(v.guest_type)) return null;
             return membersData.find(m => m.name === v.guest_name) || null;
         }
@@ -937,9 +936,9 @@
             document.getElementById('share-link-input').value = SHARE_BASE ? `${SHARE_BASE}?id=${match.id}` : `${window.location.origin}${window.location.pathname}?id=${match.id}`;
             document.getElementById('btn-edit-match').classList.toggle('hidden', !isStaff());
             document.getElementById('btn-copy-roster').classList.toggle('hidden', !isStaff());
+            document.getElementById('btn-copy-promo').classList.toggle('hidden', !isStaff());
             document.getElementById('btn-goto-team').classList.toggle('hidden', !(currentUser && currentUser.role === 'admin'));
 
-            // 운동 시간 6시간 전인 경우 용병 신청 섹션 제어
             checkGuestSectionAvailability(match);
 
             lastAfterCut = null;
@@ -960,7 +959,6 @@
             const staff = isStaff();
 
             if (afterCut && !staff) {
-                // 일반 사용자의 경우 6시간 남았거나 지났으면 신청 불가 처리
                 guestDetails.open = false;
                 guestDetails.style.opacity = '0.5';
                 noticeText.innerHTML = '<span class="text-rose-400 font-bold">⚠️ 운동 시작 6시간 전부터는 일반 용병/지인 신청이 마감되었습니다. (운영진은 수동 등록 가능)</span>';
@@ -1382,7 +1380,7 @@
             const phone = document.getElementById('guest-phone').value.trim();
             const skill = document.getElementById('guest-skill').value;
 
-            // 운영진 수동 등록인 경우 필수값 체크 건너뜀
+            // 운영진 수동 등록인 경우 필수값 체크 건너뜀 (성명만 확인)
             if (!staff) {
                 if (!name) { alert('성명을 입력해주세요.'); document.getElementById('guest-name').focus(); return; }
                 if (!/^(\d{2}|(19|20)\d{2})$/.test(birth)) { alert('출생년도를 입력해주세요. (예: 98 또는 1998)'); document.getElementById('guest-birth').focus(); return; }
@@ -1515,7 +1513,6 @@
         function computeLists(m, votes) {
             const cap = capOf(m);
             const afterCut = isAfterCutoff(m);
-            // 일반 용병, 지인, 대기자 분류
             const isGuestType = v => ['용병', '지인', '대기자'].includes(v.guest_type);
 
             const regularPool = [];
@@ -1585,6 +1582,41 @@
             if (!m || !lastLists) return;
             navigator.clipboard.writeText(buildRosterText(m, lastLists)).then(() => {
                 alert('참석/대기 명단 텍스트가 복사되었습니다.');
+            });
+        }
+        function copyPromoText() {
+            if (!isStaff()) {
+                alert('⚠️ 운영진만 사용할 수 있습니다.');
+                return;
+            }
+            const m = currentMatch();
+            if (!m) return;
+
+            const dateStr = fmtMDW(new Date(m.match_date));
+            const venueName = m.venues ? m.venues.name : '구장 미정';
+            const venueAddress = m.venues && m.venues.address ? m.venues.address : '정보 없음';
+            const venueParking = m.venues && m.venues.parking_info ? m.venues.parking_info : '정보 없음';
+            const costStr = m.cost_type === '무료' ? '무료' : (m.cost_amount || '유료');
+            const shareUrl = SHARE_BASE ? `${SHARE_BASE}?id=${m.id}` : `${window.location.origin}${window.location.pathname}?id=${m.id}`;
+
+            const promoText = `<용병모집>
+일시 : ${dateStr}
+장소 : ${venueName}
+주소 : ${venueAddress}
+주차 : ${venueParking}
+팀명 : TenFC
+방식 : 6:6:6 3파전
+평균 실력 : 플랩기준 아마 3~4 (평균 30대 중후반)
+비용 : ${costStr}
+양면조끼 (그린/레드)  있으면 지참해주세요
+
+운동 참여 간편 신청 URL:
+${shareUrl}
+
+위의 URL로 신청 후 1:1톡으로 신청자명 톡 한번 부탁드립니다.`;
+
+            navigator.clipboard.writeText(promoText).then(() => {
+                alert('오픈톡방 홍보용 맞춤글이 클립보드에 복사되었습니다!');
             });
         }
         function goTeamBuild() {

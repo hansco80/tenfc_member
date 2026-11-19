@@ -433,6 +433,58 @@
         </div>
     </div>
 
+    <!-- 운영진용 대기자 정보 수정 모달 -->
+    <div id="waiting-edit-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-slate-900 w-full max-w-sm p-6 rounded-2xl border border-slate-800 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-bold text-white">✏️ 대기자 정보 수정</h3>
+                <button type="button" onclick="closeWaitingEditModal()" class="text-slate-400 hover:text-white text-sm">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form onsubmit="saveWaitingEdit(event)" class="space-y-3 text-xs">
+                <input type="hidden" id="edit-wait-id">
+                <div>
+                    <label class="block text-slate-400 mb-1">성명</label>
+                    <input type="text" id="edit-wait-name" required class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">구분</label>
+                    <select id="edit-wait-type" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white">
+                        <option value="용병">용병</option>
+                        <option value="지인">지인</option>
+                        <option value="가입전 참가">가입전 참가</option>
+                        <option value="대기자">대기자</option>
+                        <option value="정회원">정회원</option>
+                        <option value="당근">당근</option>
+                        <option value="플랩">플랩</option>
+                        <option value="오픈톡">오픈톡</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">출생년도 (예: 98, 1998, 미입력)</label>
+                    <input type="text" id="edit-wait-birth" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">연락처 (예: 010-1234-5678, 미입력)</label>
+                    <input type="text" id="edit-wait-phone" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">실력</label>
+                    <select id="edit-wait-skill" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white">
+                        <option value="하">하 (아마3↓)</option>
+                        <option value="중">중 (아마4~5)</option>
+                        <option value="상">상 (아마5↑)</option>
+                    </select>
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closeWaitingEditModal()" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg">취소</button>
+                    <button type="submit" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- 자바스크립트 로직 -->
     <script>
         const SUPABASE_URL = 'https://bxuiwomkpgqsbyaagmlp.supabase.co';
@@ -484,7 +536,6 @@
         let viewMonth = new Date().getMonth();
         let lastAfterCut = null;
         let lastClosed = null;
-        let dragging = null;
 
         let teamDataState = { team1: [], team2: [], team3: [] };
 
@@ -633,7 +684,7 @@
             const selectEl = document.getElementById('guest-type');
             if (!selectEl) return;
             const staff = isStaff();
-            
+
             if (staff) {
                 selectEl.innerHTML = `
                     <option value="용병">용병</option>
@@ -1465,12 +1516,83 @@
             }
         }
 
+        function openWaitingEditModal(voteId) {
+            if (!isStaff()) {
+                alert('⚠️ 운영진만 대기자 정보를 수정할 수 있습니다.');
+                return;
+            }
+            const target = currentMatchVotes.find(item => String(item.id) === String(voteId));
+            if (!target) {
+                alert('수정할 대기자 정보를 찾지 못했습니다.');
+                return;
+            }
+
+            document.getElementById('edit-wait-id').value = target.id;
+            document.getElementById('edit-wait-name').value = target.guest_name || '';
+            document.getElementById('edit-wait-type').value = target.guest_type || '용병';
+            document.getElementById('edit-wait-birth').value = target.guest_birth || '';
+            document.getElementById('edit-wait-phone').value = target.guest_phone || '';
+            document.getElementById('edit-wait-skill').value = ['상', '중', '하'].includes(target.guest_skill) ? target.guest_skill : '중';
+
+            document.getElementById('waiting-edit-modal').classList.remove('hidden');
+        }
+
+        function closeWaitingEditModal() {
+            document.getElementById('waiting-edit-modal').classList.add('hidden');
+        }
+
+        async function saveWaitingEdit(e) {
+            e.preventDefault();
+            if (!isStaff()) {
+                alert('⚠️ 운영진만 대기자 정보를 수정할 수 있습니다.');
+                return;
+            }
+
+            const voteId = document.getElementById('edit-wait-id').value;
+            const guestName = document.getElementById('edit-wait-name').value.trim();
+            const guestType = document.getElementById('edit-wait-type').value;
+            const guestBirth = document.getElementById('edit-wait-birth').value.trim() || '미입력';
+            const guestPhone = document.getElementById('edit-wait-phone').value.trim() || '미입력';
+            const guestSkill = document.getElementById('edit-wait-skill').value;
+
+            if (!guestName) {
+                alert('성명을 입력해주세요.');
+                return;
+            }
+
+            const { error } = await supabaseClient
+                .from('match_votes')
+                .update({
+                    guest_name: guestName,
+                    guest_type: guestType,
+                    guest_birth: guestBirth,
+                    guest_phone: guestPhone,
+                    guest_skill: guestSkill
+                })
+                .eq('id', voteId);
+
+            if (error) {
+                alert('대기자 정보 수정 실패: ' + error.message);
+                return;
+            }
+
+            closeWaitingEditModal();
+            alert('대기자 정보가 수정되었습니다.');
+            if (currentMatchId) {
+                await loadMatchVotes(currentMatchId);
+            }
+        }
+
         function voteLi(v, opts) {
             const staff = isStaff();
             const isRegularMember = currentUser && currentUser.role !== 'guest' && currentUser.role !== 'acquaintance';
             const showFullName = staff || isRegularMember;
 
             const name = esc(showFullName ? v.guest_name : maskName(v.guest_name));
+            const nameHtml = (staff && opts.isWaitingList)
+                ? `<button type="button" onclick="openWaitingEditModal('${esc(v.id)}')" class="underline decoration-amber-400/70 underline-offset-2 hover:text-amber-300 font-semibold text-left" title="클릭하여 대기자 정보 수정">${name}</button>`
+                : name;
+
             const isGuestish = ['용병', '지인', '가입전 참가', '대기자', '정회원', '당근', '플랩', '오픈톡'].includes(v.guest_type);
             const birth = getBirthOf(v);
 
@@ -1494,7 +1616,7 @@
                 adminButtons += ` <button onclick="deleteVoteRecord('${v.id}')" class="ml-1 px-1.5 py-0.5 bg-rose-600/80 hover:bg-rose-600 text-white rounded text-[10px] font-bold transition shrink-0" title="삭제">✕</button>`;
             }
 
-            return `<li class="flex justify-between items-center py-0.5"><span>${opts.prefix} ${name} (${esc(v.guest_type || '정회원')})${tentative}${detail}${by}${time}</span><div class="flex items-center shrink-0">${adminButtons}</div></li>`;
+            return `<li class="flex justify-between items-center py-0.5"><span>${opts.prefix} ${nameHtml} (${esc(v.guest_type || '정회원')})${tentative}${detail}${by}${time}</span><div class="flex items-center shrink-0">${adminButtons}</div></li>`;
         }
 
         let lastLists = null;
@@ -1609,7 +1731,6 @@
 평균 실력 : 플랩기준 아마 3~4 (평균 30대 중후반)
 비용 : ${costStr}
 양면조끼 (그린/레드)  있으면 지참해주세요
-주차장 넓고, 최근 잔디 교체, 조명 교체하여 쾌적한 구장입니다.
 
 운동 참여 간편 신청 URL:
 ${shareUrl}

@@ -211,7 +211,7 @@
                 <div class="space-y-3">
                     <div>
                         <h2 class="text-lg font-bold text-white"><i class="fa-solid fa-wand-magic-sparkles text-amber-400 mr-2"></i>주관리자 팀짜기 모듈 (드래그 앤 드롭 지원)</h2>
-                        <p class="text-xs text-slate-400">팀을 짤 일정을 고르거나 명단 텍스트를 붙여넣어 1·2·3팀을 편성합니다. 운영진이 각 팀 맨 위(팀장)에 배치되며, 카드를 끌어다 놓거나 [→팀] 버튼으로 옮길 수 있습니다.</p>
+                        <p class="text-xs text-slate-400">팀을 짤 일정을 고르거나 명단 텍스트를 붙여넣어 편성합니다. 12명 이하일 때는 자동으로 2팀, 13명 이상일 때는 3팀으로 구성되며 카톡 복사 시 팀장 다음 연장자 순으로 정렬됩니다.</p>
                     </div>
 
                     <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
@@ -241,8 +241,8 @@
                     </div>
                 </div>
 
-                <!-- 3개 팀 드래그앤드롭 존 및 실시간 점수 표시 -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- 팀 드래그앤드롭 존 및 실시간 점수 표시 -->
+                <div id="teams-grid-wrapper" class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <!-- 1팀 -->
                     <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
                         <div class="flex justify-between items-center border-b border-slate-900 pb-2">
@@ -272,7 +272,7 @@
                     </div>
 
                     <!-- 3팀 -->
-                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+                    <div id="team3-card" class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
                         <div class="flex justify-between items-center border-b border-slate-900 pb-2">
                             <h3 class="font-bold text-amber-400 text-xs">⚽ 3팀</h3>
                             <div class="text-right text-[11px]">
@@ -291,7 +291,7 @@
                     <div class="flex flex-col md:flex-row justify-between items-center gap-4">
                         <div>
                             <h4 class="font-bold text-white text-xs">🛡️ 카톡 복붙 명단 생성</h4>
-                            <p class="text-[11px] text-slate-400 mt-0.5">팀장은 이름 뒤에 *, 모든 인원은 이름 뒤에 (출생년도)가 붙습니다. 조정 결과가 실시간으로 반영됩니다.</p>
+                            <p class="text-[11px] text-slate-400 mt-0.5">팀장(*) 다음 연장자 순으로 자동 정렬되며, 정회원 외 인원은 이름 옆에 (출생년도)(회원구분)이 표시됩니다.</p>
                         </div>
                         <button onclick="copyKakaoFormat()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs transition shadow">📋 카톡 복붙용 명단 복사</button>
                     </div>
@@ -1577,7 +1577,6 @@
             if (guestPhone !== prev.guest_phone) patch.guest_phone = guestPhone;
             if (guestSkill !== prev.guest_skill) patch.guest_skill = guestSkill;
 
-            // 대기자 명단에 계속 머물도록 대기 플래그 기록 유지
             const target = currentMatchVotes.find(item => String(item.id) === String(voteId));
             const nextRegisteredBy = target && target.registered_by
                 ? (String(target.registered_by).includes('[대기수정]') ? target.registered_by : `${target.registered_by} [대기수정]`)
@@ -1804,6 +1803,31 @@ ${shareUrl}
                 .map(x => x.v);
         }
 
+        function getBirthOrderNum(v) {
+            const b = getBirthOf(v);
+            if (!b) return 9999;
+            const n = parseInt(b, 10);
+            if (isNaN(n)) return 9999;
+            return n >= 50 ? 1900 + n : 2000 + n;
+        }
+
+        function getNonMemberLabel(v) {
+            const mem = memberOfVote(v);
+            const role = mem ? mem.role : '';
+            const gType = String(v.guest_type || '').trim();
+            if (['admin', 'sub_admin', 'member'].includes(role)) return '';
+            if (!gType || ['정회원', '운영진', '주관리자', '부관리자'].includes(gType)) return '';
+            return gType;
+        }
+
+        function getActiveTeamCount() {
+            const total = (teamSource && Array.isArray(teamSource.people)) ? teamSource.people.length : 0;
+            if (total > 0 && total <= 12 && (!teamDataState.team3 || teamDataState.team3.length === 0)) {
+                return 2;
+            }
+            return 3;
+        }
+
         function populateTeamMatchSelect() {
             const sel = document.getElementById('team-match-select');
             if (!matchesList.length) { sel.innerHTML = '<option value="">등록된 일정 없음</option>'; return; }
@@ -1828,7 +1852,8 @@ ${shareUrl}
             const entries = includeWait ? [...L.confirmed, ...L.waiting] : [...L.confirmed];
             const people = entries.map(e => e.v);
             if (people.length === 0) { alert('이 일정에는 팀을 짤 참석 인원이 없습니다.'); return; }
-            setTeamSource(people, `📌 팀짜기 기준: ${fmtShort(new Date(m.match_date))} ${m.match_type} · 총 ${people.length}명`);
+            const teamModeNote = people.length <= 12 ? ' (2팀 편성)' : ' (3팀 편성)';
+            setTeamSource(people, `📌 팀짜기 기준: ${fmtShort(new Date(m.match_date))} ${m.match_type} · 총 ${people.length}명${teamModeNote}`);
         }
 
         const ROSTER_TYPES = ['가입전 참가', '정회원', '용병', '지인', '당근', '플랩', '오픈톡'];
@@ -1858,6 +1883,8 @@ ${shareUrl}
                 const last = out[out.length - 1];
                 const bm = tok.match(/^\((\d{2}|(?:19|20)\d{2})\)(\*?)$/);
                 if (bm && last) { if (!last.guest_birth) last.guest_birth = bm[1]; if (bm[2]) last._leader = true; return; }
+                const roleM = tok.match(/^\((용병|지인|가입전 참가|당근|플랩|오픈톡)\)(\*?)$/);
+                if (roleM && last) { last.guest_type = roleM[1]; if (roleM[2]) last._leader = true; return; }
                 if (tok === '*' && last) { last._leader = true; return; }
                 const p = parseOneEntry(tok);
                 if (p) out.push(p);
@@ -1932,7 +1959,8 @@ ${shareUrl}
             }
 
             if (r.people.length === 0) { alert('명단에서 인원을 찾지 못했습니다.'); return; }
-            setTeamSource(r.people, `📌 팀짜기 기준: 붙여넣은 명단 · 총 ${r.people.length}명`);
+            const teamModeNote = r.people.length <= 12 ? ' (2팀 편성)' : ' (3팀 편성)';
+            setTeamSource(r.people, `📌 팀짜기 기준: 붙여넣은 명단 · 총 ${r.people.length}명${teamModeNote}`);
         }
 
         function runAutoBalance() {
@@ -1941,8 +1969,10 @@ ${shareUrl}
         }
 
         function buildTeams(attending) {
-            const keys = ['team1', 'team2', 'team3'];
+            const teamCount = attending.length <= 12 ? 2 : 3;
+            const keys = teamCount === 2 ? ['team1', 'team2'] : ['team1', 'team2', 'team3'];
             teamDataState = { team1: [], team2: [], team3: [] };
+
             const total = k => teamDataState[k].reduce((s, v) => s + scoreOf(v), 0);
             const pushGreedy = v => {
                 let best = keys[0];
@@ -1955,22 +1985,36 @@ ${shareUrl}
 
             const staff = attending.filter(isStaffVote).sort((a, b) => roleRank(a) - roleRank(b));
             const others = attending.filter(v => !isStaffVote(v)).sort((a, b) => scoreOf(b) - scoreOf(a));
-            staff.forEach((v, i) => { if (i < 3) teamDataState[keys[i]].push(v); else pushGreedy(v); });
+            staff.forEach((v, i) => { if (i < teamCount) teamDataState[keys[i]].push(v); else pushGreedy(v); });
             others.forEach(pushGreedy);
             keys.forEach(sortTeam);
             renderAllTeams();
         }
 
         function renderAllTeams() {
-            renderTeamContainer('team1', 'team1-dropzone', 'score-team1', 'avg-team1');
-            renderTeamContainer('team2', 'team2-dropzone', 'score-team2', 'avg-team2');
-            renderTeamContainer('team3', 'team3-dropzone', 'score-team3', 'avg-team3');
+            const teamCount = getActiveTeamCount();
+            const wrapper = document.getElementById('teams-grid-wrapper');
+            const team3Card = document.getElementById('team3-card');
+            if (wrapper && team3Card) {
+                if (teamCount === 2) {
+                    wrapper.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
+                    team3Card.classList.add('hidden');
+                } else {
+                    wrapper.className = 'grid grid-cols-1 md:grid-cols-3 gap-4';
+                    team3Card.classList.remove('hidden');
+                }
+            }
+
+            renderTeamContainer('team1', 'team1-dropzone', 'score-team1', 'avg-team1', teamCount);
+            renderTeamContainer('team2', 'team2-dropzone', 'score-team2', 'avg-team2', teamCount);
+            renderTeamContainer('team3', 'team3-dropzone', 'score-team3', 'avg-team3', teamCount);
             updateKakaoPreview();
         }
 
-        function renderTeamContainer(teamKey, zoneId, scoreId, avgId) {
+        function renderTeamContainer(teamKey, zoneId, scoreId, avgId, teamCount) {
             const zone = document.getElementById(zoneId);
             const teamArr = teamDataState[teamKey];
+            const activeKeys = teamCount === 2 ? ['team1', 'team2'] : ['team1', 'team2', 'team3'];
 
             if (teamArr.length === 0) {
                 zone.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">인원 없음</p>`;
@@ -1987,7 +2031,7 @@ ${shareUrl}
                 const b = getBirthOf(member);
                 const birthStr = b && b !== '미입력' ? `(${b})` : '';
                 const leader = idx === 0 ? '<span class="text-[10px] px-1.5 py-0.5 bg-amber-500/20 text-amber-300 rounded font-bold mr-1">👑 팀장</span>' : '';
-                const moveBtns = ['team1', 'team2', 'team3'].filter(k => k !== teamKey).map(k =>
+                const moveBtns = activeKeys.filter(k => k !== teamKey).map(k =>
                     `<button type="button" onclick="moveMember('${member.id}', '${teamKey}', '${k}')" class="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-[10px] text-slate-300 border border-slate-700">→${k.replace('team', '')}팀</button>`
                 ).join('');
 
@@ -2064,18 +2108,39 @@ ${shareUrl}
             renderAllTeams();
         }
 
+        function getKakaoOrderedTeam(arr) {
+            if (!Array.isArray(arr) || arr.length === 0) return [];
+            const leader = arr[0];
+            const rest = arr
+                .slice(1)
+                .map((m, i) => ({ m, i }))
+                .sort((a, b) => (getBirthOrderNum(a.m) - getBirthOrderNum(b.m)) || (a.i - b.i))
+                .map(x => x.m);
+            return [leader, ...rest];
+        }
+
         function kakaoName(m, idx) {
             const b = getBirthOf(m);
-            return `${m.guest_name}${idx === 0 ? '*' : ''}${b && b !== '미입력' ? `(${b})` : ''}`;
+            const birthPart = b && b !== '미입력' ? `(${b})` : '';
+            const nonMemberLabel = getNonMemberLabel(m);
+            const rolePart = nonMemberLabel ? `(${nonMemberLabel})` : '';
+            return `${m.guest_name}${birthPart}${rolePart}${idx === 0 ? '*' : ''}`;
         }
+
         function updateKakaoPreview() {
-            const block = (label, arr) => `⚽ ${label}\n` + (arr.length > 0 ? arr.map((m, i) => kakaoName(m, i)).join(' / ') : '없음');
-            const kakaoText = [
+            const teamCount = getActiveTeamCount();
+            const block = (label, arr) => {
+                const ordered = getKakaoOrderedTeam(arr);
+                return `⚽ ${label}\n` + (ordered.length > 0 ? ordered.map((m, i) => kakaoName(m, i)).join(' / ') : '없음');
+            };
+            const blocks = [
                 block('1팀', teamDataState.team1),
-                block('2팀', teamDataState.team2),
-                block('3팀', teamDataState.team3)
-            ].join('\n\n');
-            document.getElementById('kakao-preview').innerText = kakaoText;
+                block('2팀', teamDataState.team2)
+            ];
+            if (teamCount === 3) {
+                blocks.push(block('3팀', teamDataState.team3));
+            }
+            document.getElementById('kakao-preview').innerText = blocks.join('\n\n');
         }
 
         function copyKakaoFormat() {

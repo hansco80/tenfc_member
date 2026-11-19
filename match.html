@@ -679,7 +679,6 @@
             }
         }
 
-        // 운영진 여부에 따라 게스트 신청 폼의 '구분' 옵션 동적 갱신
         function updateGuestTypeOptions() {
             const selectEl = document.getElementById('guest-type');
             if (!selectEl) return;
@@ -1000,7 +999,6 @@
             if (scroll) document.getElementById('match-detail-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
-        // 운동 6시간 전 용병/지인 등 신청 부분 마감 처리
         function checkGuestSectionAvailability(match) {
             const guestDetails = document.getElementById('guest-section-details');
             const noticeText = document.getElementById('guest-notice-text');
@@ -1419,7 +1417,6 @@
             if (!m) return;
             const staff = isStaff();
 
-            // 운동 시작 6시간 전인 경우 일반 사용자 신청 차단
             if (isAfterCutoff(m) && !staff) {
                 alert('⚠️ 운동 시작 6시간 전부터는 일반 용병/지인 신청이 마감되었습니다.');
                 return;
@@ -1431,7 +1428,6 @@
             const phone = document.getElementById('guest-phone').value.trim();
             const skill = document.getElementById('guest-skill').value;
 
-            // 운영진 수동 등록인 경우 필수값 체크 건너뜀 (성명만 확인)
             if (!staff) {
                 if (!name) { alert('성명을 입력해주세요.'); document.getElementById('guest-name').focus(); return; }
                 if (!/^(\d{2}|(19|20)\d{2})$/.test(birth)) { alert('출생년도를 입력해주세요. (예: 98 또는 1998)'); document.getElementById('guest-birth').focus(); return; }
@@ -1516,6 +1512,8 @@
             }
         }
 
+        let editingWaitingSnapshot = null;
+
         function openWaitingEditModal(voteId) {
             if (!isStaff()) {
                 alert('⚠️ 운영진만 대기자 정보를 수정할 수 있습니다.');
@@ -1527,17 +1525,26 @@
                 return;
             }
 
+            editingWaitingSnapshot = {
+                guest_name: target.guest_name || '',
+                guest_type: target.guest_type || '용병',
+                guest_birth: target.guest_birth || '미입력',
+                guest_phone: target.guest_phone || '미입력',
+                guest_skill: ['상', '중', '하'].includes(target.guest_skill) ? target.guest_skill : '중'
+            };
+
             document.getElementById('edit-wait-id').value = target.id;
-            document.getElementById('edit-wait-name').value = target.guest_name || '';
-            document.getElementById('edit-wait-type').value = target.guest_type || '용병';
-            document.getElementById('edit-wait-birth').value = target.guest_birth || '';
-            document.getElementById('edit-wait-phone').value = target.guest_phone || '';
-            document.getElementById('edit-wait-skill').value = ['상', '중', '하'].includes(target.guest_skill) ? target.guest_skill : '중';
+            document.getElementById('edit-wait-name').value = editingWaitingSnapshot.guest_name;
+            document.getElementById('edit-wait-type').value = editingWaitingSnapshot.guest_type;
+            document.getElementById('edit-wait-birth').value = editingWaitingSnapshot.guest_birth === '미입력' ? '' : editingWaitingSnapshot.guest_birth;
+            document.getElementById('edit-wait-phone').value = editingWaitingSnapshot.guest_phone === '미입력' ? '' : editingWaitingSnapshot.guest_phone;
+            document.getElementById('edit-wait-skill').value = editingWaitingSnapshot.guest_skill;
 
             document.getElementById('waiting-edit-modal').classList.remove('hidden');
         }
 
         function closeWaitingEditModal() {
+            editingWaitingSnapshot = null;
             document.getElementById('waiting-edit-modal').classList.add('hidden');
         }
 
@@ -1551,8 +1558,8 @@
             const voteId = document.getElementById('edit-wait-id').value;
             const guestName = document.getElementById('edit-wait-name').value.trim();
             const guestType = document.getElementById('edit-wait-type').value;
-            const guestBirth = document.getElementById('edit-wait-birth').value.trim() || '미입력';
-            const guestPhone = document.getElementById('edit-wait-phone').value.trim() || '미입력';
+            const rawBirth = document.getElementById('edit-wait-birth').value.trim();
+            const rawPhone = document.getElementById('edit-wait-phone').value.trim();
             const guestSkill = document.getElementById('edit-wait-skill').value;
 
             if (!guestName) {
@@ -1560,15 +1567,34 @@
                 return;
             }
 
+            const prev = editingWaitingSnapshot || {};
+            const guestBirth = rawBirth ? rawBirth : (prev.guest_birth || '미입력');
+            const guestPhone = rawPhone ? rawPhone : (prev.guest_phone || '미입력');
+
+            const patch = {};
+            if (guestName !== prev.guest_name) patch.guest_name = guestName;
+            if (guestType !== prev.guest_type) patch.guest_type = guestType;
+            if (guestBirth !== prev.guest_birth) patch.guest_birth = guestBirth;
+            if (guestPhone !== prev.guest_phone) patch.guest_phone = guestPhone;
+            if (guestSkill !== prev.guest_skill) patch.guest_skill = guestSkill;
+
+            // 대기자 명단에 계속 머물도록 대기 플래그 기록 유지
+            const target = currentMatchVotes.find(item => String(item.id) === String(voteId));
+            const nextRegisteredBy = target && target.registered_by
+                ? (String(target.registered_by).includes('[대기수정]') ? target.registered_by : `${target.registered_by} [대기수정]`)
+                : '[대기수정]';
+            if (!target || target.registered_by !== nextRegisteredBy) {
+                patch.registered_by = nextRegisteredBy;
+            }
+
+            if (Object.keys(patch).length === 0) {
+                closeWaitingEditModal();
+                return;
+            }
+
             const { error } = await supabaseClient
                 .from('match_votes')
-                .update({
-                    guest_name: guestName,
-                    guest_type: guestType,
-                    guest_birth: guestBirth,
-                    guest_phone: guestPhone,
-                    guest_skill: guestSkill
-                })
+                .update(patch)
                 .eq('id', voteId);
 
             if (error) {
@@ -1603,7 +1629,8 @@
             const detail = parts.length ? ` <span class="text-[10px] text-amber-400">(${parts.join(', ')})</span>` : '';
 
             const tentative = opts.tentative ? ` <span class="text-[10px] font-bold text-amber-400">${opts.declined ? '(불참·미정)' : '(미정)'}</span>` : '';
-            const by = (v.registered_by && v.registered_by !== '비회원') ? ` <span class="text-[10px] text-violet-400">· 등록: ${esc(showFullName ? v.registered_by : maskName(v.registered_by))}</span>` : '';
+            const cleanBy = v.registered_by ? String(v.registered_by).replace(/\s*\[대기수정\]/g, '').trim() : '';
+            const by = (cleanBy && cleanBy !== '비회원') ? ` <span class="text-[10px] text-violet-400">· 등록: ${esc(showFullName ? cleanBy : maskName(cleanBy))}</span>` : '';
             const time = v.voted_at ? ` <span class="text-[10px] text-sky-400">${fmtVoteTime(v.voted_at)}</span>` : '';
 
             let adminButtons = '';
@@ -1632,20 +1659,23 @@
             return Array.from(map.values()).sort((a, b) => new Date(a.voted_at) - new Date(b.voted_at));
         }
 
+        function isWaitingPoolVote(v) {
+            return ['용병', '지인', '대기자'].includes(v.guest_type) || String(v.registered_by || '').includes('[대기수정]');
+        }
+
         function computeLists(m, votes) {
             const cap = capOf(m);
             const afterCut = isAfterCutoff(m);
-            const isGuestType = v => ['용병', '지인', '대기자'].includes(v.guest_type);
 
             const regularPool = [];
             const guestPool = [];
             const declined = [];
             dedupeVotes(votes).forEach(v => {
                 if (v.status === '참석') {
-                    (isGuestType(v) ? guestPool : regularPool).push({ v, tentative: false });
+                    (isWaitingPoolVote(v) ? guestPool : regularPool).push({ v, tentative: false });
                 } else if (v.status === '미정') {
                     if (afterCut) declined.push({ v, tentative: true });
-                    else (isGuestType(v) ? guestPool : regularPool).push({ v, tentative: true });
+                    else (isWaitingPoolVote(v) ? guestPool : regularPool).push({ v, tentative: true });
                 } else if (v.status === '불참') {
                     declined.push({ v, tentative: false });
                 }
@@ -1692,7 +1722,8 @@
                 if (isGuestish) parts.push(`실력:${v.guest_skill || '중'}`);
                 if (e.tentative) parts.push('미정');
                 if (v.guest_phone && v.guest_phone !== '미입력') parts.push(`연락처:${v.guest_phone}`);
-                if (v.registered_by) parts.push(`등록:${v.registered_by}`);
+                const cleanBy = v.registered_by ? String(v.registered_by).replace(/\s*\[대기수정\]/g, '').trim() : '';
+                if (cleanBy && cleanBy !== '비회원') parts.push(`등록:${cleanBy}`);
                 return parts.join(' / ');
             };
             return `📅 ${fmtShort(new Date(m.match_date))} ${m.match_type} (정원 ${L.cap}명)\n\n` +

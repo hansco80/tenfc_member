@@ -1012,7 +1012,7 @@
                 noticeText.innerHTML = '<span class="text-rose-400 font-bold">⚠️ 운동 시작 6시간 전부터는 일반 용병/지인 신청이 마감되었습니다. (운영진은 수동 등록 가능)</span>';
             } else {
                 guestDetails.style.opacity = '1';
-                noticeText.innerHTML = staff ? '<span class="text-emerald-400">💡 [운영진 모드] 필수값 없이 수동 등록 및 정회원/당근/플랩/오픈톡 선택이 가능합니다.</span>' : '※ 모든 항목은 필수 입력입니다.';
+                noticeText.innerHTML = staff ? '<span class="text-emerald-400">💡 [운영진 모드] 추가 인원은 1차로 대기자 명단에 등록되며, [참석시키기] 버튼으로 참석 명단에 반영할 수 있습니다.</span>' : '※ 모든 항목은 필수 입력입니다.';
             }
         }
 
@@ -1436,6 +1436,12 @@
                 if (!name) { alert('성명을 입력해주세요.'); document.getElementById('guest-name').focus(); return; }
             }
 
+            // 운영진이 개별 추가한 인원은 1차적으로 대기자 명단에 먼저 등록되도록 [대기이동] 태그 부여
+            const registrar = currentUser ? currentUser.name : '비회원';
+            const registeredByVal = staff
+                ? (registrar && registrar !== '비회원' ? `${registrar} [대기이동]` : '[대기이동]')
+                : registrar;
+
             const row = {
                 match_id: currentMatchId,
                 guest_type: type,
@@ -1445,13 +1451,17 @@
                 guest_skill: skill || '중',
                 status: '참석',
                 voted_at: new Date().toISOString(),
-                registered_by: currentUser ? currentUser.name : '비회원'
+                registered_by: registeredByVal
             };
 
             const { error } = await supabaseClient.from('match_votes').insert([row]);
             if (error) { alert('신청 실패: ' + error.message); return; }
 
-            alert(`[${type}] ${name} 님의 신청이 접수되었습니다!`);
+            alert(
+                staff
+                    ? `[${type}] ${name} 님이 대기자 명단에 1차 등록되었습니다. [참석시키기] 버튼으로 참석 명단에 옮겨주세요.`
+                    : `[${type}] ${name} 님의 신청이 접수되었습니다!`
+            );
             document.getElementById('guest-name').value = '';
             document.getElementById('guest-birth').value = '';
             document.getElementById('guest-phone').value = '';

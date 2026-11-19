@@ -1486,6 +1486,23 @@
             }
         }
 
+        function hasConfirmedTag(v) {
+            return String(v.registered_by || '').includes('[참석확정]');
+        }
+
+        function hasWaitingTag(v) {
+            const by = String(v.registered_by || '');
+            return by.includes('[대기수정]') || by.includes('[대기이동]');
+        }
+
+        function cleanRegisteredBy(raw) {
+            return String(raw || '')
+                .replace(/\s*\[대기수정\]/g, '')
+                .replace(/\s*\[대기이동\]/g, '')
+                .replace(/\s*\[참석확정\]/g, '')
+                .trim();
+        }
+
         async function forceToggleVote(voteId, currentStatus, isCurrentlyWaiting) {
             if (!isStaff()) {
                 alert('⚠️ 운영진만 명단을 이동할 수 있습니다.');
@@ -1493,11 +1510,24 @@
             }
 
             try {
+                const target = currentMatchVotes.find(item => String(item.id) === String(voteId));
+                const baseBy = cleanRegisteredBy(target && target.registered_by);
+
                 let updatePayload = {};
                 if (isCurrentlyWaiting) {
-                    updatePayload = { status: '참석', guest_type: '정회원' };
+                    // 구분(guest_type)은 유지하고, 정원/마감과 무관하게 참석 명단에 올라가도록 [참석확정] 태그 부여
+                    const nextBy = baseBy ? `${baseBy} [참석확정]` : '[참석확정]';
+                    updatePayload = {
+                        status: '참석',
+                        registered_by: nextBy
+                    };
                 } else {
-                    updatePayload = { status: '참석', guest_type: '대기자' };
+                    // 구분(guest_type)은 유지하고, 대기자 명단으로 내려보내기 위해 [대기이동] 태그 부여
+                    const nextBy = baseBy ? `${baseBy} [대기이동]` : '[대기이동]';
+                    updatePayload = {
+                        status: '참석',
+                        registered_by: nextBy
+                    };
                 }
 
                 const { error } = await supabaseClient.from('match_votes').update(updatePayload).eq('id', voteId);
@@ -1526,7 +1556,7 @@
 
             editingWaitingSnapshot = {
                 guest_name: target.guest_name || '',
-                guest_type: target.guest_type || '용병',
+                guest_type: target.guest_type === '대기자' ? '용병' : (target.guest_type || '용병'),
                 guest_birth: target.guest_birth || '미입력',
                 guest_phone: target.guest_phone || '미입력',
                 guest_skill: ['상', '중', '하'].includes(target.guest_skill) ? target.guest_skill : '중'
@@ -1578,9 +1608,8 @@
             if (guestSkill !== prev.guest_skill) patch.guest_skill = guestSkill;
 
             const target = currentMatchVotes.find(item => String(item.id) === String(voteId));
-            const nextRegisteredBy = target && target.registered_by
-                ? (String(target.registered_by).includes('[대기수정]') ? target.registered_by : `${target.registered_by} [대기수정]`)
-                : '[대기수정]';
+            const baseBy = cleanRegisteredBy(target && target.registered_by);
+            const nextRegisteredBy = baseBy ? `${baseBy} [대기수정]` : '[대기수정]';
             if (!target || target.registered_by !== nextRegisteredBy) {
                 patch.registered_by = nextRegisteredBy;
             }
@@ -1627,16 +1656,16 @@
             const detail = parts.length ? ` <span class="text-[10px] text-amber-400">(${parts.join(', ')})</span>` : '';
 
             const tentative = opts.tentative ? ` <span class="text-[10px] font-bold text-amber-400">${opts.declined ? '(불참·미정)' : '(미정)'}</span>` : '';
-            const cleanBy = v.registered_by ? String(v.registered_by).replace(/\s*\[대기수정\]/g, '').trim() : '';
+            const cleanBy = cleanRegisteredBy(v.registered_by);
             const by = (cleanBy && cleanBy !== '비회원') ? ` <span class="text-[10px] text-violet-400">· 등록: ${esc(showFullName ? cleanBy : maskName(cleanBy))}</span>` : '';
             const time = v.voted_at ? ` <span class="text-[10px] text-sky-400">${fmtVoteTime(v.voted_at)}</span>` : '';
 
             let adminButtons = '';
             if (staff) {
                 if (opts.isWaitingList) {
-                    adminButtons += ` <button onclick="forceToggleVote('${v.id}', '${v.status}', true)" class="ml-1 px-1.5 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold transition shrink-0" title="참석 명단으로 강제 이동">참석시키기</button>`;
+                    adminButtons += ` <button onclick="forceToggleVote('${v.id}', '${v.status}', true)" class="ml-1 px-1.5 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold transition shrink-0" title="참석 명단으로 이동">참석시키기</button>`;
                 } else if (opts.isConfirmedList) {
-                    adminButtons += ` <button onclick="forceToggleVote('${v.id}', '${v.status}', false)" class="ml-1 px-1.5 py-0.5 bg-amber-600 hover:bg-amber-500 text-white rounded text-[10px] font-bold transition shrink-0" title="대기자 명단으로 강제 이동">대기자로</button>`;
+                    adminButtons += ` <button onclick="forceToggleVote('${v.id}', '${v.status}', false)" class="ml-1 px-1.5 py-0.5 bg-amber-600 hover:bg-amber-500 text-white rounded text-[10px] font-bold transition shrink-0" title="대기자 명단으로 이동">대기자로</button>`;
                 }
                 adminButtons += ` <button onclick="deleteVoteRecord('${v.id}')" class="ml-1 px-1.5 py-0.5 bg-rose-600/80 hover:bg-rose-600 text-white rounded text-[10px] font-bold transition shrink-0" title="삭제">✕</button>`;
             }
@@ -1650,7 +1679,7 @@
         function dedupeVotes(votes) {
             const map = new Map();
             (votes || []).forEach(v => {
-                const key = `${v.guest_name}|${v.guest_phone || ''}|${v.registered_by || ''}`;
+                const key = `${v.guest_name}|${v.guest_phone || ''}|${cleanRegisteredBy(v.registered_by)}`;
                 const prev = map.get(key);
                 if (!prev || new Date(v.voted_at) >= new Date(prev.voted_at)) map.set(key, v);
             });
@@ -1658,17 +1687,25 @@
         }
 
         function isWaitingPoolVote(v) {
-            return ['용병', '지인', '대기자'].includes(v.guest_type) || String(v.registered_by || '').includes('[대기수정]');
+            if (hasConfirmedTag(v)) return false;
+            return ['용병', '지인', '대기자'].includes(v.guest_type) || hasWaitingTag(v);
         }
 
         function computeLists(m, votes) {
             const cap = capOf(m);
             const afterCut = isAfterCutoff(m);
 
+            const manualConfirmed = [];
             const regularPool = [];
             const guestPool = [];
             const declined = [];
+
             dedupeVotes(votes).forEach(v => {
+                if (hasConfirmedTag(v) && v.status !== '불참') {
+                    manualConfirmed.push({ v, tentative: false });
+                    return;
+                }
+
                 if (v.status === '참석') {
                     (isWaitingPoolVote(v) ? guestPool : regularPool).push({ v, tentative: false });
                 } else if (v.status === '미정') {
@@ -1682,11 +1719,14 @@
             const normal = regularPool.filter(e => e.v.guest_type !== '가입전 참가');
             const preJoin = regularPool.filter(e => e.v.guest_type === '가입전 참가');
             const ordered = [...normal, ...preJoin];
+
+            const confirmed = [...ordered.slice(0, cap), ...manualConfirmed];
             const waiting = [...ordered.slice(cap), ...guestPool]
                 .map((e, i) => ({ e, i }))
                 .sort((a, b) => (new Date(a.e.v.voted_at) - new Date(b.e.v.voted_at)) || (a.i - b.i))
                 .map(x => x.e);
-            return { cap, confirmed: ordered.slice(0, cap), waiting, declined };
+
+            return { cap, confirmed, waiting, declined };
         }
 
         function renderVoteLists() {
@@ -1720,7 +1760,7 @@
                 if (isGuestish) parts.push(`실력:${v.guest_skill || '중'}`);
                 if (e.tentative) parts.push('미정');
                 if (v.guest_phone && v.guest_phone !== '미입력') parts.push(`연락처:${v.guest_phone}`);
-                const cleanBy = v.registered_by ? String(v.registered_by).replace(/\s*\[대기수정\]/g, '').trim() : '';
+                const cleanBy = cleanRegisteredBy(v.registered_by);
                 if (cleanBy && cleanBy !== '비회원') parts.push(`등록:${cleanBy}`);
                 return parts.join(' / ');
             };

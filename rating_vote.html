@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 회원 평점 평가 시스템</title>
+    <title>TenFC 운영진 평점 평가 시스템</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -33,7 +33,7 @@
         <header class="bg-slate-800 p-4 md:p-6 rounded-2xl border border-slate-700 shadow-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
                 <div class="flex items-center gap-2">
-                    <h1 class="text-xl md:text-2xl font-extrabold text-emerald-400">⚖️ 회원 평점 평가 시스템</h1>
+                    <h1 class="text-xl md:text-2xl font-extrabold text-emerald-400">⚖️ 운영진 평점 평가 시스템</h1>
                     <span id="current-admin-badge" class="px-2.5 py-0.5 bg-emerald-950 border border-emerald-500/50 text-emerald-300 text-xs font-bold rounded-full"></span>
                 </div>
                 <p class="text-xs text-slate-400 mt-1">블라인드 상대평가 · 익명 합의제 · DB 자동 반영</p>
@@ -640,6 +640,21 @@
             renderSessionBoard();
         }
 
+        // 2명 이상 일치 시(아직 3번째 투표 전이라도) 잠정 조정 단계를 계산
+        function getTwoMatchDelta(vals) {
+            const countMap = {};
+            vals.forEach(v => { countMap[v] = (countMap[v] || 0) + 1; });
+            for (const [valStr, cnt] of Object.entries(countMap)) {
+                const v = Number(valStr);
+                if (cnt >= 2) {
+                    if (v === 2) return 1;
+                    if (v === -2) return -1;
+                    return v;
+                }
+            }
+            return null;
+        }
+
         function evaluatePlayerResult(playerName) {
             const pVotes = sessionVotes.filter(v => v.player_name === playerName && currentSession.attending_admins.includes(v.voter_name));
             const requiredCount = currentSession.mode;
@@ -648,12 +663,16 @@
             const signals = pVotes.map(v => v.signal).filter(Boolean);
             const hasConflictOrSignal = signals.length > 0 || (pVotes.length >= 2 && new Set(pVotes.map(v => v.vote_value)).size > 1);
 
+            const vals = pVotes.map(v => v.vote_value);
+            const provisionalDelta = vals.length >= 2 ? getTwoMatchDelta(vals) : null;
+
             if (!isComplete) {
                 return {
                     isComplete: false,
                     votedCount: pVotes.length,
                     requiredCount,
                     delta: 0,
+                    provisionalDelta,
                     label: `대기중 (${pVotes.length}/${requiredCount})`,
                     signals,
                     hasConflictOrSignal,
@@ -661,36 +680,32 @@
                 };
             }
 
-            const vals = pVotes.map(v => v.vote_value);
-
             if (requiredCount === 2) {
                 if (vals[0] === vals[1] && vals[0] !== 0) {
                     const clamped = vals[0] > 0 ? 1 : -1;
-                    return { isComplete: true, votedCount: 2, requiredCount: 2, delta: clamped, label: clamped === 1 ? '▲ 1단계 상향 합의' : '▼ 1단계 하향 합의', signals, hasConflictOrSignal, pVotes };
+                    return { isComplete: true, votedCount: 2, requiredCount: 2, delta: clamped, provisionalDelta: clamped, label: clamped === 1 ? '▲ 1단계 상향 합의' : '▼ 1단계 하향 합의', signals, hasConflictOrSignal, pVotes };
                 }
-                return { isComplete: true, votedCount: 2, requiredCount: 2, delta: 0, label: '- 유지 (합의)', signals, hasConflictOrSignal, pVotes };
+                return { isComplete: true, votedCount: 2, requiredCount: 2, delta: 0, provisionalDelta: 0, label: '- 유지 (합의)', signals, hasConflictOrSignal, pVotes };
             }
 
-            if (vals.every(v => v === 2)) return { isComplete: true, votedCount: 3, requiredCount: 3, delta: 2, label: '▲▲ 2단계 상향 (만장일치)', signals, hasConflictOrSignal, pVotes };
-            if (vals.every(v => v === -2)) return { isComplete: true, votedCount: 3, requiredCount: 3, delta: -2, label: '▼▼ 2단계 하향 (만장일치)', signals, hasConflictOrSignal, pVotes };
+            // 3인 모드: 2단계는 3명 전원 일치 시에만 적용, 그 외 2명 일치 시 1단계 조정
+            if (vals.every(v => v === 2)) return { isComplete: true, votedCount: 3, requiredCount: 3, delta: 2, provisionalDelta: 2, label: '▲▲ 2단계 상향 (만장일치)', signals, hasConflictOrSignal, pVotes };
+            if (vals.every(v => v === -2)) return { isComplete: true, votedCount: 3, requiredCount: 3, delta: -2, provisionalDelta: -2, label: '▼▼ 2단계 하향 (만장일치)', signals, hasConflictOrSignal, pVotes };
 
-            const countMap = {};
-            vals.forEach(v => { countMap[v] = (countMap[v] || 0) + 1; });
-            for (const [valStr, cnt] of Object.entries(countMap)) {
-                const v = Number(valStr);
-                if (cnt >= 2) {
-                    const finalDelta = v === 2 ? 1 : (v === -2 ? -1 : v);
-                    const lbl = finalDelta === 1 ? '▲ 1단계 상향 (다수결)' : (finalDelta === -1 ? '▼ 1단계 하향 (다수결)' : '- 유지 (다수결)');
-                    return { isComplete: true, votedCount: 3, requiredCount: 3, delta: finalDelta, label: lbl, signals, hasConflictOrSignal, pVotes };
-                }
+            const matchedDelta = getTwoMatchDelta(vals);
+            if (matchedDelta !== null) {
+                const lbl = matchedDelta === 1
+                    ? '▲ 1단계 상향 (다수결)'
+                    : (matchedDelta === -1 ? '▼ 1단계 하향 (다수결)' : '- 유지 (다수결)');
+                return { isComplete: true, votedCount: 3, requiredCount: 3, delta: matchedDelta, provisionalDelta: matchedDelta, label: lbl, signals, hasConflictOrSignal, pVotes };
             }
 
             const upCount = vals.filter(v => v > 0).length;
             const downCount = vals.filter(v => v < 0).length;
-            if (upCount >= 2) return { isComplete: true, votedCount: 3, requiredCount: 3, delta: 1, label: '▲ 1단계 상향 (상향 합의)', signals, hasConflictOrSignal, pVotes };
-            if (downCount >= 2) return { isComplete: true, votedCount: 3, requiredCount: 3, delta: -1, label: '▼ 1단계 하향 (하향 합의)', signals, hasConflictOrSignal, pVotes };
+            if (upCount >= 2) return { isComplete: true, votedCount: 3, requiredCount: 3, delta: 1, provisionalDelta: 1, label: '▲ 1단계 상향 (상향 합의)', signals, hasConflictOrSignal, pVotes };
+            if (downCount >= 2) return { isComplete: true, votedCount: 3, requiredCount: 3, delta: -1, provisionalDelta: -1, label: '▼ 1단계 하향 (하향 합의)', signals, hasConflictOrSignal, pVotes };
 
-            return { isComplete: true, votedCount: 3, requiredCount: 3, delta: 0, label: '- 유지 (3인 합의)', signals, hasConflictOrSignal, pVotes };
+            return { isComplete: true, votedCount: 3, requiredCount: 3, delta: 0, provisionalDelta: 0, label: '- 유지 (3인 합의)', signals, hasConflictOrSignal, pVotes };
         }
 
         function getAdjustedRating(currentRating, delta) {
@@ -804,6 +819,10 @@
                         } else {
                             resultBadge = `<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-900 text-slate-300 border border-slate-600">${evalRes.label}</span>`;
                         }
+                    } else if (evalRes.provisionalDelta && evalRes.provisionalDelta !== 0) {
+                        const provR = getAdjustedRating(p.rating, evalRes.provisionalDelta);
+                        const isUp = evalRes.provisionalDelta > 0;
+                        resultBadge = `<span class="px-2.5 py-1 rounded-lg text-xs font-bold ${isUp ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/30' : 'bg-rose-950/60 text-rose-300 border-rose-500/30'} border">${evalRes.label} · 2인일치 (${p.rating} → ${provR})</span>`;
                     }
 
                     const disableTwoStep = currentSession.mode === 2;
@@ -993,11 +1012,12 @@
 
             let allPlayersVoted = true;
             const changes = [];
+            const previewItems = [];
 
             players.forEach(p => {
                 const res = evaluatePlayerResult(p.name);
                 if (!res.isComplete) allPlayersVoted = false;
-                
+
                 const finalNewRating = res.isComplete ? getAdjustedRating(p.rating, res.delta) : p.rating;
                 changes.push({
                     name: p.name,
@@ -1006,20 +1026,35 @@
                     delta: res.delta,
                     isComplete: res.isComplete
                 });
+
+                // 확정(delta !== 0) 또는 2인 선행 일치(provisionalDelta !== 0)가 있으면 최하단 미리보기에 반영
+                const activeDelta = res.isComplete ? res.delta : (res.provisionalDelta || 0);
+                if (activeDelta !== 0) {
+                    previewItems.push({
+                        name: p.name,
+                        oldRating: p.rating,
+                        newRating: getAdjustedRating(p.rating, activeDelta),
+                        delta: activeDelta,
+                        isProvisional: !res.isComplete
+                    });
+                }
             });
 
             const previewBox = document.getElementById('summary-preview-box');
             const actualChanges = changes.filter(c => c.delta !== 0);
 
-            if (actualChanges.length === 0) {
-                previewBox.innerHTML = `<p class="text-slate-400">이번 세션에서 변동(상/하향)이 예정된 인원은 없으며, 모두 '유지' 합의 대상입니다.</p>`;
+            if (previewItems.length === 0) {
+                previewBox.innerHTML = `<p class="text-slate-400">현재까지 합의(또는 2인 일치)된 등급 변동 인원이 없습니다.</p>`;
             } else {
                 previewBox.innerHTML = `
-                    <p class="font-bold text-slate-200 mb-1.5">📊 등급 변동 예정 인원 (총 ${actualChanges.length}명):</p>
+                    <p class="font-bold text-slate-200 mb-1.5">📊 등급 변동 예정 인원 (총 ${previewItems.length}명):</p>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                        ${actualChanges.map(c => `
-                            <div class="flex justify-between items-center bg-slate-800 px-3 py-1.5 rounded border border-slate-700">
-                                <span class="font-bold text-white">${c.name}</span>
+                        ${previewItems.map(c => `
+                            <div class="flex justify-between items-center bg-slate-800 px-3 py-1.5 rounded border ${c.isProvisional ? 'border-amber-500/40' : 'border-slate-700'}">
+                                <span class="font-bold text-white">
+                                    ${c.name}
+                                    ${c.isProvisional ? '<span class="ml-1 text-[10px] text-amber-300 font-normal">(2인일치·대기중)</span>' : ''}
+                                </span>
                                 <span class="${c.delta > 0 ? 'text-emerald-400' : 'text-rose-400'} font-extrabold">
                                     ${c.oldRating} → ${c.newRating} (${c.delta > 0 ? '+' + c.delta : c.delta})
                                 </span>
@@ -1060,7 +1095,6 @@
         async function toggleFinalApproval() {
             if (currentSession.status === 'completed') return;
 
-            // 💡 1. 필수평가자 중 투표/합의가 완료되지 않은 인원이 있는지 먼저 검사
             const players = currentSession.parsed_players;
             const uncompletedUrgent = players.filter(p => {
                 if (!p.isOutdated) return false;
@@ -1114,8 +1148,6 @@
                 const newScore = scoreMap[c.newRating] || 6.5;
                 let historyArr = Array.isArray(member.history) ? [...member.history] : [];
                 
-                // 💡 2. '유지(0)' 합의가 완료된 인원도 오늘 운동 날짜(sessionDateStr)로 히스토리를 추가/갱신하여
-                // 다음 세션에서 2주 경과(필수평가 대상)로 다시 뜨지 않도록 처리
                 const existIdx = historyArr.findIndex(h => h.date === sessionDateStr);
                 if (existIdx !== -1) {
                     historyArr[existIdx].score = newScore;

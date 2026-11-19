@@ -1513,7 +1513,7 @@
                 .trim();
         }
 
-        async function forceToggleVote(voteId, currentStatus, isCurrentlyWaiting) {
+        async function forceToggleVote(voteId, targetActionOrCurrentStatus, isCurrentlyWaitingOrTargetWait) {
             if (!isStaff()) {
                 alert('⚠️ 운영진만 명단을 이동할 수 있습니다.');
                 return;
@@ -1523,8 +1523,19 @@
                 const target = currentMatchVotes.find(item => String(item.id) === String(voteId));
                 const baseBy = cleanRegisteredBy(target && target.registered_by);
 
+                // targetActionOrCurrentStatus가 'to_confirmed' 또는 'to_waiting'인 경우(불참 명단 등에서 명시적 이동 요청)를 처리하고,
+                // 기존 boolean 호출(isCurrentlyWaiting)과도 호환되도록 처리합니다.
+                let moveToConfirmed = false;
+                if (targetActionOrCurrentStatus === 'to_confirmed') {
+                    moveToConfirmed = true;
+                } else if (targetActionOrCurrentStatus === 'to_waiting') {
+                    moveToConfirmed = false;
+                } else {
+                    moveToConfirmed = !!isCurrentlyWaitingOrTargetWait;
+                }
+
                 let updatePayload = {};
-                if (isCurrentlyWaiting) {
+                if (moveToConfirmed) {
                     // 구분(guest_type)은 유지하고, 정원/마감과 무관하게 참석 명단에 올라가도록 [참석확정] 태그 부여
                     const nextBy = baseBy ? `${baseBy} [참석확정]` : '[참석확정]';
                     updatePayload = {
@@ -1673,9 +1684,12 @@
             let adminButtons = '';
             if (staff) {
                 if (opts.isWaitingList) {
-                    adminButtons += ` <button onclick="forceToggleVote('${v.id}', '${v.status}', true)" class="ml-1 px-1.5 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold transition shrink-0" title="참석 명단으로 이동">참석시키기</button>`;
+                    adminButtons += ` <button onclick="forceToggleVote('${v.id}', 'to_confirmed', true)" class="ml-1 px-1.5 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold transition shrink-0" title="참석 명단으로 이동">참석시키기</button>`;
                 } else if (opts.isConfirmedList) {
-                    adminButtons += ` <button onclick="forceToggleVote('${v.id}', '${v.status}', false)" class="ml-1 px-1.5 py-0.5 bg-amber-600 hover:bg-amber-500 text-white rounded text-[10px] font-bold transition shrink-0" title="대기자 명단으로 이동">대기자로</button>`;
+                    adminButtons += ` <button onclick="forceToggleVote('${v.id}', 'to_waiting', false)" class="ml-1 px-1.5 py-0.5 bg-amber-600 hover:bg-amber-500 text-white rounded text-[10px] font-bold transition shrink-0" title="대기자 명단으로 이동">대기자로</button>`;
+                } else if (opts.isDeclinedList) {
+                    adminButtons += ` <button onclick="forceToggleVote('${v.id}', 'to_confirmed', true)" class="ml-1 px-1.5 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold transition shrink-0" title="참석 명단으로 이동">참석시키기</button>`;
+                    adminButtons += ` <button onclick="forceToggleVote('${v.id}', 'to_waiting', false)" class="ml-1 px-1.5 py-0.5 bg-amber-600 hover:bg-amber-500 text-white rounded text-[10px] font-bold transition shrink-0" title="대기자 명단으로 이동">대기자로</button>`;
                 }
                 adminButtons += ` <button onclick="deleteVoteRecord('${v.id}')" class="ml-1 px-1.5 py-0.5 bg-rose-600/80 hover:bg-rose-600 text-white rounded text-[10px] font-bold transition shrink-0" title="삭제">✕</button>`;
             }
@@ -1711,7 +1725,7 @@
             const declined = [];
 
             dedupeVotes(votes).forEach(v => {
-                if (hasConfirmedTag(v) && v.status !== '불참') {
+                if (hasConfirmedTag(v)) {
                     manualConfirmed.push({ v, tentative: false });
                     return;
                 }
@@ -1757,7 +1771,7 @@
                 : '<li>대기 인원이 없습니다.</li>';
 
             document.getElementById('declined-list').innerHTML = L.declined.length > 0
-                ? L.declined.map(e => voteLi(e.v, { prefix: '-', tentative: e.tentative, declined: true })).join('')
+                ? L.declined.map(e => voteLi(e.v, { prefix: '-', tentative: e.tentative, declined: true, isDeclinedList: true })).join('')
                 : '<li>불참 투표가 없습니다.</li>';
         }
 

@@ -200,13 +200,23 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-300 mb-1">출생년도</label>
-                        <input type="text" id="q-birth" required placeholder="예: 95년생" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-xs text-white">
+                        <label class="block text-xs font-bold text-slate-300 mb-1">출생년도 *</label>
+                        <input type="text" id="q-birth" required placeholder="예: 95 (→ 1995.01.01)" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-xs text-white">
                     </div>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-300 mb-1">연락처 (선택)</label>
-                    <input type="text" id="q-phone" placeholder="010-0000-0000" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-xs text-white">
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">기본등급 *</label>
+                        <select id="q-grade" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-xs text-white">
+                            <option value="B">상 B</option>
+                            <option value="C" selected>중 C</option>
+                            <option value="D">하 D</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">연락처 (선택)</label>
+                        <input type="text" id="q-phone" placeholder="010-0000-0000" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-xs text-white">
+                    </div>
                 </div>
                 <div class="flex gap-2 pt-2">
                     <button type="button" onclick="skipUnregisteredMember()" class="px-4 py-2 bg-slate-700 text-slate-300 text-xs rounded">이번만 제외</button>
@@ -239,8 +249,23 @@
         let currentFilter = 'all';
 
         let pendingUnregisteredQueue = [];
+        let totalUnregisteredCount = 0;
         let cachedMatchDate = '';
         let cachedRawText = '';
+
+        function formatBirthToDate(rawBirth) {
+            const digitsOnly = String(rawBirth || '').replace(/[^0-9]/g, '');
+            if (digitsOnly.length === 2) {
+                const yr2 = parseInt(digitsOnly, 10);
+                const fullYear = yr2 >= 50 ? 1900 + yr2 : 2000 + yr2;
+                return `${fullYear}.01.01`;
+            }
+            if (digitsOnly.length >= 4) {
+                const yr4 = digitsOnly.slice(0, 4);
+                return `${yr4}.01.01`;
+            }
+            return String(rawBirth || '').trim();
+        }
 
         async function init() {
             const { data: members, error } = await supabaseClient.from('members').select('*');
@@ -411,6 +436,7 @@
 
             if (detectedUnregistered.length > 0) {
                 pendingUnregisteredQueue = detectedUnregistered;
+                totalUnregisteredCount = detectedUnregistered.length;
                 closeNewSessionModal();
                 showNextUnregisteredModal();
             } else {
@@ -424,8 +450,12 @@
                 return;
             }
             const currentName = pendingUnregisteredQueue[0];
+            const currentIndex = totalUnregisteredCount - pendingUnregisteredQueue.length + 1;
+            document.getElementById('unregistered-counter').innerText = `${currentIndex} / ${totalUnregisteredCount}명`;
             document.getElementById('q-name').value = currentName;
+            document.getElementById('q-role').value = 'guest';
             document.getElementById('q-birth').value = '';
+            document.getElementById('q-grade').value = 'C';
             document.getElementById('q-phone').value = '';
             document.getElementById('quick-register-modal').classList.remove('hidden');
         }
@@ -434,7 +464,10 @@
             e.preventDefault();
             const name = document.getElementById('q-name').value;
             const role = document.getElementById('q-role').value;
-            const birth = document.getElementById('q-birth').value.trim();
+            const rawBirth = document.getElementById('q-birth').value.trim();
+            const formattedBirth = formatBirthToDate(rawBirth);
+            const selectedGrade = document.getElementById('q-grade').value || 'C';
+            const initialScore = scoreMap[selectedGrade] ?? 6.5;
             const phone = document.getElementById('q-phone').value.trim();
 
             const now = new Date();
@@ -446,15 +479,15 @@
                 full_phone: phone || '010-XXXX-XXXX',
                 kakao_id: role === 'guest' ? '용병' : '지인',
                 photo: '',
-                birth: birth,
+                birth: formattedBirth,
                 address: '',
                 position: '멀티',
-                rating: 'C',
+                rating: selectedGrade,
                 join_date: '2026년',
                 role: role,
                 is_withdrawn: false,
                 attended_matches: 1,
-                history: [{ date: todayStr, score: 6.5 }],
+                history: [{ date: todayStr, score: initialScore }],
                 feedback: '당일 참여 용병/지인 즉시 등록',
                 login_count: 0,
                 last_login_at: null
@@ -469,11 +502,11 @@
             membersData.push({
                 id: name,
                 name: name,
-                rating: 'C',
+                rating: selectedGrade,
                 role: role,
                 isWithdrawn: false,
                 position: '멀티',
-                history: [{ date: todayStr, score: 6.5 }]
+                history: [{ date: todayStr, score: initialScore }]
             });
 
             document.getElementById('quick-register-modal').classList.add('hidden');
@@ -558,15 +591,9 @@
                 });
             });
 
-            const regularAttendees = parsedList.filter(p => ['member', 'admin', 'sub_admin'].includes(p.role));
-            if (regularAttendees.length < 10) {
-                alert(`⚠️ 정회원 참석 인원이 ${regularAttendees.length}명입니다. (최소 10명 이상 참석 시에만 평점 평가를 진행합니다.)`);
-                return;
-            }
-
             const attendingAdmins = parsedList.filter(p => p.role === 'admin').map(p => p.name);
-            if (attendingAdmins.length <= 1) {
-                alert(`⚠️ 참석한 주관리자가 ${attendingAdmins.length}명입니다. 주관리자 2명 이상 참석 시에만 평가가 가능합니다.`);
+            if (attendingAdmins.length < 2) {
+                alert(`⚠️ 참석한 주관리자가 ${attendingAdmins.length}명입니다. 최고 관리자 2명 이상 참석 시에만 평가가 가능합니다.`);
                 return;
             }
 
@@ -640,7 +667,6 @@
             renderSessionBoard();
         }
 
-        // 2명 이상 일치 시(아직 3번째 투표 전이라도) 잠정 조정 단계를 계산
         function getTwoMatchDelta(vals) {
             const countMap = {};
             vals.forEach(v => { countMap[v] = (countMap[v] || 0) + 1; });
@@ -688,7 +714,6 @@
                 return { isComplete: true, votedCount: 2, requiredCount: 2, delta: 0, provisionalDelta: 0, label: '- 유지 (합의)', signals, hasConflictOrSignal, pVotes };
             }
 
-            // 3인 모드: 2단계는 3명 전원 일치 시에만 적용, 그 외 2명 일치 시 1단계 조정
             if (vals.every(v => v === 2)) return { isComplete: true, votedCount: 3, requiredCount: 3, delta: 2, provisionalDelta: 2, label: '▲▲ 2단계 상향 (만장일치)', signals, hasConflictOrSignal, pVotes };
             if (vals.every(v => v === -2)) return { isComplete: true, votedCount: 3, requiredCount: 3, delta: -2, provisionalDelta: -2, label: '▼▼ 2단계 하향 (만장일치)', signals, hasConflictOrSignal, pVotes };
 
@@ -830,7 +855,7 @@
 
                     const liveMember = membersData.find(m => m.name === p.name);
                     const hist = liveMember && Array.isArray(liveMember.history) ? liveMember.history : (Array.isArray(p.history) ? p.history : []);
-                    
+
                     let historyText = '기록 없음';
                     let lastEvalDate = '없음';
                     if (hist.length > 0) {
@@ -868,7 +893,6 @@
                             </div>
                         </div>
 
-                        <!-- 투표 및 시그널 컨트롤 -->
                         <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2 pt-2 border-t border-slate-800">
                             <div class="grid grid-cols-5 gap-1.5 flex-1">
                                 ${renderVoteOptionBtn(p.name, 2, '▲▲ +2', myVal, disableTwoStep || isCompleted || !isAttendingAdmin)}
@@ -1027,7 +1051,6 @@
                     isComplete: res.isComplete
                 });
 
-                // 확정(delta !== 0) 또는 2인 선행 일치(provisionalDelta !== 0)가 있으면 최하단 미리보기에 반영
                 const activeDelta = res.isComplete ? res.delta : (res.provisionalDelta || 0);
                 if (activeDelta !== 0) {
                     previewItems.push({
@@ -1147,7 +1170,7 @@
 
                 const newScore = scoreMap[c.newRating] || 6.5;
                 let historyArr = Array.isArray(member.history) ? [...member.history] : [];
-                
+
                 const existIdx = historyArr.findIndex(h => h.date === sessionDateStr);
                 if (existIdx !== -1) {
                     historyArr[existIdx].score = newScore;

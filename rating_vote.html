@@ -214,9 +214,13 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-300 mb-1">연락처 (선택)</label>
-                        <input type="text" id="q-phone" placeholder="010-0000-0000" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-xs text-white">
+                        <label class="block text-xs font-bold text-slate-300 mb-1">카카오톡 구분</label>
+                        <input type="text" id="q-kakao" placeholder="예: 당근, 오픈톡" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-xs text-white">
                     </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">연락처 (선택)</label>
+                    <input type="text" id="q-phone" placeholder="예: 01012345678 (→ 010-1234-5678)" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-xs text-white">
                 </div>
                 <div class="flex gap-2 pt-2">
                     <button type="button" onclick="skipUnregisteredMember()" class="px-4 py-2 bg-slate-700 text-slate-300 text-xs rounded">이번만 제외</button>
@@ -265,6 +269,28 @@
                 return `${yr4}.01.01`;
             }
             return String(rawBirth || '').trim();
+        }
+
+        function formatPhoneNumber(rawPhone) {
+            const digits = String(rawPhone || '').replace(/[^0-9]/g, '');
+            if (!digits) return '010-XXXX-XXXX';
+            if (digits.length === 11 && digits.startsWith('010')) {
+                return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7, 11)}`;
+            }
+            if (digits.length === 8) {
+                return `010-${digits.slice(0, 4)}-${digits.slice(4, 8)}`;
+            }
+            if (digits.length === 10) {
+                return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+            }
+            return rawPhone.trim();
+        }
+
+        function formatDbCreatedDate(dateObj = new Date()) {
+            const yyyy = dateObj.getFullYear();
+            const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const dd = String(dateObj.getDate()).padStart(2, '0');
+            return `${yyyy}.${mm}.${dd}`;
         }
 
         async function init() {
@@ -456,6 +482,7 @@
             document.getElementById('q-role').value = 'guest';
             document.getElementById('q-birth').value = '';
             document.getElementById('q-grade').value = 'C';
+            document.getElementById('q-kakao').value = '';
             document.getElementById('q-phone').value = '';
             document.getElementById('quick-register-modal').classList.remove('hidden');
         }
@@ -468,16 +495,19 @@
             const formattedBirth = formatBirthToDate(rawBirth);
             const selectedGrade = document.getElementById('q-grade').value || 'C';
             const initialScore = scoreMap[selectedGrade] ?? 6.5;
-            const phone = document.getElementById('q-phone').value.trim();
+            const rawKakao = document.getElementById('q-kakao').value.trim();
+            const kakaoId = rawKakao || (role === 'guest' ? '용병' : '지인');
+            const phone = formatPhoneNumber(document.getElementById('q-phone').value);
 
             const now = new Date();
             const todayStr = `${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
+            const dbCreatedDate = formatDbCreatedDate(now);
 
             const newMember = {
                 name: name,
                 password: '1234',
-                full_phone: phone || '010-XXXX-XXXX',
-                kakao_id: role === 'guest' ? '용병' : '지인',
+                full_phone: phone,
+                kakao_id: kakaoId,
                 photo: '',
                 birth: formattedBirth,
                 address: '',
@@ -486,9 +516,9 @@
                 join_date: '2026년',
                 role: role,
                 is_withdrawn: false,
-                attended_matches: 1,
+                attended_matches: 0,
                 history: [{ date: todayStr, score: initialScore }],
-                feedback: '당일 참여 용병/지인 즉시 등록',
+                feedback: `DB생성일: ${dbCreatedDate}`,
                 login_count: 0,
                 last_login_at: null
             };

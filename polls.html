@@ -163,11 +163,8 @@
         const SUPABASE_KEY = 'sb_publishable_mXkGsaxwwfnnAR3lpE8T1A_n0kiPdZj';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // 카톡 미리보기용 공유 주소 (Cloudflare Worker)
         const SHARE_BASE = 'https://tenfc-share.mr-hansoh.workers.dev/';
-        // 투표를 만들 수 있는 권한 (일반 회원도 허용하려면 이 줄을 수정)
         const CREATE_ROLES = ['admin', 'sub_admin'];
-        // 투표에 참여할 수 없는 권한 (정회원만 투표)
         const NO_VOTE_ROLES = ['guest', 'acquaintance'];
 
         const WEEK = ['일', '월', '화', '수', '목', '금', '토'];
@@ -186,14 +183,12 @@
         let submitting = false;
         let lastClosedState = null;
         let editingPollId = null;
-        let myVotedPolls = new Set();   // 내가 투표한 투표 ID (익명 투표 포함)
+        let myVotedPolls = new Set();
 
-        // ---------- 유틸 ----------
         const pad2 = n => String(n).padStart(2, '0');
         function esc(s) {
             return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         }
-        // 줄바꿈 + 링크(새 창) 변환
         function richText(text) {
             return esc(text).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-sky-400 underline break-all">$1</a>').replace(/\n/g, '<br>');
         }
@@ -213,12 +208,10 @@
             const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
             return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
         }
-        // 실명 투표는 이름, 익명 투표는 (투표ID+이름)의 해시값을 저장
         async function voterKey(p, name) {
             return p.is_anonymous ? await sha256Hex(`${p.id}:${name}`) : name;
         }
 
-        // ---------- 초기화 ----------
         document.addEventListener('DOMContentLoaded', async () => {
             try {
                 await fetchMembers();
@@ -231,7 +224,6 @@
         });
         window.addEventListener('popstate', routeFromUrl);
 
-        // 정회원(로그인한 회원 중 용병/지인 제외)만 접근 가능
         function hasAccess() { return !!currentUser && !NO_VOTE_ROLES.includes(currentUser.role); }
 
         function showGate() {
@@ -257,7 +249,6 @@
             else showList(false);
         }
 
-        // ---------- 로그인 및 ?view= 우회 접속 지원 ----------
         const loginRecordedNames = new Set();
         async function recordLoginSession(user) {
             if (!user || !user.name || user.name === '테스트' || loginRecordedNames.has(user.name)) return;
@@ -281,7 +272,6 @@
             const viewName = new URLSearchParams(window.location.search).get('view');
             let targetUser = savedName ? (membersData.find(m => m.name === savedName) || null) : null;
 
-            // 💡 주관리자(admin)로 로그인된 상태에서 ?view=회원명 접속 시 해당 회원으로 전환
             if (viewName && targetUser && targetUser.role === 'admin') {
                 const viewTarget = membersData.find(m => m.name === viewName && !m.isWithdrawn && !m.is_withdrawn);
                 if (viewTarget) {
@@ -349,7 +339,6 @@
             routeFromUrl();
         }
 
-        // ---------- 데이터 ----------
         async function fetchPolls() {
             const { data: pData, error } = await supabaseClient.from('polls').select('*').order('created_at', { ascending: false });
             if (error) { console.error(error); polls = []; renderList(); return; }
@@ -380,7 +369,6 @@
         }
         function participants(pollId) { return new Set((votesByPoll[pollId] || []).map(v => v.voter)); }
 
-        // ---------- 목록 ----------
         function setListTab(t) { listTab = t; renderList(); }
 
         function renderList() {
@@ -427,12 +415,11 @@
             renderList();
         }
 
-        // ---------- 상세 ----------
         async function showDetail(id, push) {
             const p = getPoll(id);
             if (!p) { showList(push); return; }
             currentPollId = id;
-            lastClosedState = null;
+            lastClosedState = isClosed(p);
             document.title = `🗳️ ${p.title}`;
             if (push) history.pushState({}, '', `?id=${id}`);
             selected = new Set();
@@ -452,6 +439,7 @@
         }
 
         function renderDetail() {
+            if (chart) { chart.destroy(); chart = null; }
             const p = getPoll(currentPollId);
             if (!p) return;
             const opts = optionsByPoll[p.id] || [];
@@ -482,6 +470,7 @@
                     <p class="text-[11px] text-slate-500">${p.allow_multiple ? '여러 개를 선택할 수 있습니다. ' : '하나만 선택할 수 있습니다. '}마감 전까지 언제든 변경할 수 있습니다.</p>`;
             }
 
+            const showRes = currentUser && canSeeResults(p) && total > 0;
             let resultHtml = '';
             if (!currentUser) {
                 resultHtml = '<p class="text-xs text-slate-400 text-center py-4">로그인하면 투표 결과를 볼 수 있습니다.</p>';
@@ -497,7 +486,7 @@
                         <button onclick="setChartType('bar')" class="px-3 py-1 rounded text-xs font-bold ${chartType === 'bar' ? 'bg-emerald-600 text-white' : 'text-slate-300'}">📊 막대</button>
                         <button onclick="setChartType('pie')" class="px-3 py-1 rounded text-xs font-bold ${chartType === 'pie' ? 'bg-emerald-600 text-white' : 'text-slate-300'}">🥧 원</button>
                     </div>
-                    <div style="height:${h}px;position:relative"><canvas id="poll-chart"></canvas></div>
+                    <div style="height:${h}px;min-height:${h}px;position:relative"><canvas id="poll-chart" style="display:block;width:100%;height:100%"></canvas></div>
                     <div class="mt-4 space-y-2">
                         ${stats.map((s, i) => `
                             <div class="bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs">
@@ -561,7 +550,12 @@
                 </div>`;
 
             tick();
-            if (currentUser && canSeeResults(p) && total > 0) drawChart(p);
+            if (showRes) {
+                const targetId = p.id;
+                requestAnimationFrame(() => {
+                    if (currentPollId === targetId) drawChart(p);
+                });
+            }
         }
 
         function optionStats(p) {
@@ -570,27 +564,35 @@
             const total = participants(p.id).size;
             return opts.map(o => {
                 const vs = votes.filter(v => v.option_id === o.id);
-                return { id: o.id, label: o.label, count: vs.length, pct: total ? Math.round(vs.length / total * 100) : 0, voters: vs.map(v => v.voter) };
+                const count = Number(vs.length) || 0;
+                return {
+                    id: o.id,
+                    label: o.label,
+                    count,
+                    pct: total ? Math.round(count / total * 100) : 0,
+                    voters: vs.map(v => v.voter)
+                };
             });
         }
 
         function setChartType(t) { chartType = t; renderDetail(); }
-        
-        // 💡 원그래프 툴팁 퍼센트(%) 표시 기능 적용 완료
+
         function drawChart(p) {
             const el = document.getElementById('poll-chart');
-            if (!el) return;
+            if (!el || typeof Chart === 'undefined') return;
             if (chart) { chart.destroy(); chart = null; }
             const stats = optionStats(p);
             const labels = stats.map(s => s.label);
-            const data = stats.map(s => s.count);
+            const data = stats.map(s => Number(s.count) || 0);
             const colors = stats.map((s, i) => PALETTE[i % PALETTE.length]);
             if (chartType === 'bar') {
                 chart = new Chart(el, {
                     type: 'bar',
                     data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 6 }] },
                     options: {
-                        indexAxis: 'y', maintainAspectRatio: false,
+                        indexAxis: 'y',
+                        maintainAspectRatio: false,
+                        animation: false,
                         plugins: { legend: { display: false } },
                         scales: {
                             x: { beginAtZero: true, ticks: { precision: 0, color: '#94a3b8' }, grid: { color: '#1e293b' } },
@@ -602,27 +604,27 @@
                 chart = new Chart(el, {
                     type: 'pie',
                     data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: '#0f172a', borderWidth: 2 }] },
-                    options: { 
-                        maintainAspectRatio: false, 
-                        plugins: { 
+                    options: {
+                        maintainAspectRatio: false,
+                        animation: false,
+                        plugins: {
                             legend: { position: 'bottom', labels: { color: '#e2e8f0' } },
                             tooltip: {
                                 callbacks: {
                                     label: function(ctx) {
-                                        const val = ctx.parsed || 0;
-                                        const sum = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                        const val = Number(ctx.parsed) || 0;
+                                        const sum = (ctx.dataset.data || []).reduce((a, b) => a + (Number(b) || 0), 0);
                                         const pct = sum ? ((val / sum) * 100).toFixed(1) : 0;
                                         return ` ${ctx.label}: ${val}표 (${pct}%)`;
                                     }
                                 }
                             }
-                        } 
+                        }
                     }
                 });
             }
         }
 
-        // ---------- 투표하기 ----------
         function toggleOption(optId) {
             const p = getPoll(currentPollId);
             if (!p || isClosed(p)) return;
@@ -661,7 +663,6 @@
             }
         }
 
-        // ---------- 관리 ----------
         async function toggleClosePoll() {
             if (!isCreator()) return;
             const p = getPoll(currentPollId);
@@ -670,6 +671,7 @@
             const { error } = await supabaseClient.from('polls').update({ status: toClose ? 'closed' : 'open' }).eq('id', p.id);
             if (error) { alert('변경 실패: ' + error.message); return; }
             p.status = toClose ? 'closed' : 'open';
+            lastClosedState = isClosed(p);
             renderDetail();
         }
         async function deletePoll() {
@@ -689,7 +691,6 @@
             navigator.clipboard.writeText(input.value).then(() => alert('공유 링크가 복사되었습니다.'));
         }
 
-        // ---------- 카운트다운 ----------
         function tick() {
             const p = getPoll(currentPollId);
             const label = document.getElementById('cd-label'), time = document.getElementById('cd-time');
@@ -708,11 +709,12 @@
                     time.className = `font-mono font-bold text-sm ${diff < 3600 * 1000 ? 'text-rose-400' : 'text-amber-300'}`;
                 }
             }
-            if (lastClosedState !== null && lastClosedState !== closed) renderDetail();
-            lastClosedState = closed;
+            if (lastClosedState !== null && lastClosedState !== closed) {
+                lastClosedState = closed;
+                renderDetail();
+            }
         }
 
-        // ---------- 새 투표 만들기 ----------
         function fillSel(id, items, selected) {
             document.getElementById(id).innerHTML = items.map(([v, l]) => `<option value="${v}" ${String(v) === String(selected) ? 'selected' : ''}>${l}</option>`).join('');
         }

@@ -1779,9 +1779,10 @@
             const line = (e, i) => {
                 const v = e.v;
                 const b = getBirthOf(v);
-             const isNonMember = v.guest_type !== '정회원';
-const isGuestish = isNonMember && (['용병', '지인', '가입전 참가', '대기자', '당근', '플랩', '오픈톡'].includes(v.guest_type) || !!v.guest_phone || !!v.registered_by);
-const parts = [`${i + 1}. ${v.guest_name}${b && b !== '미입력' ? `(${b})` : ''}`, v.guest_type || '정회원'];
+            const guestType = v.guest_type || '정회원';
+const isGuestish = guestType !== '정회원' && (['용병', '지인', '가입전 참가', '대기자', '당근', '플랩', '오픈톡'].includes(guestType) || !!v.guest_phone || !!v.registered_by);
+const parts = [`${i + 1}. ${v.guest_name}${b && b !== '미입력' ? `(${b})` : ''}`];
+if (guestType !== '정회원') parts.push(guestType);
 if (isGuestish) parts.push(`실력:${v.guest_skill || '중'}`);
                 if (e.tentative) parts.push('미정');
                 if (v.guest_phone && v.guest_phone !== '미입력') parts.push(`연락처:${v.guest_phone}`);

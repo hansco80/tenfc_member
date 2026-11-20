@@ -1672,7 +1672,16 @@
 
             const parts = [];
             if (birth && birth !== '미입력') parts.push(`${birth}년생`);
-            if (isGuestish && v.guest_phone && v.guest_phone !== '미입력') parts.push(esc(staff ? v.guest_phone : getMaskedPhone(v.guest_phone)));
+
+            const rawPhone = String(v.guest_phone || '').trim();
+            const digitsPhone = rawPhone.replace(/[^0-9+]/g, '');
+            if (isGuestish && rawPhone && rawPhone !== '미입력') {
+                if (staff && digitsPhone.length >= 7) {
+                    parts.push(`<a href="tel:${esc(digitsPhone)}" onclick="event.stopPropagation()" class="underline decoration-amber-400/70 underline-offset-2 hover:text-amber-200">${esc(rawPhone)}</a>`);
+                } else {
+                    parts.push(esc(staff ? rawPhone : getMaskedPhone(rawPhone)));
+                }
+            }
             if (isGuestish && v.guest_skill) parts.push(`실력:${esc(v.guest_skill || '중')}`);
             const detail = parts.length ? ` <span class="text-[10px] text-amber-400">(${parts.join(', ')})</span>` : '';
 

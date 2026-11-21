@@ -720,6 +720,28 @@
             return `${shortYear}년${bMonth}월 (만${age}세)`;
         }
 
+        function formatBirthYearAndAge(birthStr) {
+            if (!birthStr) return '-';
+            const cleanBirth = String(birthStr).trim().split(' ')[0];
+            const parts = cleanBirth.split('.');
+            if (parts.length < 3) return cleanBirth;
+
+            const bYear = parseInt(parts[0], 10);
+            const bMonth = parseInt(parts[1], 10);
+            const bDay = parseInt(parts[2], 10);
+            if (Number.isNaN(bYear) || Number.isNaN(bMonth) || Number.isNaN(bDay)) return cleanBirth;
+
+            const today = new Date();
+            let age = today.getFullYear() - bYear;
+            const monthDiff = (today.getMonth() + 1) - bMonth;
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < bDay)) {
+                age--;
+            }
+
+            const shortYear = String(bYear).slice(-2);
+            return `${shortYear}년 (${age}세)`;
+        }
+
         function openPhotoPreview(name) {
             const m = membersData.find(item => item.name === name);
             if (!m) return;
@@ -1255,7 +1277,7 @@
 
             const formatLine = (m, customName) => {
                 const nameStr = customName || m.name;
-                const birthStr = m.birth ? m.birth.trim() : '-';
+                const birthStr = formatBirthYearAndAge(m.birth);
                 const score = scoreMap[m.rating] !== undefined ? scoreMap[m.rating].toFixed(1) : '0.0';
                 return `${nameStr} / ${birthStr} / ${m.rating} (${score}점)\n`;
             };
@@ -1279,13 +1301,14 @@
             });
 
             const guestList = membersData
-                .filter(m => !m.isWithdrawn && m.role === 'guest')
+                .filter(m => !m.isWithdrawn && m.role === 'guest' && m.name.trim() !== '테스트')
                 .sort(sortByBirthAsc);
 
             if (guestList.length > 0) {
                 textOutput += `\n[용병]\n`;
                 guestList.forEach(m => {
-                    const displayName = m.name.includes('용병') ? m.name : `${m.name}(용병)`;
+                    const kakaoLabel = (m.kakaoId && m.kakaoId.trim()) ? m.kakaoId.trim() : '용병';
+                    const displayName = `${m.name}(${kakaoLabel})`;
                     textOutput += formatLine(m, displayName);
                 });
             }

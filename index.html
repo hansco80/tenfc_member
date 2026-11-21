@@ -257,6 +257,7 @@
                 <button onclick="batchAdjustRating('up')" class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs rounded shadow transition">선택 평점 일괄 상향 (▲)</button>
                 <button onclick="batchAdjustRating('down')" class="px-3 py-1.5 bg-rose-800 hover:bg-rose-700 text-white font-bold text-xs rounded shadow transition">선택 평점 일괄 하향 (▼)</button>
                 <button onclick="applyBatchAttendance()" class="px-4 py-1.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded shadow transition">선택 멤버 출석 반영 (+1)</button>
+                <button onclick="optimizeAllPhotos()" class="px-3 py-1.5 bg-slate-600 hover:bg-slate-500 text-white font-bold text-xs rounded shadow transition">🖼️ 사진 용량 줄이기 (1회)</button>
             </div>
         </div>
 
@@ -542,6 +543,65 @@
             return historyArr;
         }
 
+
+        // ===== 사진 리사이즈 (Egress 절감) =====
+        const PHOTO_MAX_SIZE = 256;      // 긴 변 기준 px
+        const PHOTO_QUALITY = 0.8;
+        const PHOTO_SKIP_BELOW = 40000;  // 이미 이보다 작은 data URL은 건너뜀(문자 수)
+
+        // File 또는 data URL 문자열을 받아 256px 이하 webp(미지원 시 jpeg) data URL로 반환
+        function resizeImageSource(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                let objectUrl = null;
+                img.onload = function () {
+                    try {
+                        const ratio = Math.min(1, PHOTO_MAX_SIZE / Math.max(img.naturalWidth, img.naturalHeight));
+                        const w = Math.max(1, Math.round(img.naturalWidth * ratio));
+                        const h = Math.max(1, Math.round(img.naturalHeight * ratio));
+                        const canvas = document.createElement('canvas');
+                        canvas.width = w; canvas.height = h;
+                        const ctx = canvas.getContext('2d');
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(0, 0, w, h);
+                        ctx.drawImage(img, 0, 0, w, h);
+                        let out = canvas.toDataURL('image/webp', PHOTO_QUALITY);
+                        if (!out.startsWith('data:image/webp')) out = canvas.toDataURL('image/jpeg', PHOTO_QUALITY);
+                        if (objectUrl) URL.revokeObjectURL(objectUrl);
+                        resolve(out);
+                    } catch (e) { reject(e); }
+                };
+                img.onerror = function () { reject(new Error('이미지를 읽을 수 없습니다.')); };
+                if (typeof src === 'string') { img.src = src; }
+                else { objectUrl = URL.createObjectURL(src); img.src = objectUrl; }
+            });
+        }
+
+        // 기존에 저장된 큰 사진을 한 번에 줄이는 1회성 도구 (주관리자 전용)
+        async function optimizeAllPhotos() {
+            if (!currentUser || currentUser.role !== 'admin') { alert('주관리자만 사용할 수 있습니다.'); return; }
+            const targets = membersData.filter(m => m.photo && m.photo.startsWith('data:') && m.photo.length > PHOTO_SKIP_BELOW);
+            if (targets.length === 0) { alert('줄일 사진이 없습니다. (이미 모두 최적화됨)'); return; }
+            const beforeKB = Math.round(targets.reduce((a, m) => a + m.photo.length, 0) / 1024);
+            if (!confirm('큰 사진 ' + targets.length + '장(약 ' + beforeKB + 'KB)을 256px로 줄여 다시 저장합니다.\n계속할까요?')) return;
+
+            let done = 0, failed = [];
+            for (const m of targets) {
+                try {
+                    const small = await resizeImageSource(m.photo);
+                    if (small.length >= m.photo.length) { done++; continue; }
+                    const { error } = await supabaseClient.from('members').update({ photo: small }).eq('name', m.name);
+                    if (error) throw error;
+                    m.photo = small;
+                    done++;
+                } catch (e) { failed.push(m.name); }
+            }
+            const afterKB = Math.round(membersData.reduce((a, m) => a + (m.photo ? m.photo.length : 0), 0) / 1024);
+            alert('완료: ' + done + '/' + targets.length + '장 처리\n현재 사진 합계 약 ' + afterKB + 'KB' + (failed.length ? '\n실패: ' + failed.join(', ') : ''));
+            await fetchMembersFromSupabase();
+            loadAdminDashboard();
+        }
+
         async function fetchMembersFromSupabase() {
             try {
                 const { data, error } = await supabaseClient.from('members').select('*');
@@ -718,28 +778,6 @@
             
             const shortYear = String(bYear).slice(-2);
             return `${shortYear}년${bMonth}월 (만${age}세)`;
-        }
-
-        function formatBirthYearAndAge(birthStr) {
-            if (!birthStr) return '-';
-            const cleanBirth = String(birthStr).trim().split(' ')[0];
-            const parts = cleanBirth.split('.');
-            if (parts.length < 3) return cleanBirth;
-
-            const bYear = parseInt(parts[0], 10);
-            const bMonth = parseInt(parts[1], 10);
-            const bDay = parseInt(parts[2], 10);
-            if (Number.isNaN(bYear) || Number.isNaN(bMonth) || Number.isNaN(bDay)) return cleanBirth;
-
-            const today = new Date();
-            let age = today.getFullYear() - bYear;
-            const monthDiff = (today.getMonth() + 1) - bMonth;
-            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < bDay)) {
-                age--;
-            }
-
-            const shortYear = String(bYear).slice(-2);
-            return `${shortYear}년 (${age}세)`;
         }
 
         function openPhotoPreview(name) {
@@ -1277,7 +1315,7 @@
 
             const formatLine = (m, customName) => {
                 const nameStr = customName || m.name;
-                const birthStr = formatBirthYearAndAge(m.birth);
+                const birthStr = m.birth ? m.birth.trim() : '-';
                 const score = scoreMap[m.rating] !== undefined ? scoreMap[m.rating].toFixed(1) : '0.0';
                 return `${nameStr} / ${birthStr} / ${m.rating} (${score}점)\n`;
             };
@@ -1301,14 +1339,13 @@
             });
 
             const guestList = membersData
-                .filter(m => !m.isWithdrawn && m.role === 'guest' && m.name.trim() !== '테스트')
+                .filter(m => !m.isWithdrawn && m.role === 'guest')
                 .sort(sortByBirthAsc);
 
             if (guestList.length > 0) {
                 textOutput += `\n[용병]\n`;
                 guestList.forEach(m => {
-                    const kakaoLabel = (m.kakaoId && m.kakaoId.trim()) ? m.kakaoId.trim() : '용병';
-                    const displayName = `${m.name}(${kakaoLabel})`;
+                    const displayName = m.name.includes('용병') ? m.name : `${m.name}(용병)`;
                     textOutput += formatLine(m, displayName);
                 });
             }
@@ -1459,9 +1496,12 @@
             }
 
             if (fileInput.files && fileInput.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(event) { saveToSupabase(event.target.result); };
-                reader.readAsDataURL(fileInput.files[0]);
+                try {
+                    const resized = await resizeImageSource(fileInput.files[0]);
+                    saveToSupabase(resized);
+                } catch (err) {
+                    alert('사진 처리 실패: ' + err.message);
+                }
             } else {
                 saveToSupabase();
             }

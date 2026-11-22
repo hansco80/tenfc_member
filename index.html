@@ -534,7 +534,6 @@
             return historyArr;
         }
 
-        // 목록 조회에는 photo를 제외하여 Egress 절감
         const MEMBER_LIST_COLUMNS = 'id, name, password, full_phone, kakao_id, birth, address, position, rating, join_date, role, is_withdrawn, attended_matches, history, feedback, login_count, last_login_at';
 
         async function fetchMembersFromSupabase(includePhoto = false) {
@@ -576,7 +575,6 @@
             }
         }
 
-        // 필요한 멤버 1명의 photo만 단건 조회
         async function ensureMemberPhoto(member) {
             if (!member) return "";
             if (member.photo && member.photo.trim() !== "") return member.photo;
@@ -709,6 +707,28 @@
             const m = (today.getMonth() + 1) - bMonth;
             if (m < 0 || (m === 0 && today.getDate() < bDay)) age--;
             return `${String(bYear).slice(-2)}년${bMonth}월 (${age}세)`;
+        }
+
+        function formatBirthYearAndAge(birthStr) {
+            if (!birthStr) return '-';
+            const cleanBirth = String(birthStr).trim().split(' ')[0];
+            const parts = cleanBirth.split('.');
+            if (parts.length < 3) return cleanBirth;
+
+            const bYear = parseInt(parts[0], 10);
+            const bMonth = parseInt(parts[1], 10);
+            const bDay = parseInt(parts[2], 10);
+            if (Number.isNaN(bYear) || Number.isNaN(bMonth) || Number.isNaN(bDay)) return cleanBirth;
+
+            const today = new Date();
+            let age = today.getFullYear() - bYear;
+            const monthDiff = (today.getMonth() + 1) - bMonth;
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < bDay)) {
+                age--;
+            }
+
+            const shortYear = String(bYear).slice(-2);
+            return `${shortYear}년 (${age}세)`;
         }
 
         async function openPhotoPreview(name) {
@@ -1270,7 +1290,7 @@
 
             const formatLine = (m, customName) => {
                 const nameStr = customName || m.name;
-                const birthStr = m.birth ? m.birth.trim() : '-';
+                const birthStr = formatBirthYearAndAge(m.birth);
                 const score = scoreMap[m.rating] !== undefined ? scoreMap[m.rating].toFixed(1) : '0.0';
                 return `${nameStr} / ${birthStr} / ${m.rating} (${score}점)\n`;
             };
@@ -1283,21 +1303,33 @@
                 return bA.localeCompare(bB);
             };
 
-            membersData
+            const regularList = membersData
                 .filter(m => !m.isWithdrawn && (m.role === 'member' || m.role === 'admin' || m.role === 'sub_admin'))
-                .sort(sortByBirthAsc)
-                .forEach(m => {
-                    const isOp = m.role === 'admin' || m.role === 'sub_admin';
-                    textOutput += formatLine(m, isOp ? `${m.name} *` : m.name);
-                });
+                .sort(sortByBirthAsc);
 
-            const guestList = membersData.filter(m => !m.isWithdrawn && m.role === 'guest').sort(sortByBirthAsc);
+            regularList.forEach(m => {
+                const isOp = m.role === 'admin' || m.role === 'sub_admin';
+                const displayName = isOp ? `${m.name} *` : m.name;
+                textOutput += formatLine(m, displayName);
+            });
+
+            const guestList = membersData
+                .filter(m => !m.isWithdrawn && m.role === 'guest' && String(m.name || '').trim() !== '테스트')
+                .sort(sortByBirthAsc);
+
             if (guestList.length > 0) {
                 textOutput += `\n[용병]\n`;
-                guestList.forEach(m => textOutput += formatLine(m, m.name.includes('용병') ? m.name : `${m.name}(용병)`));
+                guestList.forEach(m => {
+                    const kakaoLabel = (m.kakaoId && m.kakaoId.trim()) ? m.kakaoId.trim() : '용병';
+                    const displayName = `${m.name}(${kakaoLabel})`;
+                    textOutput += formatLine(m, displayName);
+                });
             }
 
-            const acqList = membersData.filter(m => !m.isWithdrawn && m.role === 'acquaintance').sort(sortByBirthAsc);
+            const acqList = membersData
+                .filter(m => !m.isWithdrawn && m.role === 'acquaintance')
+                .sort(sortByBirthAsc);
+
             if (acqList.length > 0) {
                 textOutput += `\n[지인]\n`;
                 acqList.forEach(m => {
@@ -1310,10 +1342,16 @@
                 });
             }
 
-            const withdrawnList = membersData.filter(m => m.isWithdrawn).sort(sortByBirthAsc);
+            const withdrawnList = membersData
+                .filter(m => m.isWithdrawn)
+                .sort(sortByBirthAsc);
+
             if (withdrawnList.length > 0) {
                 textOutput += `\n[탈퇴 멤버]\n`;
-                withdrawnList.forEach(m => textOutput += formatLine(m, m.name.includes('탈퇴') ? m.name : `${m.name}(탈퇴)`));
+                withdrawnList.forEach(m => {
+                    const displayName = m.name.includes('탈퇴') ? m.name : `${m.name}(탈퇴)`;
+                    textOutput += formatLine(m, displayName);
+                });
             }
 
             navigator.clipboard.writeText(textOutput).then(() => alert(`멤버 명단이 클립보드에 복사되었습니다!`));

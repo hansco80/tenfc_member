@@ -693,7 +693,7 @@
             let age = today.getFullYear() - bYear;
             const m = (today.getMonth() + 1) - bMonth;
             if (m < 0 || (m === 0 && today.getDate() < bDay)) age--;
-            return `${birthStr} (만 ${age}세)`;
+            return `${birthStr} (${age}세)`;
         }
 
         function formatShortBirthAge(birthStr) {
@@ -708,7 +708,7 @@
             let age = today.getFullYear() - bYear;
             const m = (today.getMonth() + 1) - bMonth;
             if (m < 0 || (m === 0 && today.getDate() < bDay)) age--;
-            return `${String(bYear).slice(-2)}년${bMonth}월 (만${age}세)`;
+            return `${String(bYear).slice(-2)}년${bMonth}월 (${age}세)`;
         }
 
         async function openPhotoPreview(name) {

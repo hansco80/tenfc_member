@@ -1,4 +1,4 @@
-<!DOCTYPE html
+<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -201,10 +201,10 @@
                 <table class="w-full text-left text-xs text-slate-300">
                     <thead class="bg-slate-800 text-slate-400 uppercase select-none sticky top-0">
                         <tr>
-                            <th class="p-2.5 cursor-pointer hover:text-emerald-400 transition" onclick="changeRestrictedSort('name')">성명 <span id="r-sort-name" class="text-slate-500">↕</span></th>
-                            <th class="p-2.5 cursor-pointer hover:text-emerald-400 transition" onclick="changeRestrictedSort('birth')">출생년도 <span id="r-sort-birth" class="text-emerald-400">▼</span></th>
-                            <th class="p-2.5 cursor-pointer hover:text-emerald-400 transition" onclick="changeRestrictedSort('attendance')">출석 횟수 / 참석률 <span id="r-sort-attendance" class="text-slate-500">↕</span></th>
-                            <th class="p-2.5">카카오톡 닉네임</th>
+                            <th class="p-2.5 whitespace-nowrap cursor-pointer hover:text-emerald-400 transition" onclick="changeRestrictedSort('name')">성명 <span id="r-sort-name" class="text-slate-500">↕</span></th>
+                            <th class="p-2.5 whitespace-nowrap cursor-pointer hover:text-emerald-400 transition" onclick="changeRestrictedSort('birth')">출생년도 <span id="r-sort-birth" class="text-emerald-400">▼</span></th>
+                            <th class="p-2.5 whitespace-nowrap cursor-pointer hover:text-emerald-400 transition" onclick="changeRestrictedSort('attendance')">출석 횟수 / 참석률 <span id="r-sort-attendance" class="text-slate-500">↕</span></th>
+                            <th class="p-2.5 whitespace-nowrap">카카오톡 닉네임</th>
                         </tr>
                     </thead>
                     <tbody id="member-restricted-list" class="divide-y divide-slate-700/50"></tbody>
@@ -214,7 +214,7 @@
     </div>
 
     <!-- 관리자 대시보드 화면 -->
-    <div id="admin-container" class="w-full max-w-5xl bg-slate-800 p-6 md:p-8 rounded-2xl shadow-xl border border-slate-700 hidden">
+    <div id="admin-container" class="w-full max-w-6xl bg-slate-800 p-6 md:p-8 rounded-2xl shadow-xl border border-slate-700 hidden">
         <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
             <div>
                 <h2 id="admin-title" class="text-2xl font-bold text-emerald-400">🛡️ 관리자 대시보드</h2>
@@ -251,17 +251,17 @@
             <table class="w-full text-left text-xs text-slate-300">
                 <thead class="bg-slate-800 text-slate-400 uppercase select-none">
                     <tr>
-                        <th id="th-checkbox" class="p-3 w-10 text-center"><input type="checkbox" id="select-all-main" onclick="toggleSelectAll(this)"></th>
-                        <th class="p-3 cursor-pointer hover:text-emerald-400 transition" onclick="changeSort('name')">성명 <span id="sort-icon-name" class="text-slate-500">↕</span></th>
-                        <th class="p-3 cursor-pointer hover:text-emerald-400 transition" onclick="changeSort('birth')">출생년도 <span id="sort-icon-birth" class="text-emerald-400">▼</span></th>
-                        <th class="p-3">포지션</th>
-                        <th id="th-rating-header" class="p-3 cursor-pointer hover:text-emerald-400 transition" onclick="changeSort('rating')">현재 평점 <span id="sort-icon-rating" class="text-slate-500">↕</span></th>
-                        <th class="p-3 cursor-pointer hover:text-emerald-400 transition" onclick="changeSort('attendance')">출석 횟수 / 참석률 <span id="sort-icon-attendance" class="text-slate-500">↕</span></th>
-                        <th class="p-3">연락처 / 카톡 닉네임</th>
-                        <th id="th-login-tracking" class="p-3 text-center cursor-pointer hover:text-emerald-400 transition hidden" onclick="changeSort('loginCount')">
+                        <th id="th-checkbox" class="p-3 w-10 text-center whitespace-nowrap"><input type="checkbox" id="select-all-main" onclick="toggleSelectAll(this)"></th>
+                        <th class="p-3 whitespace-nowrap cursor-pointer hover:text-emerald-400 transition" onclick="changeSort('name')">성명 <span id="sort-icon-name" class="text-slate-500">↕</span></th>
+                        <th class="p-3 whitespace-nowrap cursor-pointer hover:text-emerald-400 transition" onclick="changeSort('birth')">출생년도 <span id="sort-icon-birth" class="text-emerald-400">▼</span></th>
+                        <th class="p-3 whitespace-nowrap">포지션</th>
+                        <th id="th-rating-header" class="p-3 whitespace-nowrap cursor-pointer hover:text-emerald-400 transition" onclick="changeSort('rating')">현재 평점 <span id="sort-icon-rating" class="text-slate-500">↕</span></th>
+                        <th class="p-3 whitespace-nowrap cursor-pointer hover:text-emerald-400 transition" onclick="changeSort('attendance')">출석 횟수 / 참석률 <span id="sort-icon-attendance" class="text-slate-500">↕</span></th>
+                        <th class="p-3 whitespace-nowrap">연락처 / 카톡 닉네임</th>
+                        <th id="th-login-tracking" class="p-3 text-center whitespace-nowrap cursor-pointer hover:text-emerald-400 transition hidden" onclick="changeSort('loginCount')">
                             로그인 이력 <span id="sort-icon-loginCount" class="text-slate-500">↕</span>
                         </th>
-                        <th id="th-action" class="p-3 text-center">관리</th>
+                        <th id="th-action" class="p-3 text-center whitespace-nowrap">관리</th>
                     </tr>
                 </thead>
                 <tbody id="admin-member-list" class="divide-y divide-slate-700/50"></tbody>
@@ -910,15 +910,15 @@
 
             const rowsHtml = displayList.map(m => {
                 const attRate = teamTotalMatches > 0 ? Math.round((m.attendedMatches / teamTotalMatches) * 100) : 0;
-                const roleBadge = (m.role === 'admin' || m.role === 'sub_admin') ? '<span class="text-emerald-400 text-[10px] ml-1">(운영진)</span>' : '';
+                const roleBadge = (m.role === 'admin' || m.role === 'sub_admin') ? '<span class="text-emerald-400 text-xs ml-1" title="운영진">🛡️</span>' : '';
                 return `
                     <tr class="hover:bg-slate-700/35 transition">
-                        <td class="p-2.5 font-bold text-white">
+                        <td class="p-2.5 font-bold text-white whitespace-nowrap">
                             <span onclick="openPhotoPreview('${m.name}')" class="text-white font-bold cursor-pointer hover:text-emerald-400 transition" title="클릭하여 프로필 사진 조회">🖼️ ${m.name}</span> ${roleBadge}
                         </td>
-                        <td class="p-2.5 text-slate-300">${formatShortBirthAge(m.birth)}</td>
-                        <td class="p-2.5 text-slate-300">${m.attendedMatches}회 / ${teamTotalMatches}회 <span class="text-indigo-400 font-bold">(${attRate}%)</span></td>
-                        <td class="p-2.5 text-amber-300 font-medium">${m.kakaoId || '-'}</td>
+                        <td class="p-2.5 text-slate-300 whitespace-nowrap">${formatShortBirthAge(m.birth)}</td>
+                        <td class="p-2.5 text-slate-300 whitespace-nowrap">${m.attendedMatches}회 / ${teamTotalMatches}회 <span class="text-indigo-400 font-bold">(${attRate}%)</span></td>
+                        <td class="p-2.5 text-amber-300 font-medium whitespace-nowrap">${m.kakaoId || '-'}</td>
                     </tr>
                 `;
             }).join('');
@@ -1036,7 +1036,7 @@
                 const attRate = teamTotalMatches > 0 ? Math.round((m.attendedMatches / teamTotalMatches) * 100) : 0;
                 let roleBadge = '';
                 if (m.isWithdrawn) roleBadge = '<span class="text-rose-400 text-[10px] ml-1 font-bold">(탈퇴)</span>';
-                else if (m.role === 'admin' || m.role === 'sub_admin') roleBadge = '<span class="text-emerald-400 text-[10px] ml-1">(운영진)</span>';
+                else if (m.role === 'admin' || m.role === 'sub_admin') roleBadge = '<span class="text-emerald-400 text-xs ml-1" title="운영진">🛡️</span>';
                 else if (m.role === 'guest') roleBadge = '<span class="text-amber-400 text-[10px] ml-1">(용병)</span>';
                 else if (m.role === 'acquaintance') roleBadge = '<span class="text-purple-400 text-[10px] ml-1">(지인)</span>';
 
@@ -1047,26 +1047,26 @@
                 tr.className = `hover:bg-slate-700/35 transition ${m.isWithdrawn ? 'opacity-60 bg-rose-950/10' : ''}`;
 
                 let rowHtml = '';
-                if (isAdmin) rowHtml += `<td class="p-3 text-center"><input type="checkbox" class="member-checkbox" value="${m.name}"></td>`;
+                if (isAdmin) rowHtml += `<td class="p-3 text-center whitespace-nowrap"><input type="checkbox" class="member-checkbox" value="${m.name}"></td>`;
 
                 const nameCellContent = isAdmin
                     ? `<span onclick="openMemberPageInNewTab('${m.name}')" class="cursor-pointer hover:underline text-white font-bold" title="새 창에서 마이페이지 보기">${m.name}</span>`
                     : `<span class="text-white font-bold">${m.name}</span>`;
 
                 rowHtml += `
-                    <td class="p-3 font-bold text-white">
-                        <button type="button" onclick="openPhotoPreview('${m.name}')" class="mr-1.5 text-slate-400 hover:text-emerald-400" title="프로필 사진 보기">🖼️</button>
-                        ${nameCellContent} ${roleBadge}
+                    <td class="p-3 font-bold text-white whitespace-nowrap">
+                        <button type="button" onclick="openPhotoPreview('${m.name}')" class="mr-1 text-slate-400 hover:text-emerald-400" title="프로필 사진 보기">🖼️</button>
+                        ${nameCellContent}${roleBadge}
                     </td>
-                    <td class="p-3 text-slate-300">${calculateInternationalAge(m.birth)}</td>
-                    <td class="p-3 text-slate-300">${m.position}</td>
+                    <td class="p-3 text-slate-300 whitespace-nowrap">${calculateInternationalAge(m.birth)}</td>
+                    <td class="p-3 text-slate-300 whitespace-nowrap">${m.position}</td>
                 `;
 
-                if (isAdmin) rowHtml += `<td class="p-3 font-extrabold text-emerald-400">${ratingDisplay}</td>`;
+                if (isAdmin) rowHtml += `<td class="p-3 font-extrabold text-emerald-400 whitespace-nowrap">${ratingDisplay}</td>`;
 
                 rowHtml += `
-                    <td class="p-3 text-slate-300">${m.attendedMatches}회 / ${teamTotalMatches}회 <span class="text-indigo-400 font-bold">(${attRate}%)</span></td>
-                    <td class="p-3 text-slate-300">${m.fullPhone}<br><span class="text-amber-300">${m.kakaoId || '-'}</span></td>
+                    <td class="p-3 text-slate-300 whitespace-nowrap">${m.attendedMatches}회 / ${teamTotalMatches}회 <span class="text-indigo-400 font-bold">(${attRate}%)</span></td>
+                    <td class="p-3 text-slate-300 whitespace-nowrap">${m.fullPhone}<br><span class="text-amber-300">${m.kakaoId || '-'}</span></td>
                 `;
 
                 if (isAdmin) {
@@ -1076,11 +1076,11 @@
                         formattedLastLogin = `${String(d.getFullYear()).slice(-2)}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
                     }
                     rowHtml += `
-                        <td class="p-3 text-center text-slate-300">
+                        <td class="p-3 text-center text-slate-300 whitespace-nowrap">
                             <span class="font-bold text-emerald-400">${m.loginCount || 0}회</span><br>
                             <span class="text-[10px] text-slate-400">${formattedLastLogin}</span>
                         </td>
-                        <td class="p-3 text-center"><button onclick="openAdminEdit('${m.name}')" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold">수정</button></td>
+                        <td class="p-3 text-center whitespace-nowrap"><button onclick="openAdminEdit('${m.name}')" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold">수정</button></td>
                     `;
                 }
 

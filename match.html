@@ -1818,7 +1818,7 @@
             return { cap, confirmed, waiting, declined };
         }
 
-        // 참석 예정자(미정 포함) 평균 나이(전체 공개)·등급·점수(운영진 전용)
+        // 참석 예정자(미정 포함) 평균 나이(전체 공개)·등급·점수(주관리자 전용)
         function renderConfirmedAvg(L) {
             const el = document.getElementById('confirmed-avg');
             if (!el) return;
@@ -1839,7 +1839,7 @@
                 const avgAge = ages.reduce((a, b) => a + b, 0) / ages.length;
                 parts.push(`평균 나이 ${avgAge.toFixed(1)}세${ages.length < list.length ? ` (${ages.length}명 기준)` : ''}`);
             }
-            if (isStaff()) {
+            if (TF.isAdmin(currentUser)) {
                 parts.push(`평균 등급 ${nearest}`);
                 parts.push(`평균 점수 ${avgScore.toFixed(2)}점`);
             }

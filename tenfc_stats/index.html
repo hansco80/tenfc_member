@@ -1,40 +1,56 @@
 <!DOCTYPE html>
-<!-- TenFC 팀 집계 v1.29 -->
+<!-- TenFC 팀 집계 v1.30 -->
 <html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TenFC 팀 집계 v1.29</title>
+<title>TenFC 팀 집계 v1.30</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style type="text/tailwindcss">
-.inp{@apply px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white}
-.btn{@apply px-3 py-2 bg-emerald-600 hover:bg-emerald-500 rounded font-bold text-white}
-.card{@apply bg-slate-800 border border-slate-700 rounded-xl p-4 mb-3}
-.tab{@apply px-4 py-2 rounded-lg bg-slate-800 text-slate-300}
-.tab.on{@apply bg-emerald-600 text-white font-bold}
+.inp{@apply px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white}
+.btn{@apply px-3 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-bold text-white}
+.card{@apply bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-3 shadow-xl}
+.tab{@apply px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700}
+.tab.on{@apply bg-emerald-600 border-emerald-600 text-white font-bold shadow-md}
 th,td{@apply p-2 text-left whitespace-nowrap}
 th{@apply text-slate-400 text-xs border-b border-slate-700}
-</style></head>
-<body class="bg-slate-900 text-slate-100 min-h-screen p-4 text-sm">
+</style>    <style id="tf-kit-css">
+        /* ===== TenFC 공통 UI (5개 페이지 동일 — 수정 시 전부 같이 바꾸세요) ===== */
+        .tf-btn { padding: .5rem 1rem; border-radius: .75rem; font-size: .75rem; line-height: 1rem; font-weight: 700; border: 1px solid transparent; cursor: pointer; white-space: nowrap; transition: background-color .15s, color .15s; text-align: center; }
+        .tf-nav { background: #1e293b; border-color: #334155; color: #cbd5e1; }
+        .tf-nav:hover { background: #334155; }
+        .tf-active { background: #059669; border-color: #059669; color: #fff; box-shadow: 0 4px 6px -1px rgba(0,0,0,.35); }
+        .tf-login { background: #0284c7; color: #fff; box-shadow: 0 4px 6px -1px rgba(0,0,0,.35); }
+        .tf-login:hover { background: #0ea5e9; }
+        .tf-logout { background: rgba(225,29,72,.8); color: #fff; }
+        .tf-logout:hover { background: #e11d48; }
+        .tf-primary { background: #059669; color: #fff; box-shadow: 0 4px 6px -1px rgba(0,0,0,.35); }
+        .tf-primary:hover { background: #10b981; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans p-4 text-sm">
 
 <div id="login" class="max-w-sm mx-auto mt-20 card space-y-3">
-  <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.29</span></h1>
+  <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.30</span></h1>
   <p class="text-xs text-slate-400">정회원·운영진 전용 · 멤버 사이트에서 로그인하셨다면 자동으로 들어옵니다.</p>
   <input id="em" type="text" placeholder="성명" class="inp w-full">
   <input id="pw" type="password" placeholder="비밀번호 (멤버 사이트와 동일)" class="inp w-full" onkeydown="if(event.key==='Enter')login()">
   <button onclick="login()" class="btn w-full">로그인</button>
   <p id="err" class="text-rose-400 text-xs"></p>
-  <button onclick="demo()" class="w-full px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs">🧪 로그인 없이 데모 체험 (샘플 데이터)</button>
+  <button onclick="demo()" class="tf-btn tf-nav w-full">🧪 로그인 없이 데모 체험 (샘플 데이터)</button>
+  <a href="../index.html" class="tf-btn tf-nav block">🏠 메인으로</a>
 </div>
 
 <div id="app" class="hidden max-w-4xl mx-auto">
   <div id="demo-bar" class="hidden mb-3 p-2 rounded bg-amber-900/40 border border-amber-700/50 text-amber-300 text-xs">🧪 데모 모드 — 샘플 데이터이며 DB에는 아무것도 저장되지 않습니다. 새로고침하면 초기화됩니다.</div>
-  <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
-    <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.29</span></h1>
-    <div class="flex gap-2 items-center">
-      <span id="me" class="text-xs text-slate-400"></span>
-      <a href="../" class="text-xs text-slate-400 underline">← 멤버 관리</a>
-      <button onclick="logout()" class="text-xs px-3 py-1.5 rounded bg-rose-900/40 text-rose-300 border border-rose-700/50">로그아웃</button>
-    </div>
-  </div>
+    <header class="mb-4 flex flex-col md:flex-row justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-xl gap-4">
+            <div>
+                <h1 class="text-2xl font-black text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.30</span></h1>
+                <p class="text-xs text-slate-400">접속자: <span class="tf-user text-emerald-400 font-bold">비회원 (방문자)</span></p>
+            </div>
+            <div class="flex gap-2 flex-wrap justify-center md:justify-end">
+                <span class="tf-nav-slot contents"></span>
+      <button onclick="logout()" class="tf-btn tf-logout">🚪 로그아웃</button>
+            </div>
+        </header>
   <div class="flex gap-2 mb-4">
     <button class="tab" id="t-in" onclick="tab('in')">라운드 입력</button>
     <button class="tab" id="t-cap" onclick="tab('cap')">팀장 성적</button>
@@ -79,6 +95,62 @@ th{@apply text-slate-400 text-xs border-b border-slate-700}
   <div class="flex gap-2"><button class="btn" onclick="dl()">💾 PNG 저장</button><button class="inp" onclick="$('cardm').classList.add('hidden')">닫기</button></div>
 </div>
 
+    <script id="tf-kit-js">
+        /* ===== TenFC 공통 등급·메뉴 규칙 (5개 페이지 동일 — 수정 시 전부 같이 바꾸세요) =====
+           등급: 주관리자(admin) > 부관리자(sub_admin) > 정회원(member) > 비회원(미로그인·용병·지인)
+           메뉴 노출: 메인·운동일정=모두 / 투표=로그인 사용자 / 팀 집계=정회원 이상 / 평점관리=주관리자
+           ?view=이름 미리보기: 주관리자만 가능, 저장(로그인 전환)하지 않음 */
+        const TF = (() => {
+            const STATS_URL = 'https://hansco80.github.io/tenfc_member/tenfc_stats/';
+            const ROLE_LABEL = { admin: '주관리자', sub_admin: '부관리자', member: '정회원', guest: '용병', acquaintance: '지인' };
+            const roleOf = u => (u ? (u.role || 'member') : null);
+            const gone = m => !!(m && (m.isWithdrawn || m.is_withdrawn));
+            const isAdmin = u => roleOf(u) === 'admin';
+            const isStaff = u => ['admin', 'sub_admin'].includes(roleOf(u));
+            const isMember = u => ['admin', 'sub_admin', 'member'].includes(roleOf(u));
+            const label = u => u ? `${u.name} 님 (${ROLE_LABEL[roleOf(u)] || '정회원'})` : '비회원 (방문자)';
+            const ITEMS = [
+                { key: 'home',   t: '🏠 메인',     href: b => b + 'index.html',       ok: () => true },
+                { key: 'match',  t: '⚽ 운동일정', href: b => b + 'match.html',       ok: () => true },
+                { key: 'polls',  t: '🗳️ 투표',     href: b => b + 'polls.html',       ok: u => !!u },
+                { key: 'stats',  t: '📊 팀 집계',  href: () => STATS_URL,             ok: isMember },
+                { key: 'rating', t: '⭐ 평점관리', href: b => b + 'rating_vote.html', ok: isAdmin }
+            ];
+            // 저장된 로그인 사용자 + (주관리자 한정) ?view= 미리보기 대상 결정
+            function resolveUser(members) {
+                const find = n => (n ? members.find(m => m.name === n && !gone(m)) : null) || null;
+                const saved = find(localStorage.getItem('tenfc_logged_user'));
+                const view = new URLSearchParams(location.search).get('view');
+                if (view && isAdmin(saved)) {
+                    const t = find(view) || (view === '테스트' ? { name: '테스트', role: 'guest' } : null);
+                    if (t) return { user: t, real: saved, viewing: true };
+                }
+                return { user: saved, real: saved, viewing: false };
+            }
+            // 상단 우측 메뉴 + 접속자 표기를 등급 규칙대로 다시 그림
+            function renderNav(page, user, opt = {}) {
+                const base = opt.base || '';
+                const html = ITEMS.filter(i => i.ok(user)).map(i => {
+                    let href = i.href(base);
+                    if (i.key === 'stats' && opt.view) href += '?view=' + encodeURIComponent(opt.view);
+                    return `<a href="${href}" class="tf-btn ${i.key === page ? 'tf-active' : 'tf-nav'}"${i.key === page ? ' aria-current="page"' : ''}>${i.t}</a>`;
+                }).join('');
+                document.querySelectorAll('.tf-nav-slot').forEach(el => { el.innerHTML = html; });
+                document.querySelectorAll('.tf-user').forEach(el => { el.textContent = opt.userText || label(user); });
+            }
+            async function issueStatToken(client, name, pw) {
+                try { const { data } = await client.rpc('stat_login', { p_name: name, p_pw: pw }); if (data) localStorage.setItem('tenfc_stat_token', data); } catch (e) {}
+            }
+            async function clearSession(client) {
+                const tok = localStorage.getItem('tenfc_stat_token');
+                localStorage.removeItem('tenfc_logged_user');
+                localStorage.removeItem('tenfc_stat_token');
+                if (tok && client) { try { await client.rpc('stat_logout', { p_token: tok }); } catch (e) {} }
+            }
+            return { STATS_URL, ROLE_LABEL, roleOf, gone, isAdmin, isStaff, isMember, label, resolveUser, renderNav, issueStatToken, clearSession };
+        })();
+    </script>
+
 <script>
 const sb = supabase.createClient('https://bxuiwomkpgqsbyaagmlp.supabase.co', 'sb_publishable_mXkGsaxwwfnnAR3lpE8T1A_n0kiPdZj');
 const $ = id => document.getElementById(id);
@@ -118,10 +190,11 @@ async function boot() {
   IS_ADMIN = me.role === 'admin' && !VIEW;
   SELF = VIEW || norm(me.name);
   $('t-in').classList.toggle('hidden', !IS_ADMIN);
-  $('me').textContent = VIEW ? `${VIEW} 님 화면 (최고관리자 ${me.name} 미리보기)` : `${me.name} (${{ admin: '최고관리자', sub_admin: '부관리자' }[me.role] || '정회원'})`;
   $('login').classList.add('hidden'); $('app').classList.remove('hidden');
   $('dt').valueAsDate = new Date();
   await load();
+  const navUser = VIEW ? { name: VIEW, role: (INFO[VIEW] && INFO[VIEW].role) || 'member' } : me;
+  TF.renderNav('stats', navUser, { base: '../', view: VIEW || '', userText: VIEW ? `${VIEW} 님 화면 (주관리자 ${me.name} 미리보기)` : TF.label(me) });
   setWho(SELF);
   tab(VIEW ? 'chem' : IS_ADMIN ? 'in' : 'cap');
 }
@@ -193,6 +266,7 @@ async function demo() {
   MEMBERS = dn.map((n, i) => ({ withdrawn: i === 2, name: n, role: i === 0 ? 'admin' : i === 1 ? 'sub_admin' : i >= dn.length - 2 ? 'guest' : i === dn.length - 3 ? 'acquaintance' : 'member' }));
   $('login').classList.add('hidden'); $('app').classList.remove('hidden'); $('demo-bar').classList.remove('hidden');
   $('dt').valueAsDate = new Date();
+  TF.renderNav('stats', { name: '데모', role: 'guest' }, { base: '../', userText: '데모 모드 (샘플 데이터)' });
   setWho(MEMBERS[0].name);
   $('txt').value = '⚽ 1팀 [레드]\n오한결(80)*\n김민수(85)\n이준호(90)\n\n⚽ 2팀 [블랙]\n박지훈(82)*\n최성민(88)\n정우진(79)\n\n⚽ 3팀 [그린]\n한동현(81)*\n강태영(83)\n윤재호(86)';
   $('res').value = '1경기 (오후 8:10): 그린 3 vs 0 레드 (그린 승)\n2경기 (오후 8:24): 그린 3 vs 3 블랙 (무승부)\n3경기 (오후 8:37): 블랙 3 vs 2 레드 (블랙 승)\n4경기 (오후 8:45): 그린 3 vs 0 블랙 (그린 승)\n5경기 (오후 8:59): 그린 3 vs 2 레드 (그린 승)\n6경기 (오후 9:12): 블랙 1 vs 0 그린 (블랙 승)\n7경기 (오후 9:25): 레드 2 vs 1 블랙 (레드 승)\n8경기 (오후 9:38): 레드 2 vs 0 그린 (레드 승)\n9경기 (오후 9:50): 레드 1 vs 0 블랙 (레드 승)\n10경기 (오후 10:00): 블랙 1 vs 1 그린 (무승부)';

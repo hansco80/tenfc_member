@@ -186,7 +186,10 @@
                 <!-- 현재 확정 및 대기 인원 현황 -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
-                        <h4 id="confirmed-title" class="font-bold text-emerald-400 text-xs mb-2">✅ 참석 확정 명단</h4>
+                        <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-2">
+                            <h4 id="confirmed-title" class="font-bold text-emerald-400 text-xs">✅ 참석 확정 명단</h4>
+                            <span id="confirmed-avg" class="hidden text-[11px] text-slate-400"></span>
+                        </div>
                         <ul id="confirmed-list" class="space-y-1.5 text-xs text-slate-300">
                             <li>등록된 투표가 없습니다.</li>
                         </ul>
@@ -1815,6 +1818,36 @@
             return { cap, confirmed, waiting, declined };
         }
 
+        // 참석 예정자(미정 포함) 평균 나이(전체 공개)·등급·점수(운영진 전용)
+        function renderConfirmedAvg(L) {
+            const el = document.getElementById('confirmed-avg');
+            if (!el) return;
+            const list = L.confirmed.map(e => e.v);
+            if (list.length === 0) { el.classList.add('hidden'); return; }
+
+            const thisYY = new Date().getFullYear() % 100;
+            const thisYear = new Date().getFullYear();
+            const ages = list.map(getBirthOf).filter(b => b).map(b => {
+                const yy = parseInt(b, 10);
+                return thisYear - (yy <= thisYY ? 2000 + yy : 1900 + yy);
+            });
+            const avgScore = list.reduce((sum, v) => sum + scoreOf(v), 0) / list.length;
+            const nearest = Object.keys(scoreMap).reduce((best, g) => Math.abs(scoreMap[g] - avgScore) < Math.abs(scoreMap[best] - avgScore) ? g : best);
+
+            const parts = [];
+            if (ages.length) {
+                const avgAge = ages.reduce((a, b) => a + b, 0) / ages.length;
+                parts.push(`평균 나이 ${avgAge.toFixed(1)}세${ages.length < list.length ? ` (${ages.length}명 기준)` : ''}`);
+            }
+            if (isStaff()) {
+                parts.push(`평균 등급 ${nearest}`);
+                parts.push(`평균 점수 ${avgScore.toFixed(2)}점`);
+            }
+            if (parts.length === 0) { el.classList.add('hidden'); return; }
+            el.innerText = '📊 ' + parts.join(' · ');
+            el.classList.remove('hidden');
+        }
+
         function renderVoteLists() {
             const m = currentMatch();
             if (!m) return;
@@ -1823,6 +1856,7 @@
 
             document.getElementById('confirmed-title').innerText = `✅ 참석 명단 (${L.confirmed.length} / 정원 ${L.cap}명)`;
             document.getElementById('declined-title').innerText = `❌ 불참 명단 (${L.declined.length}명)`;
+            renderConfirmedAvg(L);
 
             document.getElementById('confirmed-list').innerHTML = L.confirmed.length > 0
                 ? L.confirmed.map((e, i) => voteLi(e.v, { prefix: `${i + 1}.`, tentative: e.tentative, isConfirmedList: true })).join('')

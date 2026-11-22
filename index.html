@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TenFC 풋살팀 통합 시스템 v2.40</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         #boot-loading { display: none; }
@@ -12,19 +11,14 @@
         html.booting #boot-loading { display: block; }
     </style>
     <script>
-        // 자동 로그인/관리자 멤버 보기 링크일 때, 데이터 로딩 동안 로그인 화면이 잠깐 보이는 현상 방지
         try { if (localStorage.getItem('tenfc_logged_user') || new URLSearchParams(location.search).get('view')) document.documentElement.classList.add('booting'); } catch (e) {}
     </script>
-    <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Chart.js DataLabels Plugin CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
-    <!-- Supabase JS SDK CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-center p-4">
 
-    <!-- 로그인 화면 -->
     <div id="boot-loading" class="w-full max-w-md text-center text-slate-400 text-sm py-10">⚽ 불러오는 중...</div>
 
     <div id="login-container" class="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
@@ -43,8 +37,7 @@
             </div>
             <button type="submit" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition duration-200 shadow-lg shadow-emerald-900/40">로그인</button>
         </form>
-        
-        <!-- 하단 링크 버튼들 -->
+
         <div class="mt-3 space-y-2">
             <a href="https://hansco80.github.io/tenfc_member/tenfc_rules.html" target="_blank" rel="noopener noreferrer" class="w-full py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold rounded-lg transition duration-200 flex items-center justify-center text-sm shadow">
                 📄 TenFC 팀 회칙 보기
@@ -152,18 +145,15 @@
             </div>
         </div>
 
-        <!-- D- 이하 등급 블라인드 안내 공지박스 -->
         <div id="blind-notice-box" class="hidden bg-rose-950/40 border border-rose-800/60 p-3 rounded-xl text-center mb-6">
             <p class="text-xs text-rose-300 font-semibold">⚠️ 아직 평점 데이터가 충분하지 않아 조회할 수 없습니다.</p>
         </div>
 
-        <!-- 감코진 피드백 코멘트 -->
         <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700 mb-6">
             <h3 class="text-xs font-semibold text-slate-300 mb-2 uppercase tracking-wider">📋 감코진 피드백 및 코멘트</h3>
             <p id="user-feedback" class="text-sm text-slate-300 italic bg-slate-900/80 p-3 rounded-lg border border-slate-800">"등록된 피드백이 없습니다."</p>
         </div>
 
-        <!-- 팀 내 출석 비교 -->
         <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700 mb-6">
             <h3 class="text-xs font-semibold text-slate-300 mb-3 uppercase tracking-wider">👥 팀 내 출석 비교</h3>
             <div class="space-y-2 text-xs">
@@ -182,7 +172,6 @@
             </div>
         </div>
 
-        <!-- 평점 변동 이력 카드 -->
         <div id="chart-card-container" class="bg-slate-900/40 p-4 rounded-xl border border-slate-700 mb-6">
             <h3 class="text-xs font-semibold text-slate-300 mb-3 uppercase tracking-wider">📈 평점 변동 이력</h3>
             <div id="chart-wrapper" class="relative h-48">
@@ -193,7 +182,6 @@
             </div>
         </div>
 
-        <!-- 평점 등급별 회원 수 현황 막대그래프 -->
         <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700 mb-6">
             <div class="flex justify-between items-center mb-3">
                 <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">📊 평점 등급별 회원 수 현황</h3>
@@ -204,11 +192,10 @@
             </div>
         </div>
 
-        <!-- 일반회원 전용 팀 멤버 현황 (제한 보기) 테이블 카드 -->
         <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700">
             <div class="flex justify-between items-center mb-3">
                 <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">👥 팀 멤버 현황 (제한 보기)</h3>
-                <span class="text-[11px] text-slate-400">정회원 전용 / 사진 클릭시 확대</span>
+                <span class="text-[11px] text-slate-400">정회원 전용 / 이름 클릭시 사진 조회</span>
             </div>
             <div class="overflow-x-auto max-h-72 overflow-y-auto">
                 <table class="w-full text-left text-xs text-slate-300">
@@ -243,7 +230,6 @@
             </div>
         </div>
 
-        <!-- 주관리자 전용 유틸리티 바 -->
         <div id="admin-action-bar" class="bg-slate-900/70 p-4 rounded-xl border border-slate-700 mb-4 flex flex-col md:flex-row justify-between items-center gap-3">
             <div class="flex gap-2 w-full md:w-auto flex-wrap">
                 <button onclick="toggleAllCheckboxes(true)" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded transition">전체 선택</button>
@@ -257,11 +243,9 @@
                 <button onclick="batchAdjustRating('up')" class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs rounded shadow transition">선택 평점 일괄 상향 (▲)</button>
                 <button onclick="batchAdjustRating('down')" class="px-3 py-1.5 bg-rose-800 hover:bg-rose-700 text-white font-bold text-xs rounded shadow transition">선택 평점 일괄 하향 (▼)</button>
                 <button onclick="applyBatchAttendance()" class="px-4 py-1.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded shadow transition">선택 멤버 출석 반영 (+1)</button>
-                <button onclick="optimizeAllPhotos()" class="px-3 py-1.5 bg-slate-600 hover:bg-slate-500 text-white font-bold text-xs rounded shadow transition">🖼️ 사진 용량 줄이기 (1회)</button>
             </div>
         </div>
 
-        <!-- 멤버 관리 테이블 -->
         <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700 overflow-x-auto">
             <h3 class="text-xs font-semibold text-emerald-400 mb-3 uppercase tracking-wider">🛠️ 관리자 멤버 상세 관리 테이블</h3>
             <table class="w-full text-left text-xs text-slate-300">
@@ -433,8 +417,9 @@
                     </label>
                 </div>
                 <div>
-                    <label class="block text-xs text-slate-400 mb-1">프로필 사진 첨부</label>
-                    <input type="file" id="edit-photo-file" accept="image/*" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-slate-300">
+                    <label class="block text-xs text-slate-400 mb-1">프로필 사진 URL (GitHub 호스팅 권장)</label>
+                    <input type="text" id="edit-photo-url" placeholder="https://hansco80.github.io/tenfc_member/photos/이름.webp" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-xs text-white mb-1.5">
+                    <input type="file" id="edit-photo-file" accept="image/*" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-xs text-slate-300">
                 </div>
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">연락처</label>
@@ -486,126 +471,79 @@
         const SUPABASE_KEY = 'sb_publishable_mXkGsaxwwfnnAR3lpE8T1A_n0kiPdZj';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // 팀 집계 사이트 주소 (운영진 전용 링크) — 주소가 다르면 여기만 수정하세요.
+        // GitHub 프로필 사진 기본 경로 (예: https://hansco80.github.io/tenfc_member/photos/)
+        const GITHUB_PHOTO_BASE = 'https://hansco80.github.io/tenfc_member/photos/';
         const STATS_URL = 'https://hansco80.github.io/tenfc_member/tenfc_stats/';
         document.querySelectorAll('.stats-link').forEach(a => a.href = STATS_URL);
 
         const ratingHierarchy = ["F-", "F", "F+", "E-", "E", "E+", "D-", "D", "D+", "C-", "C", "C+", "B-", "B", "B+", "A-", "A", "A+"];
-        
-        const scoreMap = { 
-            "A+": 10.0, "A": 9.5, "A-": 9.0, 
-            "B+": 8.5,  "B": 8.0,  "B-": 7.5, 
-            "C+": 7.0,  "C": 6.5,  "C-": 6.0, 
-            "D+": 5.5,  "D": 5.0,  "D-": 4.5, 
-            "E+": 4.0,  "E": 3.5,  "E-": 3.0, 
-            "F+": 2.5,  "F": 2.0,  "F-": 1.5 
+        const scoreMap = {
+            "A+": 10.0, "A": 9.5, "A-": 9.0,
+            "B+": 8.5,  "B": 8.0,  "B-": 7.5,
+            "C+": 7.0,  "C": 6.5,  "C-": 6.0,
+            "D+": 5.5,  "D": 5.0,  "D-": 4.5,
+            "E+": 4.0,  "E": 3.5,  "E-": 3.0,
+            "F+": 2.5,  "F": 2.0,  "F-": 1.5
         };
+        const reverseScoreMap = {
+            10.0: "A+", 9.5: "A", 9.0: "A-",
+            8.5: "B+", 8.0: "B", 7.5: "B-",
+            7.0: "C+", 6.5: "C", 6.0: "C-",
+            5.5: "D+", 5.0: "D", 4.5: "D-",
+            4.0: "E+", 3.5: "E", 3.0: "E-",
+            2.5: "F+", 2.0: "F", 1.5: "F-"
+        };
+        const graphBlindRatings = ["D-", "E+", "E", "E-", "F+", "F", "F-"];
 
         function getCustomLevelName(rating) {
-            if (["F-", "F", "F+", "E-", "E", "E+"].includes(rating)) {
-                return "루키";
-            } else if (["D-", "D", "D+", "C-", "C", "C+", "B-", "B"].includes(rating)) {
-                return "아마추어";
-            } else if (["B+", "A-", "A", "A+"].includes(rating)) {
-                return "세미프로";
-            }
+            if (["F-", "F", "F+", "E-", "E", "E+"].includes(rating)) return "루키";
+            if (["D-", "D", "D+", "C-", "C", "C+", "B-", "B"].includes(rating)) return "아마추어";
+            if (["B+", "A-", "A", "A+"].includes(rating)) return "세미프로";
             return "루키";
         }
 
-        const graphBlindRatings = ["D-", "E+", "E", "E-", "F+", "F", "F-"];
-
         let teamTotalMatches = 0;
         let manualTeamTotalFloor = 40;
-
         let activeRegularMemberCount = 0;
         let membersData = [];
         let currentUser = null;
         let myChart = null;
         let gradeCountChartInstance = null;
-        
+
         let currentSortField = 'birth';
         let currentSortOrder = 'asc';
-
         let restrictedSortField = 'birth';
         let restrictedSortOrder = 'asc';
+
+        function recomputeTeamSummary() {
+            const maxAtt = Math.max(0, ...membersData.map(m => Number(m.attendedMatches) || 0));
+            teamTotalMatches = Math.max(maxAtt, Number(manualTeamTotalFloor) || 0);
+            activeRegularMemberCount = membersData.filter(
+                m => !m.isWithdrawn && (m.role === 'member' || m.role === 'admin' || m.role === 'sub_admin')
+            ).length;
+        }
 
         function getUpdatedHistory(history, newScore) {
             let historyArr = Array.isArray(history) ? [...history] : [];
             const now = new Date();
             const todayStr = `${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
-            
             const existingIdx = historyArr.findIndex(h => h.date === todayStr);
-            if (existingIdx !== -1) {
-                historyArr[existingIdx].score = newScore;
-            } else {
-                historyArr.push({ date: todayStr, score: newScore });
-            }
+            if (existingIdx !== -1) historyArr[existingIdx].score = newScore;
+            else historyArr.push({ date: todayStr, score: newScore });
             return historyArr;
         }
 
+        // 목록 조회에는 photo를 제외하여 Egress 절감
+        const MEMBER_LIST_COLUMNS = 'id, name, password, full_phone, kakao_id, birth, address, position, rating, join_date, role, is_withdrawn, attended_matches, history, feedback, login_count, last_login_at';
 
-        // ===== 사진 리사이즈 (Egress 절감) =====
-        const PHOTO_MAX_SIZE = 256;      // 긴 변 기준 px
-        const PHOTO_QUALITY = 0.8;
-        const PHOTO_SKIP_BELOW = 40000;  // 이미 이보다 작은 data URL은 건너뜀(문자 수)
-
-        // File 또는 data URL 문자열을 받아 256px 이하 webp(미지원 시 jpeg) data URL로 반환
-        function resizeImageSource(src) {
-            return new Promise((resolve, reject) => {
-                const img = new Image();
-                let objectUrl = null;
-                img.onload = function () {
-                    try {
-                        const ratio = Math.min(1, PHOTO_MAX_SIZE / Math.max(img.naturalWidth, img.naturalHeight));
-                        const w = Math.max(1, Math.round(img.naturalWidth * ratio));
-                        const h = Math.max(1, Math.round(img.naturalHeight * ratio));
-                        const canvas = document.createElement('canvas');
-                        canvas.width = w; canvas.height = h;
-                        const ctx = canvas.getContext('2d');
-                        ctx.fillStyle = '#ffffff';
-                        ctx.fillRect(0, 0, w, h);
-                        ctx.drawImage(img, 0, 0, w, h);
-                        let out = canvas.toDataURL('image/webp', PHOTO_QUALITY);
-                        if (!out.startsWith('data:image/webp')) out = canvas.toDataURL('image/jpeg', PHOTO_QUALITY);
-                        if (objectUrl) URL.revokeObjectURL(objectUrl);
-                        resolve(out);
-                    } catch (e) { reject(e); }
-                };
-                img.onerror = function () { reject(new Error('이미지를 읽을 수 없습니다.')); };
-                if (typeof src === 'string') { img.src = src; }
-                else { objectUrl = URL.createObjectURL(src); img.src = objectUrl; }
-            });
-        }
-
-        // 기존에 저장된 큰 사진을 한 번에 줄이는 1회성 도구 (주관리자 전용)
-        async function optimizeAllPhotos() {
-            if (!currentUser || currentUser.role !== 'admin') { alert('주관리자만 사용할 수 있습니다.'); return; }
-            const targets = membersData.filter(m => m.photo && m.photo.startsWith('data:') && m.photo.length > PHOTO_SKIP_BELOW);
-            if (targets.length === 0) { alert('줄일 사진이 없습니다. (이미 모두 최적화됨)'); return; }
-            const beforeKB = Math.round(targets.reduce((a, m) => a + m.photo.length, 0) / 1024);
-            if (!confirm('큰 사진 ' + targets.length + '장(약 ' + beforeKB + 'KB)을 256px로 줄여 다시 저장합니다.\n계속할까요?')) return;
-
-            let done = 0, failed = [];
-            for (const m of targets) {
-                try {
-                    const small = await resizeImageSource(m.photo);
-                    if (small.length >= m.photo.length) { done++; continue; }
-                    const { error } = await supabaseClient.from('members').update({ photo: small }).eq('name', m.name);
-                    if (error) throw error;
-                    m.photo = small;
-                    done++;
-                } catch (e) { failed.push(m.name); }
-            }
-            const afterKB = Math.round(membersData.reduce((a, m) => a + (m.photo ? m.photo.length : 0), 0) / 1024);
-            alert('완료: ' + done + '/' + targets.length + '장 처리\n현재 사진 합계 약 ' + afterKB + 'KB' + (failed.length ? '\n실패: ' + failed.join(', ') : ''));
-            await fetchMembersFromSupabase();
-            loadAdminDashboard();
-        }
-
-        async function fetchMembersFromSupabase() {
+        async function fetchMembersFromSupabase(includePhoto = false) {
             try {
-                const { data, error } = await supabaseClient.from('members').select('*');
-                if (error) { console.error("Supabase 조회 에러:", error); return false; }
+                const cols = includePhoto ? '*' : MEMBER_LIST_COLUMNS;
+                const { data, error } = await supabaseClient.from('members').select(cols);
+                if (error) {
+                    console.error("Supabase 조회 에러:", error);
+                    return false;
+                }
                 if (data && data.length > 0) {
                     membersData = data.map(m => ({
                         id: m.id,
@@ -627,24 +565,33 @@
                         loginCount: m.login_count || 0,
                         lastLoginAt: m.last_login_at || null
                     }));
-
-                    const maxAtt = Math.max(
-                        0,
-                        ...membersData.map(m => Number(m.attendedMatches) || 0)
-                    );
-                    teamTotalMatches = Math.max(maxAtt, Number(manualTeamTotalFloor) || 0);
-                    activeRegularMemberCount = membersData.filter(m => !m.isWithdrawn && (m.role === 'member' || m.role === 'admin' || m.role === 'sub_admin')).length;
-
+                    recomputeTeamSummary();
                     return true;
                 }
                 return false;
-            } catch (err) { 
-                console.error("데이터 로딩 실패:", err); 
-                return false; 
+            } catch (err) {
+                console.error("데이터 로딩 실패:", err);
+                return false;
             }
         }
 
-        // 한국시간(KST, UTC+9) 기준 날짜 문자열 (YYYY-MM-DD)
+        // 필요한 멤버 1명의 photo만 단건 조회
+        async function ensureMemberPhoto(member) {
+            if (!member) return "";
+            if (member.photo && member.photo.trim() !== "") return member.photo;
+            try {
+                const { data, error } = await supabaseClient
+                    .from('members')
+                    .select('photo')
+                    .eq('name', member.name)
+                    .maybeSingle();
+                if (!error && data && data.photo) {
+                    member.photo = data.photo;
+                }
+            } catch (e) {}
+            return member.photo || "";
+        }
+
         function kstDateStr(dateLike) {
             return new Date(new Date(dateLike).getTime() + 9 * 3600 * 1000).toISOString().split('T')[0];
         }
@@ -652,18 +599,15 @@
         async function recordLoginSession(user) {
             const todayStr = kstDateStr(new Date());
             const lastDateStr = user.lastLoginAt ? kstDateStr(user.lastLoginAt) : "";
-            
+            if (lastDateStr === todayStr) return; // 오늘 이미 기록된 경우 추가 쓰기 생략
+
             const currentIsoTime = new Date().toISOString();
-            let updatedLoginCount = user.loginCount || 0;
+            const updatedLoginCount = (user.loginCount || 0) + 1;
 
-            if (lastDateStr !== todayStr) {
-                updatedLoginCount += 1;
-            }
-
-            const { error: updateError } = await supabaseClient.from('members').update({
-                login_count: updatedLoginCount,
-                last_login_at: currentIsoTime
-            }).eq('name', user.name);
+            const { error: updateError } = await supabaseClient
+                .from('members')
+                .update({ login_count: updatedLoginCount, last_login_at: currentIsoTime })
+                .eq('name', user.name);
 
             if (!updateError) {
                 user.loginCount = updatedLoginCount;
@@ -672,7 +616,7 @@
         }
 
         async function initAppInner() {
-            const success = await fetchMembersFromSupabase();
+            const success = await fetchMembersFromSupabase(false);
             if (!success) {
                 alert('멤버 데이터를 불러오지 못했습니다. 네트워크 상태나 Supabase 연결을 확인해주세요.');
                 return;
@@ -683,20 +627,18 @@
             if (viewUserName) {
                 const savedUserName = localStorage.getItem('tenfc_logged_user');
                 const loggedUser = membersData.find(m => m.name === savedUserName);
-                
                 if (!loggedUser || loggedUser.role !== 'admin') {
                     alert('⚠️ 접근 권한이 없습니다. 링크를 통한 개인 페이지 조회는 주관리자만 가능합니다.');
                     window.location.href = window.location.pathname;
                     return;
                 }
-
                 const foundUser = membersData.find(m => m.name === viewUserName);
                 if (foundUser) {
                     currentUser = foundUser;
                     document.querySelectorAll('.stats-link').forEach(el => el.href = STATS_URL + '?view=' + encodeURIComponent(viewUserName));
                     document.getElementById('login-container').classList.add('hidden');
                     document.getElementById('dashboard-container').classList.remove('hidden');
-                    loadMemberDashboard(currentUser);
+                    await loadMemberDashboard(currentUser);
                     return;
                 }
             }
@@ -706,7 +648,6 @@
                 const foundUser = membersData.find(m => m.name === savedUserName);
                 if (foundUser && !foundUser.isWithdrawn) {
                     await recordLoginSession(foundUser);
-
                     currentUser = foundUser;
                     document.getElementById('login-container').classList.add('hidden');
                     if (currentUser.role === 'admin' || currentUser.role === 'sub_admin') {
@@ -714,7 +655,7 @@
                         loadAdminDashboard();
                     } else {
                         document.getElementById('dashboard-container').classList.remove('hidden');
-                        loadMemberDashboard(currentUser);
+                        await loadMemberDashboard(currentUser);
                     }
                 } else {
                     localStorage.removeItem('tenfc_logged_user');
@@ -726,26 +667,17 @@
             try { await initAppInner(); }
             finally { document.documentElement.classList.remove('booting'); }
         }
-
         initApp();
 
         function changeSort(field) {
-            if (currentSortField === field) {
-                currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
-            } else {
-                currentSortField = field;
-                currentSortOrder = 'asc';
-            }
+            if (currentSortField === field) currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+            else { currentSortField = field; currentSortOrder = 'asc'; }
             loadAdminDashboard();
         }
 
         function changeRestrictedSort(field) {
-            if (restrictedSortField === field) {
-                restrictedSortOrder = restrictedSortOrder === 'asc' ? 'desc' : 'asc';
-            } else {
-                restrictedSortField = field;
-                restrictedSortOrder = 'asc';
-            }
+            if (restrictedSortField === field) restrictedSortOrder = restrictedSortOrder === 'asc' ? 'desc' : 'asc';
+            else { restrictedSortField = field; restrictedSortOrder = 'asc'; }
             renderRestrictedMemberList();
         }
 
@@ -775,24 +707,23 @@
             let age = today.getFullYear() - bYear;
             const m = (today.getMonth() + 1) - bMonth;
             if (m < 0 || (m === 0 && today.getDate() < bDay)) age--;
-            
-            const shortYear = String(bYear).slice(-2);
-            return `${shortYear}년${bMonth}월 (만${age}세)`;
+            return `${String(bYear).slice(-2)}년${bMonth}월 (만${age}세)`;
         }
 
-        function openPhotoPreview(name) {
+        async function openPhotoPreview(name) {
             const m = membersData.find(item => item.name === name);
             if (!m) return;
-            
             document.getElementById('preview-member-name').innerText = `${m.name} 님 프로필 사진`;
             const imgEl = document.getElementById('preview-member-img');
             const fallbackEl = document.getElementById('preview-member-fallback');
-            
-            if (m.photo && m.photo.trim() !== "") {
-                imgEl.src = m.photo;
+
+            const photoSrc = await ensureMemberPhoto(m);
+            if (photoSrc && photoSrc.trim() !== "") {
+                imgEl.src = photoSrc;
                 imgEl.classList.remove('hidden');
                 fallbackEl.classList.add('hidden');
             } else {
+                imgEl.src = "";
                 imgEl.classList.add('hidden');
                 fallbackEl.classList.remove('hidden');
             }
@@ -814,7 +745,6 @@
             e.preventDefault();
             const inputName = document.getElementById('name-input').value.trim();
             const inputPw = document.getElementById('phone-input').value.trim();
-
             const user = membersData.find(m => m.name === inputName && m.password === inputPw);
 
             if (user) {
@@ -823,21 +753,19 @@
                     document.getElementById('withdrawn-modal').classList.remove('hidden');
                     return;
                 }
-
                 await recordLoginSession(user);
-
                 currentUser = user;
-                localStorage.setItem('tenfc_logged_user', user.name); 
+                localStorage.setItem('tenfc_logged_user', user.name);
                 await issueStatToken(user.name, inputPw);
                 document.getElementById('login-container').classList.add('hidden');
                 document.getElementById('login-error').classList.add('hidden');
-                
+
                 if (user.role === 'admin' || user.role === 'sub_admin') {
                     document.getElementById('admin-container').classList.remove('hidden');
                     loadAdminDashboard();
                 } else {
                     document.getElementById('dashboard-container').classList.remove('hidden');
-                    loadMemberDashboard(user);
+                    await loadMemberDashboard(user);
                 }
             } else {
                 document.getElementById('login-error').classList.remove('hidden');
@@ -850,23 +778,22 @@
             if (!memberList || memberList.length === 0) return "없음";
             const leadMember = memberList[0];
             const restCount = memberList.length - 1;
-            if (restCount > 0) {
-                return `${leadMember.name} 외 ${restCount}명 (${leadMember.attendedMatches}회)`;
-            } else {
-                return `${leadMember.name} (${leadMember.attendedMatches}회)`;
-            }
+            return restCount > 0
+                ? `${leadMember.name} 외 ${restCount}명 (${leadMember.attendedMatches}회)`
+                : `${leadMember.name} (${leadMember.attendedMatches}회)`;
         }
 
-        function loadMemberDashboard(user) {
+        async function loadMemberDashboard(user) {
             document.querySelectorAll('.stats-link-member').forEach(el => el.classList.toggle('hidden', !['member', 'admin', 'sub_admin'].includes(user.role)));
             document.getElementById('user-welcome').innerHTML = `<span class="text-white">${user.name} 님</span>`;
             document.getElementById('team-total-matches-display').innerText = `${teamTotalMatches}회`;
             document.getElementById('member-total-count').innerText = `${activeRegularMemberCount}명`;
-            
+
             const photoImg = document.getElementById('user-photo');
             const photoFallback = document.getElementById('user-photo-fallback');
-            if (user.photo && user.photo.trim() !== "") {
-                photoImg.src = user.photo;
+            const photoSrc = await ensureMemberPhoto(user);
+            if (photoSrc && photoSrc.trim() !== "") {
+                photoImg.src = photoSrc;
                 photoImg.classList.remove('hidden');
                 photoFallback.classList.add('hidden');
             } else {
@@ -880,7 +807,7 @@
             document.getElementById('prof-kakao').innerText = user.kakaoId || "-";
             document.getElementById('prof-joindate').innerText = user.joinDate || "-";
             document.getElementById('prof-address').innerText = user.address || "-";
-            
+
             let roleText = '정회원';
             if (user.role === 'admin') roleText = '주관리자 (운영진)';
             else if (user.role === 'sub_admin') roleText = '부관리자 (운영진)';
@@ -902,24 +829,20 @@
             }
 
             const regularPool = membersData.filter(m => !m.isWithdrawn && (m.role === 'member' || m.role === 'admin' || m.role === 'sub_admin'));
-
             const customLevel = getCustomLevelName(user.rating);
             const ratingEl = document.getElementById('stat-rating');
             ratingEl.innerText = customLevel;
-
             ratingEl.className = "text-2xl font-extrabold mt-1 ";
             if (customLevel === "루키") ratingEl.classList.add("text-sky-400");
             else if (customLevel === "아마추어") ratingEl.classList.add("text-emerald-400");
             else if (customLevel === "세미프로") ratingEl.classList.add("text-amber-400");
-            
-            const isRookieLevel = ["F-", "F", "F+", "E-", "E", "E+"].includes(user.rating);
 
+            const isRookieLevel = ["F-", "F", "F+", "E-", "E", "E+"].includes(user.rating);
             if (isRookieLevel) {
                 document.getElementById('stat-percentile').innerHTML = `? 등급<br><span class="text-xs text-slate-400 font-normal">(조회 불가)</span>`;
             } else {
                 const myScore = scoreMap[user.rating] || 6.0;
                 const sortedMembersForRating = [...regularPool].sort((a, b) => (scoreMap[b.rating] || 0) - (scoreMap[a.rating] || 0));
-
                 let rank = 1;
                 for (let i = 0; i < sortedMembersForRating.length; i++) {
                     if ((scoreMap[sortedMembersForRating[i].rating] || 0) > myScore) rank++;
@@ -940,13 +863,10 @@
 
             const myAtt = user.attendedMatches;
             const attendancePool = membersData.filter(m => !m.isWithdrawn && m.role !== 'guest' && m.role !== 'acquaintance');
-
             const aboveAttList = attendancePool.filter(m => m.attendedMatches > myAtt).sort((a, b) => b.attendedMatches - a.attendedMatches);
             document.getElementById('rank-above').innerText = aboveAttList.length > 0 ? formatGroupText(aboveAttList) : "정회원 내 최다 출석입니다 🏆";
-
             const sameAttList = attendancePool.filter(m => m.attendedMatches === myAtt && m.name !== user.name);
             document.getElementById('rank-same').innerText = sameAttList.length > 0 ? formatGroupText(sameAttList) : `단독 ${myAtt}회 출석`;
-
             const belowAttList = attendancePool.filter(m => m.attendedMatches < myAtt).sort((a, b) => b.attendedMatches - a.attendedMatches);
             document.getElementById('rank-below').innerText = belowAttList.length > 0 ? formatGroupText(belowAttList) : "하위 출석 그룹 없음";
 
@@ -956,12 +876,9 @@
 
         function renderRestrictedMemberList() {
             let displayList = membersData.filter(m => !m.isWithdrawn && m.role !== 'guest' && m.role !== 'acquaintance');
-
             displayList.sort((a, b) => {
-                let valA, valB;
                 if (restrictedSortField === 'name') {
-                    valA = a.name; valB = b.name;
-                    return restrictedSortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                    return restrictedSortOrder === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
                 } else if (restrictedSortField === 'birth') {
                     let bA = a.birth ? a.birth.trim() : "";
                     let bB = b.birth ? b.birth.trim() : "";
@@ -970,10 +887,11 @@
                     if (bA === "" && bB === "") return 0;
                     return restrictedSortOrder === 'asc' ? bA.localeCompare(bB) : bB.localeCompare(bA);
                 } else if (restrictedSortField === 'attendance') {
-                    valA = teamTotalMatches > 0 ? (a.attendedMatches / teamTotalMatches) : 0;
-                    valB = teamTotalMatches > 0 ? (b.attendedMatches / teamTotalMatches) : 0;
+                    const valA = teamTotalMatches > 0 ? (a.attendedMatches / teamTotalMatches) : 0;
+                    const valB = teamTotalMatches > 0 ? (b.attendedMatches / teamTotalMatches) : 0;
                     return restrictedSortOrder === 'asc' ? valA - valB : valB - valA;
                 }
+                return 0;
             });
 
             ['name', 'birth', 'attendance'].forEach(f => {
@@ -991,16 +909,11 @@
 
             const rowsHtml = displayList.map(m => {
                 const attRate = teamTotalMatches > 0 ? Math.round((m.attendedMatches / teamTotalMatches) * 100) : 0;
-                let roleBadge = '';
-                if (m.role === 'admin' || m.role === 'sub_admin') roleBadge = '<span class="text-emerald-400 text-[10px] ml-1">(운영진)</span>';
-
+                const roleBadge = (m.role === 'admin' || m.role === 'sub_admin') ? '<span class="text-emerald-400 text-[10px] ml-1">(운영진)</span>' : '';
                 return `
                     <tr class="hover:bg-slate-700/35 transition">
-                        <td class="p-2.5 font-bold text-white flex items-center gap-2">
-                            <div onclick="openPhotoPreview('${m.name}')" class="w-7 h-7 rounded-full overflow-hidden bg-slate-700 flex-shrink-0 flex items-center justify-center text-xs cursor-pointer hover:ring-2 hover:ring-emerald-400 transition">
-                                ${m.photo && m.photo.trim() !== "" ? `<img src="${m.photo}" class="w-full h-full object-cover">` : '⚽'}
-                            </div>
-                            <span onclick="openPhotoPreview('${m.name}')" class="text-white font-bold cursor-pointer hover:text-emerald-400 transition">${m.name}</span> ${roleBadge}
+                        <td class="p-2.5 font-bold text-white">
+                            <span onclick="openPhotoPreview('${m.name}')" class="text-white font-bold cursor-pointer hover:text-emerald-400 transition" title="클릭하여 프로필 사진 조회">🖼️ ${m.name}</span> ${roleBadge}
                         </td>
                         <td class="p-2.5 text-slate-300">${formatShortBirthAge(m.birth)}</td>
                         <td class="p-2.5 text-slate-300">${m.attendedMatches}회 / ${teamTotalMatches}회 <span class="text-indigo-400 font-bold">(${attRate}%)</span></td>
@@ -1019,16 +932,15 @@
             loadAdminDashboard();
         }
 
-        function switchToMyPage() {
+        async function switchToMyPage() {
             document.getElementById('admin-container').classList.add('hidden');
             document.getElementById('dashboard-container').classList.remove('hidden');
-            loadMemberDashboard(currentUser);
+            await loadMemberDashboard(currentUser);
         }
 
         function openMemberPageInNewTab(name) {
             const currentUrl = window.location.href.split('?')[0];
-            const targetUrl = `${currentUrl}?view=${encodeURIComponent(name)}`;
-            window.open(targetUrl, '_blank');
+            window.open(`${currentUrl}?view=${encodeURIComponent(name)}`, '_blank');
         }
 
         function getMemberGroupRank(m) {
@@ -1038,7 +950,6 @@
             return 1;
         }
 
-        // 최고관리자(주관리자)에게만 '평점관리' 버튼 표시
         function updateTopLinks() {
             document.querySelectorAll('.rating-link').forEach(el => {
                 el.classList.toggle('hidden', !(currentUser && currentUser.role === 'admin'));
@@ -1049,10 +960,10 @@
             updateTopLinks();
             document.getElementById('admin-team-matches').innerText = `${teamTotalMatches}회`;
             document.getElementById('admin-member-total-count').innerText = `${activeRegularMemberCount}명`;
-            
+
             const isAdmin = currentUser.role === 'admin';
             document.getElementById('admin-title').innerText = isAdmin ? '🛡️ 주관리자 대시보드' : '👁️ 부관리자 대시보드 (등급 조회 제한)';
-            
+
             const actionBar = document.getElementById('admin-action-bar');
             const thCheckbox = document.getElementById('th-checkbox');
             const thRatingHeader = document.getElementById('th-rating-header');
@@ -1075,14 +986,12 @@
 
             let displayList = [...membersData];
             displayList.sort((a, b) => {
-                let groupA = getMemberGroupRank(a);
-                let groupB = getMemberGroupRank(b);
+                const groupA = getMemberGroupRank(a);
+                const groupB = getMemberGroupRank(b);
                 if (groupA !== groupB) return groupA - groupB;
 
-                let valA, valB;
                 if (currentSortField === 'name') {
-                    valA = a.name; valB = b.name;
-                    return currentSortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                    return currentSortOrder === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
                 } else if (currentSortField === 'birth') {
                     let bA = a.birth ? a.birth.trim() : "";
                     let bB = b.birth ? b.birth.trim() : "";
@@ -1091,17 +1000,19 @@
                     if (bA === "" && bB === "") return 0;
                     return currentSortOrder === 'asc' ? bA.localeCompare(bB) : bB.localeCompare(bA);
                 } else if (currentSortField === 'rating') {
-                    valA = scoreMap[a.rating] || 0; valB = scoreMap[b.rating] || 0;
+                    const valA = scoreMap[a.rating] || 0;
+                    const valB = scoreMap[b.rating] || 0;
                     return currentSortOrder === 'asc' ? valB - valA : valA - valB;
                 } else if (currentSortField === 'attendance') {
-                    valA = teamTotalMatches > 0 ? (a.attendedMatches / teamTotalMatches) : 0;
-                    valB = teamTotalMatches > 0 ? (b.attendedMatches / teamTotalMatches) : 0;
+                    const valA = teamTotalMatches > 0 ? (a.attendedMatches / teamTotalMatches) : 0;
+                    const valB = teamTotalMatches > 0 ? (b.attendedMatches / teamTotalMatches) : 0;
                     return currentSortOrder === 'asc' ? valA - valB : valB - valA;
                 } else if (currentSortField === 'loginCount') {
-                    valA = a.loginCount || 0;
-                    valB = b.loginCount || 0;
+                    const valA = a.loginCount || 0;
+                    const valB = b.loginCount || 0;
                     return currentSortOrder === 'asc' ? valA - valB : valB - valA;
                 }
+                return 0;
             });
 
             ['name', 'birth', 'rating', 'attendance', 'loginCount'].forEach(f => {
@@ -1133,28 +1044,24 @@
 
                 const tr = document.createElement('tr');
                 tr.className = `hover:bg-slate-700/35 transition ${m.isWithdrawn ? 'opacity-60 bg-rose-950/10' : ''}`;
-                
+
                 let rowHtml = '';
-                if (isAdmin) {
-                    rowHtml += `<td class="p-3 text-center"><input type="checkbox" class="member-checkbox" value="${m.name}"></td>`;
-                }
-                
-                let nameCellContent = isAdmin ? `<span onclick="openMemberPageInNewTab('${m.name}')" class="cursor-pointer hover:underline text-white font-bold" title="새 창에서 마이페이지 보기">${m.name}</span>` : `<span class="text-white font-bold">${m.name}</span>`;
+                if (isAdmin) rowHtml += `<td class="p-3 text-center"><input type="checkbox" class="member-checkbox" value="${m.name}"></td>`;
+
+                const nameCellContent = isAdmin
+                    ? `<span onclick="openMemberPageInNewTab('${m.name}')" class="cursor-pointer hover:underline text-white font-bold" title="새 창에서 마이페이지 보기">${m.name}</span>`
+                    : `<span class="text-white font-bold">${m.name}</span>`;
 
                 rowHtml += `
-                    <td class="p-3 font-bold text-white flex items-center gap-2">
-                        <div class="w-7 h-7 rounded-full overflow-hidden bg-slate-700 flex-shrink-0 flex items-center justify-center text-xs">
-                            ${m.photo && m.photo.trim() !== "" ? `<img src="${m.photo}" class="w-full h-full object-cover">` : '⚽'}
-                        </div>
+                    <td class="p-3 font-bold text-white">
+                        <button type="button" onclick="openPhotoPreview('${m.name}')" class="mr-1.5 text-slate-400 hover:text-emerald-400" title="프로필 사진 보기">🖼️</button>
                         ${nameCellContent} ${roleBadge}
                     </td>
                     <td class="p-3 text-slate-300">${calculateInternationalAge(m.birth)}</td>
                     <td class="p-3 text-slate-300">${m.position}</td>
                 `;
 
-                if (isAdmin) {
-                    rowHtml += `<td class="p-3 font-extrabold text-emerald-400">${ratingDisplay}</td>`;
-                }
+                if (isAdmin) rowHtml += `<td class="p-3 font-extrabold text-emerald-400">${ratingDisplay}</td>`;
 
                 rowHtml += `
                     <td class="p-3 text-slate-300">${m.attendedMatches}회 / ${teamTotalMatches}회 <span class="text-indigo-400 font-bold">(${attRate}%)</span></td>
@@ -1165,20 +1072,15 @@
                     let formattedLastLogin = '기록 없음';
                     if (m.lastLoginAt) {
                         const d = new Date(m.lastLoginAt);
-                        const yy = String(d.getFullYear()).slice(-2);
-                        const mm = String(d.getMonth() + 1).padStart(2, '0');
-                        const dd = String(d.getDate()).padStart(2, '0');
-                        const hh = String(d.getHours()).padStart(2, '0');
-                        const min = String(d.getMinutes()).padStart(2, '0');
-                        formattedLastLogin = `${yy}.${mm}.${dd} ${hh}:${min}`;
+                        formattedLastLogin = `${String(d.getFullYear()).slice(-2)}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
                     }
                     rowHtml += `
                         <td class="p-3 text-center text-slate-300">
                             <span class="font-bold text-emerald-400">${m.loginCount || 0}회</span><br>
                             <span class="text-[10px] text-slate-400">${formattedLastLogin}</span>
                         </td>
+                        <td class="p-3 text-center"><button onclick="openAdminEdit('${m.name}')" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold">수정</button></td>
                     `;
-                    rowHtml += `<td class="p-3 text-center"><button onclick="openAdminEdit('${m.name}')" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold">수정</button></td>`;
                 }
 
                 tr.innerHTML = rowHtml;
@@ -1194,49 +1096,41 @@
             if (!rawText.trim()) { alert('라인업 텍스트를 입력해주세요.'); return; }
 
             let tokens = rawText.split(/[\n,\/]+/);
-            let regularMatches = [];
-            let guestOrAcquaintanceMatches = [];
-            let unmappedList = [];
+            let matchedTargets = [];
+            let seenIds = new Set();
 
             tokens.forEach(token => {
                 let clean = token.trim();
                 if (!clean || clean.startsWith('⚽') || clean.includes('팀') || clean.includes('레드') || clean.includes('블랙') || clean.includes('그린')) return;
-
                 let pureName = clean.replace(/\([^)]*\)/g, '').replace(/\（[^）]*\）/g, '').replace(/[\*\-\s]/g, '');
                 if (!pureName) return;
 
                 let found = membersData.find(m => !m.isWithdrawn && (
-                    m.name === clean || 
-                    m.name === pureName || 
+                    m.name === clean ||
+                    m.name === pureName ||
                     m.name === pureName.replace(/^용병/, '').replace(/^지인/, '') ||
                     ('용병-' + m.name) === clean ||
                     ('지인-' + m.name) === clean
                 ));
 
-                if (found) {
-                    if (found.role === 'member' || found.role === 'admin' || found.role === 'sub_admin') {
-                        if (!regularMatches.some(item => item.id === found.id)) regularMatches.push(found);
-                    } else {
-                        if (!guestOrAcquaintanceMatches.some(item => item.id === found.id)) guestOrAcquaintanceMatches.push(found);
-                    }
-                } else {
-                    if (!unmappedList.includes(clean)) unmappedList.push(clean);
+                if (found && !seenIds.has(found.id)) {
+                    seenIds.add(found.id);
+                    matchedTargets.push(found);
                 }
             });
 
-            const totalCount = regularMatches.length + guestOrAcquaintanceMatches.length;
-            if (totalCount === 0) { alert('인식 및 매칭된 회원이 없습니다.'); return; }
+            if (matchedTargets.length === 0) { alert('인식 및 매칭된 회원이 없습니다.'); return; }
+            if (!confirm(`위 ${matchedTargets.length}명에게 출석(+1회)을 반영하시겠습니까?`)) return;
 
-            if (!confirm(`위 ${totalCount}명에게 출석(+1회)을 반영하시겠습니까?`)) return;
-
-            const allTargetMembers = [...regularMatches, ...guestOrAcquaintanceMatches];
-            for (let m of allTargetMembers) {
-                await supabaseClient.from('members').update({ attended_matches: m.attendedMatches + 1 }).eq('name', m.name);
+            for (let m of matchedTargets) {
+                const nextAtt = m.attendedMatches + 1;
+                const { error } = await supabaseClient.from('members').update({ attended_matches: nextAtt }).eq('name', m.name);
+                if (!error) m.attendedMatches = nextAtt;
             }
 
-            await fetchMembersFromSupabase();
+            recomputeTeamSummary();
             closeLineupModal();
-            alert(`🎉 총 ${totalCount}명의 출석이 반영되었습니다!`);
+            alert(`🎉 총 ${matchedTargets.length}명의 출석이 반영되었습니다!`);
             loadAdminDashboard();
         }
 
@@ -1247,11 +1141,10 @@
             e.preventDefault();
             const rating = document.getElementById('add-rating').value.trim().toUpperCase() || "C";
             const initialScore = scoreMap[rating] !== undefined ? scoreMap[rating] : 6.5;
-
             const now = new Date();
             const todayStr = `${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
 
-            const newMember = {
+            const newMemberRow = {
                 name: document.getElementById('add-name').value.trim(),
                 password: document.getElementById('add-pw').value.trim(),
                 full_phone: document.getElementById('add-phone').value.trim() || "010-XXXX-XXXX",
@@ -1271,12 +1164,33 @@
                 last_login_at: null
             };
 
-            const { error } = await supabaseClient.from('members').insert([newMember]);
+            const { data, error } = await supabaseClient.from('members').insert([newMemberRow]).select('id').maybeSingle();
             if (error) { alert('등록 실패: ' + error.message); return; }
 
-            alert(`[${newMember.name}] 님 등록 완료!`);
+            membersData.push({
+                id: data ? data.id : Date.now(),
+                name: newMemberRow.name,
+                password: newMemberRow.password,
+                fullPhone: newMemberRow.full_phone,
+                kakaoId: newMemberRow.kakao_id,
+                photo: "",
+                birth: newMemberRow.birth,
+                address: newMemberRow.address,
+                position: newMemberRow.position,
+                rating: newMemberRow.rating,
+                joinDate: newMemberRow.join_date,
+                role: newMemberRow.role,
+                isWithdrawn: false,
+                attendedMatches: 0,
+                history: newMemberRow.history,
+                feedback: newMemberRow.feedback,
+                loginCount: 0,
+                lastLoginAt: null
+            });
+            recomputeTeamSummary();
+
+            alert(`[${newMemberRow.name}] 님 등록 완료!`);
             closeAddMemberModal();
-            await fetchMembersFromSupabase();
             loadAdminDashboard();
         });
 
@@ -1301,7 +1215,9 @@
             const newRole = makeSub ? 'sub_admin' : 'member';
             const { error } = await supabaseClient.from('members').update({ role: newRole }).eq('name', name);
             if (error) { alert('권한 변경 실패'); return; }
-            await fetchMembersFromSupabase();
+            const target = membersData.find(m => m.name === name);
+            if (target) target.role = newRole;
+            recomputeTeamSummary();
             openSubAdminManageModal();
         }
 
@@ -1328,32 +1244,21 @@
                 return bA.localeCompare(bB);
             };
 
-            const regularList = membersData
+            membersData
                 .filter(m => !m.isWithdrawn && (m.role === 'member' || m.role === 'admin' || m.role === 'sub_admin'))
-                .sort(sortByBirthAsc);
+                .sort(sortByBirthAsc)
+                .forEach(m => {
+                    const isOp = m.role === 'admin' || m.role === 'sub_admin';
+                    textOutput += formatLine(m, isOp ? `${m.name} *` : m.name);
+                });
 
-            regularList.forEach(m => {
-                const isOp = m.role === 'admin' || m.role === 'sub_admin';
-                const displayName = isOp ? `${m.name} *` : m.name;
-                textOutput += formatLine(m, displayName);
-            });
-
-            const guestList = membersData
-                .filter(m => !m.isWithdrawn && m.role === 'guest')
-                .sort(sortByBirthAsc);
-
+            const guestList = membersData.filter(m => !m.isWithdrawn && m.role === 'guest').sort(sortByBirthAsc);
             if (guestList.length > 0) {
                 textOutput += `\n[용병]\n`;
-                guestList.forEach(m => {
-                    const displayName = m.name.includes('용병') ? m.name : `${m.name}(용병)`;
-                    textOutput += formatLine(m, displayName);
-                });
+                guestList.forEach(m => textOutput += formatLine(m, m.name.includes('용병') ? m.name : `${m.name}(용병)`));
             }
 
-            const acqList = membersData
-                .filter(m => !m.isWithdrawn && m.role === 'acquaintance')
-                .sort(sortByBirthAsc);
-
+            const acqList = membersData.filter(m => !m.isWithdrawn && m.role === 'acquaintance').sort(sortByBirthAsc);
             if (acqList.length > 0) {
                 textOutput += `\n[지인]\n`;
                 acqList.forEach(m => {
@@ -1366,16 +1271,10 @@
                 });
             }
 
-            const withdrawnList = membersData
-                .filter(m => m.isWithdrawn)
-                .sort(sortByBirthAsc);
-
+            const withdrawnList = membersData.filter(m => m.isWithdrawn).sort(sortByBirthAsc);
             if (withdrawnList.length > 0) {
                 textOutput += `\n[탈퇴 멤버]\n`;
-                withdrawnList.forEach(m => {
-                    const displayName = m.name.includes('탈퇴') ? m.name : `${m.name}(탈퇴)`;
-                    textOutput += formatLine(m, displayName);
-                });
+                withdrawnList.forEach(m => textOutput += formatLine(m, m.name.includes('탈퇴') ? m.name : `${m.name}(탈퇴)`));
             }
 
             navigator.clipboard.writeText(textOutput).then(() => alert(`멤버 명단이 클립보드에 복사되었습니다!`));
@@ -1384,7 +1283,7 @@
         async function batchAdjustRating(direction) {
             const checkedBoxes = document.querySelectorAll('.member-checkbox:checked');
             if (checkedBoxes.length === 0) { alert('평점을 조정할 멤버를 체크해주세요.'); return; }
-            
+
             let updates = [];
             let confirmLines = [];
 
@@ -1397,25 +1296,26 @@
                     else if (direction === 'down' && idx > 0) idx--;
                     const newRating = ratingHierarchy[idx];
                     const newScore = scoreMap[newRating] || 6.5;
-                    updates.push({ member: m, newRating: newRating, newScore: newScore });
+                    updates.push({ member: m, newRating, newScore });
                     confirmLines.push(`- ${m.name}: ${m.rating} -> ${newRating}`);
                 }
             });
 
             const actionText = direction === 'up' ? '상향' : '하향';
-            const confirmMsg = `선택한 ${updates.length}명의 평점을 일괄 ${actionText}하시겠습니까?\n\n` + confirmLines.join('\n');
-
-            if (!confirm(confirmMsg)) return;
+            if (!confirm(`선택한 ${updates.length}명의 평점을 일괄 ${actionText}하시겠습니까?\n\n` + confirmLines.join('\n'))) return;
 
             for (let u of updates) {
-                let updatedHistory = getUpdatedHistory(u.member.history, u.newScore);
-                await supabaseClient.from('members').update({ 
+                const updatedHistory = getUpdatedHistory(u.member.history, u.newScore);
+                const { error } = await supabaseClient.from('members').update({
                     rating: u.newRating,
-                    history: updatedHistory 
+                    history: updatedHistory
                 }).eq('name', u.member.name);
+                if (!error) {
+                    u.member.rating = u.newRating;
+                    u.member.history = updatedHistory;
+                }
             }
 
-            await fetchMembersFromSupabase();
             alert('일괄 조정이 완료되었습니다!');
             loadAdminDashboard();
         }
@@ -1423,23 +1323,26 @@
         async function applyBatchAttendance() {
             const checkedBoxes = document.querySelectorAll('.member-checkbox:checked');
             if (checkedBoxes.length === 0) { alert('출석을 반영할 멤버를 체크해주세요.'); return; }
-            
             if (!confirm(`선택한 멤버들에게 출석(+1)을 반영하시겠습니까?`)) return;
 
             for (let cb of checkedBoxes) {
                 const m = membersData.find(item => item.name === cb.value);
                 if (m) {
-                    await supabaseClient.from('members').update({ attended_matches: m.attendedMatches + 1 }).eq('name', m.name);
+                    const nextAtt = m.attendedMatches + 1;
+                    const { error } = await supabaseClient.from('members').update({ attended_matches: nextAtt }).eq('name', m.name);
+                    if (!error) m.attendedMatches = nextAtt;
                 }
             }
-            await fetchMembersFromSupabase();
+            recomputeTeamSummary();
             alert('출석이 반영되었습니다!');
             loadAdminDashboard();
         }
 
-        function openAdminEdit(name) {
+        async function openAdminEdit(name) {
             const m = membersData.find(item => item.name === name);
             if (!m) return;
+            await ensureMemberPhoto(m);
+
             document.getElementById('edit-member-name').value = m.name;
             document.getElementById('edit-name').value = m.name;
             document.getElementById('edit-modal-title').innerText = `${m.name} 정보 수정`;
@@ -1451,6 +1354,7 @@
             document.getElementById('edit-attended').value = m.attendedMatches;
             document.getElementById('edit-role-type').value = m.role || 'member';
             document.getElementById('edit-withdrawn').checked = m.isWithdrawn || false;
+            document.getElementById('edit-photo-url').value = m.photo || `${GITHUB_PHOTO_BASE}${encodeURIComponent(m.name)}.webp`;
             document.getElementById('edit-photo-file').value = "";
             document.getElementById('edit-phone').value = m.fullPhone;
             document.getElementById('edit-kakao').value = m.kakaoId || '';
@@ -1460,15 +1364,56 @@
 
         function closeAdminModal() { document.getElementById('admin-edit-modal').classList.add('hidden'); }
 
+        function resizeImageToDataUrl(file, maxSize = 256, quality = 0.8) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                const url = URL.createObjectURL(file);
+                img.onload = () => {
+                    try {
+                        const ratio = Math.min(1, maxSize / Math.max(img.naturalWidth, img.naturalHeight));
+                        const canvas = document.createElement('canvas');
+                        canvas.width = Math.max(1, Math.round(img.naturalWidth * ratio));
+                        canvas.height = Math.max(1, Math.round(img.naturalHeight * ratio));
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        URL.revokeObjectURL(url);
+                        resolve(canvas.toDataURL('image/webp', quality));
+                    } catch (e) {
+                        URL.revokeObjectURL(url);
+                        reject(e);
+                    }
+                };
+                img.onerror = () => {
+                    URL.revokeObjectURL(url);
+                    reject(new Error('이미지를 읽을 수 없습니다.'));
+                };
+                img.src = url;
+            });
+        }
+
         document.getElementById('admin-edit-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const name = document.getElementById('edit-member-name').value;
             const m = membersData.find(item => item.name === name);
-            const fileInput = document.getElementById('edit-photo-file');
+            if (!m) return;
 
+            const fileInput = document.getElementById('edit-photo-file');
+            const urlInputVal = document.getElementById('edit-photo-url').value.trim();
             const newRating = document.getElementById('edit-rating').value.trim().toUpperCase();
             const newScore = scoreMap[newRating] !== undefined ? scoreMap[newRating] : 6.5;
-            let updatedHistory = getUpdatedHistory(m.history, newScore);
+            const updatedHistory = getUpdatedHistory(m.history, newScore);
+
+            let finalPhoto = m.photo || "";
+            if (fileInput.files && fileInput.files[0]) {
+                try {
+                    finalPhoto = await resizeImageToDataUrl(fileInput.files[0]);
+                } catch (err) {
+                    alert('사진 처리 실패: ' + err.message);
+                    return;
+                }
+            } else {
+                finalPhoto = urlInputVal;
+            }
 
             const updatedFields = {
                 rating: newRating,
@@ -1479,42 +1424,37 @@
                 attended_matches: parseInt(document.getElementById('edit-attended').value) || 0,
                 role: document.getElementById('edit-role-type').value,
                 is_withdrawn: document.getElementById('edit-withdrawn').checked,
+                photo: finalPhoto,
                 full_phone: document.getElementById('edit-phone').value.trim(),
                 kakao_id: document.getElementById('edit-kakao').value.trim(),
                 feedback: document.getElementById('edit-feedback').value.trim(),
                 history: updatedHistory
             };
 
-            async function saveToSupabase(photoUrl) {
-                if (photoUrl !== undefined) updatedFields.photo = photoUrl;
-                const { error } = await supabaseClient.from('members').update(updatedFields).eq('name', name);
-                if (error) { alert('수정 실패: ' + error.message); return; }
-                alert('업데이트 완료!');
-                closeAdminModal();
-                await fetchMembersFromSupabase();
-                loadAdminDashboard();
-            }
+            const { error } = await supabaseClient.from('members').update(updatedFields).eq('name', name);
+            if (error) { alert('수정 실패: ' + error.message); return; }
 
-            if (fileInput.files && fileInput.files[0]) {
-                try {
-                    const resized = await resizeImageSource(fileInput.files[0]);
-                    saveToSupabase(resized);
-                } catch (err) {
-                    alert('사진 처리 실패: ' + err.message);
-                }
-            } else {
-                saveToSupabase();
-            }
+            Object.assign(m, {
+                rating: updatedFields.rating,
+                position: updatedFields.position,
+                birth: updatedFields.birth,
+                joinDate: updatedFields.join_date,
+                address: updatedFields.address,
+                attendedMatches: updatedFields.attended_matches,
+                role: updatedFields.role,
+                isWithdrawn: updatedFields.is_withdrawn,
+                photo: updatedFields.photo,
+                fullPhone: updatedFields.full_phone,
+                kakaoId: updatedFields.kakao_id,
+                feedback: updatedFields.feedback,
+                history: updatedFields.history
+            });
+            recomputeTeamSummary();
+
+            alert('업데이트 완료!');
+            closeAdminModal();
+            loadAdminDashboard();
         });
-
-        const reverseScoreMap = {
-            10.0: "A+", 9.5: "A", 9.0: "A-",
-            8.5: "B+", 8.0: "B", 7.5: "B-",
-            7.0: "C+", 6.5: "C", 6.0: "C-",
-            5.5: "D+", 5.0: "D", 4.5: "D-",
-            4.0: "E+", 3.5: "E", 3.0: "E-",
-            2.5: "F+", 2.0: "F", 1.5: "F-"
-        };
 
         function renderChart(history) {
             const ctx = document.getElementById('ratingChart').getContext('2d');
@@ -1539,29 +1479,23 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        y: { 
-                            min: 1.5, 
-                            max: 10.5, 
-                            ticks: { 
+                        y: {
+                            min: 1.5,
+                            max: 10.5,
+                            ticks: {
                                 color: '#94a3b8',
                                 stepSize: 0.5,
-                                callback: function(value) {
-                                    return reverseScoreMap[value] || ''; 
-                                }
-                            }, 
-                            grid: { color: '#334155' } 
+                                callback: value => reverseScoreMap[value] || ''
+                            },
+                            grid: { color: '#334155' }
                         },
                         x: { ticks: { color: '#94a3b8' }, grid: { display: false } }
                     },
-                    plugins: { 
+                    plugins: {
                         legend: { display: false },
                         tooltip: {
                             callbacks: {
-                                label: function(context) {
-                                    const scoreValue = context.raw;
-                                    const gradeLabel = reverseScoreMap[scoreValue] || scoreValue;
-                                    return ` 등급: ${gradeLabel} `;
-                                }
+                                label: context => ` 등급: ${reverseScoreMap[context.raw] || context.raw} `
                             }
                         }
                     }
@@ -1579,8 +1513,8 @@
             const backgroundColors = ratingHierarchy.map(grade => {
                 const level = getCustomLevelName(grade);
                 if (level === "루키") return '#38bdf8';
-                else if (level === "아마추어") return '#10b981';
-                else if (level === "세미프로") return '#f59e0b';
+                if (level === "아마추어") return '#10b981';
+                if (level === "세미프로") return '#f59e0b';
                 return '#10b981';
             });
             const maxCount = Math.max(...counts, 0);
@@ -1594,37 +1528,29 @@
                         label: '회원 수',
                         data: counts,
                         backgroundColor: backgroundColors,
-                        borderRadius: 4,
+                        borderRadius: 4
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        y: { 
-                            beginAtZero: true, 
+                        y: {
+                            beginAtZero: true,
                             max: suggestedYMax,
-                            ticks: { color: '#94a3b8', precision: 0 }, 
-                            grid: { color: '#334155' } 
+                            ticks: { color: '#94a3b8', precision: 0 },
+                            grid: { color: '#334155' }
                         },
-                        x: { 
-                            ticks: { color: '#94a3b8' }, 
-                            grid: { display: false } 
-                        }
+                        x: { ticks: { color: '#94a3b8' }, grid: { display: false } }
                     },
-                    plugins: { 
+                    plugins: {
                         legend: { display: false },
                         datalabels: {
                             color: '#e2e8f0',
                             anchor: 'end',
                             align: 'top',
-                            font: {
-                                size: 10,
-                                weight: 'bold'
-                            },
-                            formatter: function(value) {
-                                return value > 0 ? value : ''; 
-                            }
+                            font: { size: 10, weight: 'bold' },
+                            formatter: value => value > 0 ? value : ''
                         }
                     }
                 },

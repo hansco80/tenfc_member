@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TenFC 풋살팀 통합 시스템 v2.40</title>
+    <title>TenFC 풋살팀 통합 시스템 v2.60</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         #boot-loading { display: none; }
@@ -331,6 +331,10 @@
                     </div>
                 </div>
                 <div>
+                    <label class="block text-xs text-slate-400 mb-1">프로필 사진 (등록 시 자동 최적화)</label>
+                    <input type="file" id="add-photo-file" accept="image/*" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-xs text-slate-300">
+                </div>
+                <div>
                     <label class="block text-xs text-slate-400 mb-1">연락처</label>
                     <input type="text" id="add-phone" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-white" placeholder="010-XXXX-XXXX">
                 </div>
@@ -417,8 +421,7 @@
                     </label>
                 </div>
                 <div>
-                    <label class="block text-xs text-slate-400 mb-1">프로필 사진 URL (GitHub 호스팅 권장)</label>
-                    <input type="text" id="edit-photo-url" placeholder="https://hansco80.github.io/tenfc_member/photos/이름.webp" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-xs text-white mb-1.5">
+                    <label class="block text-xs text-slate-400 mb-1">프로필 사진 변경 (선택 시 자동 최적화)</label>
                     <input type="file" id="edit-photo-file" accept="image/*" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-xs text-slate-300">
                 </div>
                 <div>
@@ -471,8 +474,6 @@
         const SUPABASE_KEY = 'sb_publishable_mXkGsaxwwfnnAR3lpE8T1A_n0kiPdZj';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // GitHub 프로필 사진 기본 경로 (예: https://hansco80.github.io/tenfc_member/photos/)
-        const GITHUB_PHOTO_BASE = 'https://hansco80.github.io/tenfc_member/photos/';
         const STATS_URL = 'https://hansco80.github.io/tenfc_member/tenfc_stats/';
         document.querySelectorAll('.stats-link').forEach(a => a.href = STATS_URL);
 
@@ -599,7 +600,7 @@
         async function recordLoginSession(user) {
             const todayStr = kstDateStr(new Date());
             const lastDateStr = user.lastLoginAt ? kstDateStr(user.lastLoginAt) : "";
-            if (lastDateStr === todayStr) return; // 오늘 이미 기록된 경우 추가 쓰기 생략
+            if (lastDateStr === todayStr) return;
 
             const currentIsoTime = new Date().toISOString();
             const updatedLoginCount = (user.loginCount || 0) + 1;
@@ -1137,6 +1138,33 @@
         function openAddMemberModal() { document.getElementById('add-member-form').reset(); document.getElementById('add-member-modal').classList.remove('hidden'); }
         function closeAddMemberModal() { document.getElementById('add-member-modal').classList.add('hidden'); }
 
+        function resizeImageToDataUrl(file, maxSize = 256, quality = 0.8) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                const url = URL.createObjectURL(file);
+                img.onload = () => {
+                    try {
+                        const ratio = Math.min(1, maxSize / Math.max(img.naturalWidth, img.naturalHeight));
+                        const canvas = document.createElement('canvas');
+                        canvas.width = Math.max(1, Math.round(img.naturalWidth * ratio));
+                        canvas.height = Math.max(1, Math.round(img.naturalHeight * ratio));
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        URL.revokeObjectURL(url);
+                        resolve(canvas.toDataURL('image/webp', quality));
+                    } catch (e) {
+                        URL.revokeObjectURL(url);
+                        reject(e);
+                    }
+                };
+                img.onerror = () => {
+                    URL.revokeObjectURL(url);
+                    reject(new Error('이미지를 읽을 수 없습니다.'));
+                };
+                img.src = url;
+            });
+        }
+
         document.getElementById('add-member-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const rating = document.getElementById('add-rating').value.trim().toUpperCase() || "C";
@@ -1144,12 +1172,23 @@
             const now = new Date();
             const todayStr = `${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
 
+            const addPhotoFile = document.getElementById('add-photo-file')?.files?.[0];
+            let initialPhoto = "";
+            if (addPhotoFile) {
+                try {
+                    initialPhoto = await resizeImageToDataUrl(addPhotoFile, 256, 0.8);
+                } catch (err) {
+                    alert('사진 처리 실패: ' + err.message);
+                    return;
+                }
+            }
+
             const newMemberRow = {
                 name: document.getElementById('add-name').value.trim(),
                 password: document.getElementById('add-pw').value.trim(),
                 full_phone: document.getElementById('add-phone').value.trim() || "010-XXXX-XXXX",
                 kakao_id: document.getElementById('add-kakao').value.trim(),
-                photo: "",
+                photo: initialPhoto,
                 birth: document.getElementById('add-birth').value.trim(),
                 address: document.getElementById('add-address').value.trim(),
                 position: document.getElementById('add-position').value.trim() || "멀티",
@@ -1173,7 +1212,7 @@
                 password: newMemberRow.password,
                 fullPhone: newMemberRow.full_phone,
                 kakaoId: newMemberRow.kakao_id,
-                photo: "",
+                photo: initialPhoto,
                 birth: newMemberRow.birth,
                 address: newMemberRow.address,
                 position: newMemberRow.position,
@@ -1354,7 +1393,6 @@
             document.getElementById('edit-attended').value = m.attendedMatches;
             document.getElementById('edit-role-type').value = m.role || 'member';
             document.getElementById('edit-withdrawn').checked = m.isWithdrawn || false;
-            document.getElementById('edit-photo-url').value = m.photo || `${GITHUB_PHOTO_BASE}${encodeURIComponent(m.name)}.webp`;
             document.getElementById('edit-photo-file').value = "";
             document.getElementById('edit-phone').value = m.fullPhone;
             document.getElementById('edit-kakao').value = m.kakaoId || '';
@@ -1364,33 +1402,6 @@
 
         function closeAdminModal() { document.getElementById('admin-edit-modal').classList.add('hidden'); }
 
-        function resizeImageToDataUrl(file, maxSize = 256, quality = 0.8) {
-            return new Promise((resolve, reject) => {
-                const img = new Image();
-                const url = URL.createObjectURL(file);
-                img.onload = () => {
-                    try {
-                        const ratio = Math.min(1, maxSize / Math.max(img.naturalWidth, img.naturalHeight));
-                        const canvas = document.createElement('canvas');
-                        canvas.width = Math.max(1, Math.round(img.naturalWidth * ratio));
-                        canvas.height = Math.max(1, Math.round(img.naturalHeight * ratio));
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        URL.revokeObjectURL(url);
-                        resolve(canvas.toDataURL('image/webp', quality));
-                    } catch (e) {
-                        URL.revokeObjectURL(url);
-                        reject(e);
-                    }
-                };
-                img.onerror = () => {
-                    URL.revokeObjectURL(url);
-                    reject(new Error('이미지를 읽을 수 없습니다.'));
-                };
-                img.src = url;
-            });
-        }
-
         document.getElementById('admin-edit-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const name = document.getElementById('edit-member-name').value;
@@ -1398,7 +1409,6 @@
             if (!m) return;
 
             const fileInput = document.getElementById('edit-photo-file');
-            const urlInputVal = document.getElementById('edit-photo-url').value.trim();
             const newRating = document.getElementById('edit-rating').value.trim().toUpperCase();
             const newScore = scoreMap[newRating] !== undefined ? scoreMap[newRating] : 6.5;
             const updatedHistory = getUpdatedHistory(m.history, newScore);
@@ -1406,13 +1416,11 @@
             let finalPhoto = m.photo || "";
             if (fileInput.files && fileInput.files[0]) {
                 try {
-                    finalPhoto = await resizeImageToDataUrl(fileInput.files[0]);
+                    finalPhoto = await resizeImageToDataUrl(fileInput.files[0], 256, 0.8);
                 } catch (err) {
                     alert('사진 처리 실패: ' + err.message);
                     return;
                 }
-            } else {
-                finalPhoto = urlInputVal;
             }
 
             const updatedFields = {

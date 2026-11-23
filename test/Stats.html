@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<!-- TenFC 팀 집계 v1.30 -->
+<html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TenFC 팀 집계 v1.30 [체험판]</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="demo-core.js"></script>
+<style type="text/tailwindcss">
+.inp{@apply px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white}
+.btn{@apply px-3 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-bold text-white}
+.card{@apply bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-3 shadow-xl}
+.tab{@apply px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700}
+.tab.on{@apply bg-emerald-600 border-emerald-600 text-white font-bold shadow-md}
+th,td{@apply p-2 text-left whitespace-nowrap}
+th{@apply text-slate-400 text-xs border-b border-slate-700}
+</style>    <style id="tf-kit-css">
+        /* ===== TenFC 공통 UI (5개 페이지 동일 — 수정 시 전부 같이 바꾸세요) ===== */
+        .tf-btn { padding: .5rem 1rem; border-radius: .75rem; font-size: .75rem; line-height: 1rem; font-weight: 700; border: 1px solid transparent; cursor: pointer; white-space: nowrap; transition: background-color .15s, color .15s; text-align: center; }
+        .tf-nav { background: #1e293b; border-color: #334155; color: #cbd5e1; }
+        .tf-nav:hover { background: #334155; }
+        .tf-active { background: #059669; border-color: #059669; color: #fff; box-shadow: 0 4px 6px -1px rgba(0,0,0,.35); }
+        .tf-login { background: #0284c7; color: #fff; box-shadow: 0 4px 6px -1px rgba(0,0,0,.35); }
+        .tf-login:hover { background: #0ea5e9; }
+        .tf-logout { background: rgba(225,29,72,.8); color: #fff; }
+        .tf-logout:hover { background: #e11d48; }
+        .tf-primary { background: #059669; color: #fff; box-shadow: 0 4px 6px -1px rgba(0,0,0,.35); }
+        .tf-primary:hover { background: #10b981; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans p-4 text-sm">
+
+<div id="login" class="max-w-sm mx-auto mt-20 card space-y-3">
+  <h1 class="text-xl font-bold text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.30</span></h1>
+  <p class="text-xs text-slate-400">정회원·운영진 전용 · 멤버 사이트에서 로그인하셨다면 자동으로 들어옵니다.</p>
+  <input id="em" type="text" placeholder="성명" class="inp w-full">
+  <input id="pw" type="password" placeholder="비밀번호 (멤버 사이트와 동일)" class="inp w-full" onkeydown="if(event.key==='Enter')login()">
+  <button onclick="login()" class="btn w-full">로그인</button>
+  <p id="err" class="text-rose-400 text-xs"></p>
+  <button onclick="DEMO.loginAs('김민준')" class="tf-btn tf-primary w-full">🧪 체험 계정(주관리자)으로 입장</button>
+  <a href="index.html" class="tf-btn tf-nav block">🏠 메인으로</a>
+</div>
+
+<div id="app" class="hidden max-w-4xl mx-auto">
+  <div id="demo-bar" class="hidden mb-3 p-2 rounded bg-amber-900/40 border border-amber-700/50 text-amber-300 text-xs">🧪 데모 모드 — 샘플 데이터이며 DB에는 아무것도 저장되지 않습니다. 새로고침하면 초기화됩니다.</div>
+    <header class="mb-4 flex flex-col md:flex-row justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-xl gap-4">
+            <div>
+                <h1 class="text-2xl font-black text-emerald-400">📊 TenFC 팀 집계 <span class="text-xs text-slate-500 font-normal">v1.30</span></h1>
+                <p class="text-xs text-slate-400">접속자: <span class="tf-user text-emerald-400 font-bold">비회원 (방문자)</span></p>
+            </div>
+            <div class="flex gap-2 flex-wrap justify-center md:justify-end">
+                <span class="tf-nav-slot contents"></span>
+      <button onclick="logout()" class="tf-btn tf-logout">🚪 로그아웃</button>
+            </div>
+        </header>
+  <div class="flex gap-2 mb-4">
+    <button class="tab" id="t-in" onclick="tab('in')">라운드 입력</button>
+    <button class="tab" id="t-cap" onclick="tab('cap')">팀장 성적</button>
+    <button class="tab" id="t-chem" onclick="tab('chem')">케미·최근</button>
+  </div>
+
+  <section id="s-in">
+    <div class="card">
+      <p class="text-xs text-slate-400 mb-2">라인업 텍스트를 붙여넣으세요. <code>⚽ 1팀 [레드]</code> 헤더 아래 이름을 줄바꿈/쉼표로 구분하고, 팀장 이름 뒤에 <code>*</code>를 붙입니다.</p>
+      <div class="flex gap-2 mb-2"><input id="dt" type="date" class="inp"><input id="rno" type="number" placeholder="회차(선택)" class="inp w-28"></div>
+      <textarea id="txt" rows="8" class="inp w-full font-mono text-xs" placeholder="⚽ 1팀 [레드]&#10;김민준(80)*&#10;조현우(85)&#10;&#10;⚽ 2팀 [블랙]&#10;..."></textarea>
+      <p class="text-xs text-slate-400 mt-3 mb-1">경기 결과 (선택) — <code>그린 3 vs 0 레드</code>, <code>그린 3 - 0 레드</code> 형식이나 카톡 대화를 그대로 복사한 <code>[이름] [오후 8:12] 그3 레2</code> (그·레·블 줄임말 가능) 형식을 붙여넣으면 팀별 승/무/패와 우승이 자동 계산됩니다. 팀은 헤더의 <code>[레드]</code> 색상과 맞춰 인식합니다.</p>
+      <textarea id="res" rows="6" class="inp w-full font-mono text-xs" placeholder="1경기 (오후 8:10): 그린 3 vs 0 레드 (그린 승)&#10;2경기 (오후 8:24): 그린 3 vs 3 블랙 (무승부)"></textarea>
+      <div class="flex gap-2 mt-2"><button class="btn" onclick="parse()">라인업 + 결과 인식</button><button class="inp text-xs" onclick="applyRes(true)">결과만 다시 반영</button></div>
+      <p id="resmsg" class="text-xs text-amber-300 mt-2"></p>
+    </div>
+    <div id="draft"></div>
+    <h2 class="font-bold text-slate-300 mt-6 mb-2">입력된 라운드</h2>
+    <div id="rec"></div>
+  </section>
+
+  <section id="s-cap" class="hidden">
+    <div class="card overflow-x-auto" id="cap"></div>
+    <h2 class="font-bold text-slate-300 mt-6 mb-2">라운드 결과</h2>
+    <div id="caprec"></div>
+  </section>
+
+  <section id="s-chem" class="hidden">
+    <div class="card flex flex-wrap gap-2 items-center">
+      <select id="who" class="inp" onchange="chem()"><option value="">이름 선택</option></select>
+      <select id="rng" class="inp" onchange="chem()"><option value="0" selected>전체 기간</option><option value="3">최근 3회</option><option value="5">최근 5회</option><option value="10">최근 10회</option></select>
+      <label class="text-xs"><input type="checkbox" id="capOnly" onchange="chem()"> 이 사람이 팀장일 때만</label>
+      <label class="text-xs"><input type="checkbox" id="hide0" onchange="chem()"> 같이 한 횟수 0인 정회원 제외</label>
+    </div>
+    <p id="memwarn" class="text-xs text-amber-300 mb-2"></p>
+    <div class="card overflow-x-auto" id="chem"><p class="text-slate-400">이름을 선택하세요.</p></div>
+  </section>
+</div>
+
+<div id="cardm" class="hidden fixed inset-0 bg-black/80 z-50 flex flex-col items-center justify-center p-4 gap-3">
+  <canvas id="cv" class="max-w-full max-h-[75vh] rounded-xl"></canvas>
+  <div class="flex gap-2"><button class="btn" onclick="dl()">💾 PNG 저장</button><button class="inp" onclick="$('cardm').classList.add('hidden')">닫기</button></div>
+</div>
+
+    <script id="tf-kit-js">
+        /* ===== TenFC 공통 등급·메뉴 규칙 (5개 페이지 동일 — 수정 시 전부 같이 바꾸세요) =====
+           등급: 주관리자(admin) > 부관리자(sub_admin) > 정회원(member) > 비회원(미로그인·용병·지인)
+           메뉴 노출: 메인·운동일정=모두 / 투표=로그인 사용자 / 팀 집계=정회원 이상 / 평점관리=주관리자
+           ?view=이름 미리보기: 주관리자만 가능, 저장(로그인 전환)하지 않음 */
+        const TF = (() => {
+            const STATS_URL = 'stats.html';
+            const ROLE_LABEL = { admin: '주관리자', sub_admin: '부관리자', member: '정회원', guest: '용병', acquaintance: '지인' };
+            const roleOf = u => (u ? (u.role || 'member') : null);
+            const gone = m => !!(m && (m.isWithdrawn || m.is_withdrawn));
+            const isAdmin = u => roleOf(u) === 'admin';
+            const isStaff = u => ['admin', 'sub_admin'].includes(roleOf(u));
+            const isMember = u => ['admin', 'sub_admin', 'member'].includes(roleOf(u));
+            const label = u => u ? `${u.name} 님 (${ROLE_LABEL[roleOf(u)] || '정회원'})` : '비회원 (방문자)';
+            const ITEMS = [
+                { key: 'home',   t: '🏠 메인',     href: b => b + 'index.html',       ok: () => true },
+                { key: 'match',  t: '⚽ 운동일정', href: b => b + 'match.html',       ok: () => true },
+                { key: 'polls',  t: '🗳️ 투표',     href: b => b + 'polls.html',       ok: u => !!u },
+                { key: 'stats',  t: '📊 팀 집계',  href: () => STATS_URL,             ok: isMember },
+                { key: 'rating', t: '⭐ 평점관리', href: b => b + 'rating_vote.html', ok: isAdmin }
+            ];
+            // 저장된 로그인 사용자 + (주관리자 한정) ?view= 미리보기 대상 결정
+            function resolveUser(members) {
+                const find = n => (n ? members.find(m => m.name === n && !gone(m)) : null) || null;
+                const saved = find(localStorage.getItem('tenfc_demo_user'));
+                const view = new URLSearchParams(location.search).get('view');
+                if (view && isAdmin(saved)) {
+                    const t = find(view) || (view === '테스트' ? { name: '테스트', role: 'guest' } : null);
+                    if (t) return { user: t, real: saved, viewing: true };
+                }
+                return { user: saved, real: saved, viewing: false };
+            }
+            // 상단 우측 메뉴 + 접속자 표기를 등급 규칙대로 다시 그림
+            function renderNav(page, user, opt = {}) {
+                const base = opt.base || '';
+                const html = ITEMS.filter(i => i.ok(user)).map(i => {
+                    let href = i.href(base);
+                    if (i.key === 'stats' && opt.view) href += '?view=' + encodeURIComponent(opt.view);
+                    return `<a href="${href}" class="tf-btn ${i.key === page ? 'tf-active' : 'tf-nav'}"${i.key === page ? ' aria-current="page"' : ''}>${i.t}</a>`;
+                }).join('');
+                document.querySelectorAll('.tf-nav-slot').forEach(el => { el.innerHTML = html; });
+                document.querySelectorAll('.tf-user').forEach(el => { el.textContent = opt.userText || label(user); });
+            }
+            async function issueStatToken(client, name, pw) {
+                try { const { data } = await client.rpc('stat_login', { p_name: name, p_pw: pw }); if (data) localStorage.setItem('tenfc_demo_stat', data); } catch (e) {}
+            }
+            async function clearSession(client) {
+                const tok = localStorage.getItem('tenfc_demo_stat');
+                localStorage.removeItem('tenfc_demo_user');
+                localStorage.removeItem('tenfc_demo_stat');
+                if (tok && client) { try { await client.rpc('stat_logout', { p_token: tok }); } catch (e) {} }
+            }
+            return { STATS_URL, ROLE_LABEL, roleOf, gone, isAdmin, isStaff, isMember, label, resolveUser, renderNav, issueStatToken, clearSession };
+        })();
+    </script>
+
+<script>
+const sb = supabase.createClient('https://demo.invalid', 'demo-key');
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// members.role 값 → 구분: member=정회원, admin=최고관리자, sub_admin=부관리자, 아래 두 값이 용병/지인
+// (기존 멤버 사이트 드롭다운 기준: guest=용병, acquaintance=지인. DB와 반대라면 두 값을 서로 바꾸세요)
+const ROLE_GUEST = 'guest', ROLE_ACQ = 'acquaintance';
+let INFO = {}, SELF = '';
+const setWho = n => { if (!n) return; if (![...$('who').options].some(o => o.value === n)) $('who').insertAdjacentHTML('beforeend', `<option value="${esc(n)}">${esc(n)}</option>`); $('who').value = n; };
+const kind = n => { if (!MEMBERS.length) return ['', 0]; const m = INFO[n]; if (!m) return ['미등록', 4]; if (m.withdrawn) return ['탈퇴', 3]; if (m.role === ROLE_GUEST) return ['용병', 1]; if (m.role === ROLE_ACQ) return ['지인', 2]; return ['', 0]; };
+const norm = n => String(n).replace(/^(용병|지인)[-\s]*/, '');
+const pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '-';
+let D = [], T = [], draft = [];
+
+const tok = () => localStorage.getItem('tenfc_demo_stat');
+async function rpc(fn, args) {
+  const { data, error } = await sb.rpc(fn, { p_token: tok(), ...args });
+  if (error) {
+    if (/unauthorized/.test(error.message)) { localStorage.removeItem('tenfc_demo_stat'); alert('세션이 만료되었습니다. 다시 로그인하세요.'); location.reload(); }
+    else alert(error.message);
+    return null;
+  }
+  return data;
+}
+async function login() {
+  const { data, error } = await sb.rpc('stat_login', { p_name: $('em').value.trim(), p_pw: $('pw').value });
+  if (error) { $('err').textContent = '로그인 오류: ' + error.message; return; }
+  if (!data) { $('err').textContent = '이름/비밀번호가 틀렸거나 열람 권한이 없는 계정입니다.'; return; }
+  window.DEMO.loginAs($('em').value.trim());
+}
+async function boot() {
+  if (!tok()) return;
+  const { data: me } = await sb.rpc('stat_me', { p_token: tok() });
+  if (!me) { localStorage.removeItem('tenfc_demo_stat'); return; }
+  // ?view=이름 : 최고관리자가 멤버 페이지에서 넘어온 경우, 해당 멤버가 보는 화면(입력 탭 없음, 본인 케미 선택)으로 표시
+  const VIEW = me.role === 'admin' ? norm(new URLSearchParams(location.search).get('view') || '') : '';
+  IS_ADMIN = me.role === 'admin' && !VIEW;
+  SELF = VIEW || norm(me.name);
+  $('t-in').classList.toggle('hidden', !IS_ADMIN);
+  $('login').classList.add('hidden'); $('app').classList.remove('hidden');
+  $('dt').valueAsDate = new Date();
+  await load();
+  const navUser = VIEW ? { name: VIEW, role: (INFO[VIEW] && INFO[VIEW].role) || 'member' } : me;
+  TF.renderNav('stats', navUser, { base: '', view: VIEW || '', userText: VIEW ? `${VIEW} 님 화면 (주관리자 ${me.name} 미리보기)` : TF.label(me) });
+  setWho(SELF);
+  tab(VIEW ? 'chem' : IS_ADMIN ? 'in' : 'cap');
+}
+async function logout() {
+  if (!DEMO) await sb.rpc('stat_logout', { p_token: tok() });
+  localStorage.removeItem('tenfc_demo_stat'); localStorage.removeItem('tenfc_demo_user'); location.reload();
+}
+
+let DEMO = false, IS_ADMIN = false, MEMBERS = [];
+async function load() {
+  if (!DEMO) {
+    const data = await rpc('stat_list', {});
+    if (!data) return;
+    D = data;
+    const st = await sb.rpc('stat_members', { p_token: tok() });
+    MEMBERS = (st.data || []).map(m => ({ ...m, role: m.role || 'member' }));
+    $('memwarn').textContent = MEMBERS.length ? '' : `⚠ 멤버 구분 정보를 불러오지 못했습니다${st.error ? ' (' + st.error.message + ')' : ''}. Supabase에서 schema.sql을 다시 실행했는지 확인해 주세요.`;
+  }
+  INFO = {}; MEMBERS.forEach(m => { const k = norm(m.name); if (!INFO[k] || INFO[k].withdrawn) INFO[k] = m; });
+  T = [];
+  D.forEach((r, i) => r.round_teams.forEach(t => T.push({ ...t, ri: i, date: r.played_on, pl: t.round_players.map(p => p.player) })));
+  const cur = $('who').value;
+  const used = new Set(T.flatMap(t => t.pl)), seen = new Set(), ko = (x, y) => x.localeCompare(y, 'ko');
+  const pick = (test, onlyUsed) => MEMBERS.filter(m => !m.withdrawn && test(m.role)).map(m => norm(m.name)).filter(n => !seen.has(n) && (!onlyUsed || used.has(n)) && seen.add(n));
+  const opt = (n, tag) => `<option value="${esc(n)}">${esc(n)}${tag ? ` (${tag})` : ''}</option>`;
+  const staff = pick(r => r === 'admin' || r === 'sub_admin', false), regular = pick(r => r === 'member', false).sort(ko);
+  const guest = pick(r => r === ROLE_GUEST, true).sort(ko), acq = pick(r => r === ROLE_ACQ, true).sort(ko);
+  const wd = MEMBERS.filter(m => m.withdrawn).map(m => norm(m.name)).filter(n => used.has(n) && !seen.has(n) && seen.add(n)).sort(ko);
+  const etc = [...used].filter(n => !seen.has(n)).sort(ko);
+  const tail = [...guest.map(n => [n, '용병']), ...acq.map(n => [n, '지인']), ...wd.map(n => [n, '탈퇴']), ...etc.map(n => [n, MEMBERS.length ? '미등록' : ''])];
+  const grp = (label, html) => html ? `<optgroup label="${label}">${html}</optgroup>` : '';
+  $('who').innerHTML = '<option value="">이름 선택</option>' + grp('🛡️ 운영진', staff.map(n => opt(n)).join('')) + grp('정회원', regular.map(n => opt(n)).join(''))
+    + grp(MEMBERS.length ? '그 외 (용병·지인·탈퇴)' : '멤버', tail.map(([n, g]) => opt(n, g)).join(''));
+  $('who').value = cur;
+  recList();
+}
+
+function tab(k) {
+  if (k === 'in' && !IS_ADMIN) k = 'cap';
+  ['in', 'cap', 'chem'].forEach(x => { $('s-' + x).classList.toggle('hidden', x !== k); $('t-' + x).classList.toggle('on', x === k); });
+  if (k === 'cap') capTab();
+  if (k === 'chem') chem();
+}
+
+/* ---------- 데모 ---------- */
+function demoData() {
+  const N = window.DEMO.members().filter(m => !m.is_withdrawn && ['admin', 'sub_admin', 'member'].includes(m.role)).map(m => m.name);
+  let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  const out = [];
+  for (let k = 0; k < 8; k++) {
+    const caps = [N[k % 6], N[(k + 2) % 6], N[(k + 4) % 6]];
+    const rest = N.filter(n => !caps.includes(n)).sort(() => rnd() - 0.5);
+    const ts = caps.map((c, j) => ({ id: k * 10 + j, team_name: `${j + 1}팀 [${['레드','블랙','그린'][j]}]`, captain: c, w: 0, d: 0, l: 0, gf: 0, ga: 0, is_champion: false,
+      pl: [c, ...rest.filter((_, i) => i % 3 === j)] }));
+    [[0, 1], [0, 2], [1, 2], [0, 1], [0, 2], [1, 2]].forEach(([a, b]) => {
+      const x = Math.floor(rnd() * 4), y = Math.floor(rnd() * 4);
+      ts[a].gf += x; ts[a].ga += y; ts[b].gf += y; ts[b].ga += x;
+      if (x === y) { ts[a].d++; ts[b].d++; } else if (x > y) { ts[a].w++; ts[b].l++; } else { ts[b].w++; ts[a].l++; } });
+    const pts = ts.map(t => 3 * t.w + t.d), m = Math.max(...pts);
+    ts[pts.indexOf(m)].is_champion = true;
+    const dt = new Date(Date.now() - k * 7 * 864e5).toISOString().slice(0, 10);
+    out.push({ id: k + 1, round_no: 8 - k, played_on: dt, round_teams: ts.map(t => ({ ...t, round_players: t.pl.map(player => ({ player })) })) });
+  }
+  return out;
+}
+async function demo() {
+  const cu = window.DEMO.currentUser(); DEMO = true; IS_ADMIN = !!cu && cu.role === 'admin'; D = demoData(); 
+  const dn = [...new Set(D.flatMap(r => r.round_teams.flatMap(t => t.round_players.map(p => p.player))))].sort();
+  MEMBERS = window.DEMO.members().map(m => ({ name: m.name, role: m.role, withdrawn: !!m.is_withdrawn }));
+  $('login').classList.add('hidden'); $('app').classList.remove('hidden'); $('demo-bar').classList.remove('hidden');
+  $('dt').valueAsDate = new Date();
+  $('t-in').classList.toggle('hidden', !IS_ADMIN);
+  TF.renderNav('stats', cu, { base: '', userText: TF.label(cu) + ' · 체험 모드' });
+  setWho(cu ? cu.name : MEMBERS[0].name);
+  $('txt').value = '⚽ 1팀 [레드]\n김민준(80)*\n박도윤(85)\n최하준(90)\n\n⚽ 2팀 [블랙]\n정시우(82)*\n강지호(88)\n조현우(79)\n\n⚽ 3팀 [그린]\n윤서진(81)*\n장도현(83)\n임재윤(86)';
+  $('res').value = '1경기 (오후 8:10): 그린 3 vs 0 레드 (그린 승)\n2경기 (오후 8:24): 그린 3 vs 3 블랙 (무승부)\n3경기 (오후 8:37): 블랙 3 vs 2 레드 (블랙 승)\n4경기 (오후 8:45): 그린 3 vs 0 블랙 (그린 승)\n5경기 (오후 8:59): 그린 3 vs 2 레드 (그린 승)\n6경기 (오후 9:12): 블랙 1 vs 0 그린 (블랙 승)\n7경기 (오후 9:25): 레드 2 vs 1 블랙 (레드 승)\n8경기 (오후 9:38): 레드 2 vs 0 그린 (레드 승)\n9경기 (오후 9:50): 레드 1 vs 0 블랙 (레드 승)\n10경기 (오후 10:00): 블랙 1 vs 1 그린 (무승부)';
+  await load(); tab(IS_ADMIN ? 'in' : 'cap');
+}
+
+/* ---------- 결과 이미지 ---------- */
+const TC = { 레드: ['#dc2626', '#450a0a', '#fff', 'RED'], 그린: ['#84cc16', '#1a2e05', '#fff', 'GREEN'], 블랙: ['#e5e7eb', '#6b7280', '#111', 'BLACK'],
+  블루: ['#3b82f6', '#172554', '#fff', 'BLUE'], 옐로: ['#facc15', '#713f12', '#111', 'YELLOW'], 노랑: ['#facc15', '#713f12', '#111', 'YELLOW'],
+  화이트: ['#f8fafc', '#94a3b8', '#111', 'WHITE'], 오렌지: ['#fb923c', '#7c2d12', '#fff', 'ORANGE'] };
+const CK = [['레드', /레드|red|🔴|🟥/i], ['그린', /그린|green|🟢|🟩/i], ['블랙', /블랙|black|⚫|⬛/i], ['블루', /블루|blue|🔵|🟦/i],
+  ['옐로', /옐로|노랑|yellow|🟡|🟨/i], ['화이트', /화이트|white|⚪/i], ['오렌지', /오렌지|orange|🟠/i]];
+const canon = s => (CK.find(([, r]) => r.test(s)) || [])[0] || '';
+const FONT = z => `bold ${z}px "Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif`;
+let cardDate = '';
+function rr(x, a, b, w, h, r) { x.beginPath(); x.moveTo(a + r, b); x.arcTo(a + w, b, a + w, b + h, r); x.arcTo(a + w, b + h, a, b + h, r); x.arcTo(a, b + h, a, b, r); x.arcTo(a, b, a + w, b, r); x.closePath(); }
+function showCard(teams, date) {
+  cardDate = date;
+  const W = 1024, H = 768, c = $('cv'), x = c.getContext('2d'); c.width = W; c.height = H;
+  const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#0b1220'); g.addColorStop(.6, '#0a2a14'); g.addColorStop(1, '#06140a');
+  x.fillStyle = g; x.fillRect(0, 0, W, H); x.textAlign = 'center';
+  const games = Math.round(teams.reduce((a, t) => a + t.w + t.d + t.l, 0) / 2);
+  x.fillStyle = '#f5deb3'; x.font = FONT(46); x.fillText(`TenFC 팀별 기록 집계 (${games}경기)`, W / 2, 78);
+  rr(x, 110, 115, 804, 52, 14); x.fillStyle = 'rgba(15,23,42,.85)'; x.fill(); x.strokeStyle = '#38bdf8'; x.lineWidth = 2; x.stroke();
+  const cols = [['경기수', 470], ['승', 555], ['무', 625], ['패', 695], ['득점', 780], ['실점', 860]];
+  x.font = FONT(22); x.fillStyle = '#e2e8f0'; x.fillText('팀명', 190, 149);
+  cols.forEach(([n, px]) => { x.fillStyle = ['승', '무', '패'].includes(n) ? '#86efac' : '#e2e8f0'; x.fillText(n, px, 149); });
+  const key = t => [3 * t.w + t.d, t.gf - t.ga, t.gf];
+  const rows = [...teams].sort((p, q) => { const a = key(p), b = key(q); return b[0] - a[0] || b[1] - a[1] || b[2] - a[2]; });
+  const h = Math.min(150, Math.floor(540 / rows.length) - 16);
+  rows.forEach((t, i) => {
+    const y = 185 + i * (h + 16), col = canon(t.name) || (t.name.match(/\[([^\]]+)\]/) || [])[1] || t.name, tc = TC[col] || ['#94a3b8', '#1e293b', '#fff', ''];
+    x.save(); rr(x, 110, y, 804, h, 16); x.fillStyle = '#0b0f14'; x.fill(); x.clip();
+    const lg = x.createLinearGradient(110, y, 430, y + h); lg.addColorStop(0, tc[0]); lg.addColorStop(1, tc[1]); x.fillStyle = lg; x.fillRect(110, y, 320, h); x.restore();
+    rr(x, 110, y, 804, h, 16); x.strokeStyle = tc[0]; x.lineWidth = 3; x.stroke();
+    x.fillStyle = tc[2]; x.font = FONT(Math.round(h * .3)); x.fillText(col, 270, y + h * .55);
+    x.font = FONT(Math.round(h * .14)); x.globalAlpha = .75; x.fillText(tc[3], 270, y + h * .8); x.globalAlpha = 1;
+    if (t.ch) { x.font = FONT(30); x.fillText('🏆', 145, y + 40); }
+    const vals = [t.w + t.d + t.l, t.w, t.d, t.l, t.gf, t.ga];
+    cols.forEach(([n, px], k) => {
+      x.fillStyle = '#cbd5e1'; x.font = FONT(Math.round(h * .12) + 4); x.fillText(n, px, y + h * .3);
+      x.fillStyle = '#fff'; x.font = FONT(Math.round(h * .3)); x.fillText(String(vals[k]), px, y + h * .72);
+    });
+  });
+  x.fillStyle = '#f5deb3'; x.font = FONT(38); x.fillText((date || '').replace(/-/g, '.'), W / 2, 740);
+  $('cardm').classList.remove('hidden');
+}
+function dl() { const a = document.createElement('a'); a.download = `tenfc-${cardDate || 'result'}.png`; a.href = $('cv').toDataURL('image/png'); a.click(); }
+function cardFromDraft() {
+  if (!draft.length) return;
+  showCard(draft.map(d => ({ name: d.name, w: d.w, d: d.d, l: d.l, gf: d.gf || 0, ga: d.ga || 0 })), $('dt').value);
+}
+function cardFromRound(id) {
+  const r = D.find(x => x.id === id); if (!r) return;
+  showCard(r.round_teams.map(t => ({ name: t.team_name || t.captain, w: t.w, d: t.d, l: t.l, gf: t.gf || 0, ga: t.ga || 0 })), r.played_on);
+}
+
+/* ---------- 입력 ---------- */
+function parse() {
+  draft = []; let c = null;
+  $('txt').value.split('\n').forEach(l => {
+    l = l.trim(); if (!l) return;
+    if (/^(⚽|\d+\s*팀)/.test(l)) { c = { name: l.replace(/^⚽\s*/, ''), pl: [], cap: '', w: 0, d: 0, l: 0, gf: 0, ga: 0, ch: false }; draft.push(c); return; }
+    if (!c) return;
+    l.split(/[,\/]+/).forEach(tk => {
+      const star = tk.includes('*');
+      const n = tk.replace(/\([^)]*\)|（[^）]*）/g, '').replace(/[*\-\s]/g, '').replace(/^(용병|지인)/, '');
+      if (!n) return;
+      if (!c.pl.includes(n)) c.pl.push(n);
+      if (star) c.cap = n;
+    });
+  });
+  draft.forEach(d => { if (!d.cap) d.cap = d.pl[0] || ''; });
+  if (!draft.length) alert('팀 헤더(⚽ 1팀 …)를 인식하지 못했습니다.');
+  applyRes(false);
+  drawDraft();
+}
+function applyRes(redraw) {
+  const msg = $('resmsg'); msg.textContent = '';
+  const text = $('res').value.trim(); if (!text || !draft.length) { if (redraw) drawDraft(); return; }
+  const find = k => { const c = canon(k); return draft.find(d => c ? canon(d.name) === c : d.name.includes(k)); };
+  draft.forEach(d => { d.w = d.d = d.l = 0; d.gf = d.ga = 0; d.ch = false; });
+  let n = 0, seq = 0; const bad = [], nums = new Set();
+  const AB = { 레: '레드', 래: '레드', 레드: '레드', 그: '그린', 그린: '그린', 블: '블랙', 블랙: '블랙' };
+  const SEP = '(?:vs|VS|:|：|대|-|–|—|~)';
+  const P1 = new RegExp('(\\S+?)\\s*(\\d+)\\s*' + SEP + '\\s*(\\d+)\\s*(\\S+)', 'i');
+  const P2 = new RegExp('(레드|레|래|그린|그|블랙|블)\\s*(\\d+)\\s*' + SEP + '?\\s*(레드|레|래|그린|그|블랙|블)\\s*(\\d+)');
+  text.split('\n').forEach(raw => {
+    let l = raw.trim(); if (!l) return;
+    const chat = /^\[[^\]]*\]\s*\[[^\]]*\]/.test(l);
+    l = l.replace(/^\[[^\]]*\]\s*\[[^\]]*\]\s*/, '').replace(/^[\s*\-•]+/, '');
+    const gn = l.match(/^(\d+)\s*(?:경기|[.)])/);
+    l = l.replace(/^\d+\s*경기\s*(\([^)]*\))?\s*:?\s*/, '').replace(/^\d+\s*[.)]\s*/, '').replace(/\([^)]*\)/g, '').trim();
+    if (!l) return;
+    const looks = new RegExp('\\d\\s*' + SEP + '\\s*\\d', 'i').test(l) || P2.test(l);
+    if (!looks) return;
+    let A, B, a, b, m;
+    if ((m = l.match(P1)) && (A = find(m[1])) && (B = find(m[4]))) { a = +m[2]; b = +m[3]; }
+    else if ((m = l.match(P2))) { A = find(AB[m[1]]); B = find(AB[m[3]]); a = +m[2]; b = +m[4]; }
+    if (!A || !B) { bad.push(raw.trim()); return; }
+    nums.add(gn ? +gn[1] : ++seq);
+    A.gf += a; A.ga += b; B.gf += b; B.ga += a;
+    if (a > b) { A.w++; B.l++; } else if (a < b) { B.w++; A.l++; } else { A.d++; B.d++; }
+    n++;
+  });
+  const key = d => [3 * d.w + d.d, d.gf - d.ga, d.gf];
+  const sorted = [...draft].sort((x, y) => { const a = key(x), b = key(y); return b[0] - a[0] || b[1] - a[1] || b[2] - a[2]; });
+  if (n && sorted.length) { sorted[0].ch = true; }
+  const tie = n && sorted.length > 1 && key(sorted[0]).join() === key(sorted[1]).join();
+  msg.textContent = `${n}경기 반영` + (tie ? ' · ⚠ 동률이라 우승팀을 직접 확인하세요' : '') + (() => { if (!nums.size) return ''; const mx = Math.max(...nums), ms = []; for (let i = 1; i <= mx; i++) if (!nums.has(i)) ms.push(i); return ms.length ? ` · ⚠ 경기 번호 ${ms.join(', ')} 누락 (총 ${mx}경기 중 ${nums.size}경기만 입력됨)` : ''; })() + (bad.length ? ` · 인식 실패 ${bad.length}줄: ${bad.join(' / ')} · 라인업에서 인식된 팀: ${draft.map(d => d.name).join(', ')}` : '');
+  if (redraw) drawDraft();
+}
+function setv(i, k, v) { draft[i][k] = +v || 0; const e = $('gm' + i), d = draft[i]; if (e) e.textContent = d.w + d.d + d.l; }
+function drawDraft() {
+  $('draft').innerHTML = draft.map((d, i) => `<div class="card"><b>${esc(d.name)}</b> <span class="text-slate-400">${d.pl.length}명</span>
+    <div class="flex flex-wrap gap-2 mt-2 items-center">👑
+      <select class="inp" onchange="draft[${i}].cap=this.value">${d.pl.map(p => `<option ${p === d.cap ? 'selected' : ''}>${esc(p)}</option>`).join('')}</select>
+      ${[['w', '승'], ['d', '무'], ['l', '패'], ['gf', '득점'], ['ga', '실점']].map(([k, n]) => `<label class="text-xs">${n} <input type="number" min="0" value="${d[k]}" class="inp w-16" onchange="setv(${i},'${k}',this.value)"></label>`).join('')}
+      <span class="text-xs text-slate-300">경기수 <b id="gm${i}" class="text-emerald-400 text-base">${d.w + d.d + d.l}</b></span>
+      <label class="text-xs"><input type="checkbox" ${d.ch ? 'checked' : ''} onchange="draft[${i}].ch=this.checked"> 🏆 우승</label>
+    </div></div>`).join('') + (draft.length ? '<button class="btn" onclick="save()">저장</button> <button class="inp" onclick="cardFromDraft()">🖼 결과 이미지 생성</button> <span class="text-xs text-slate-400">우승 미체크 시 승점(승3·무1) 단독 1위를 자동 우승 처리</span>' : '');
+}
+async function save() {
+  const date = $('dt').value; if (!date) return alert('날짜를 입력하세요.');
+  if (!draft.some(d => d.ch)) {
+    const pts = draft.map(d => 3 * d.w + d.d), m = Math.max(...pts);
+    if (m > 0 && pts.filter(p => p === m).length === 1) draft[pts.indexOf(m)].ch = true;
+  }
+  if (DEMO) {
+    D.unshift({ id: Date.now(), round_no: +$('rno').value || null, played_on: date,
+      round_teams: draft.map((d, i) => ({ id: i, team_name: d.name, captain: d.cap, w: d.w, d: d.d, l: d.l, gf: d.gf || 0, ga: d.ga || 0, is_champion: d.ch, round_players: d.pl.map(player => ({ player })) })) });
+    D.sort((a, b) => b.played_on.localeCompare(a.played_on));
+    draft = []; $('txt').value = ''; $('res').value = ''; $('resmsg').textContent = ''; drawDraft(); await load(); alert('저장되었습니다. (데모: 메모리에만 반영)'); return;
+  }
+  const ok = await rpc('stat_save', { p_date: date, p_no: +$('rno').value || null,
+    p_teams: draft.map(d => ({ team_name: d.name, captain: d.cap, w: d.w, d: d.d, l: d.l, gf: d.gf || 0, ga: d.ga || 0, is_champion: d.ch, players: d.pl })) });
+  if (ok === null) return;
+  draft = []; $('txt').value = ''; $('res').value = ''; $('resmsg').textContent = ''; drawDraft(); await load(); alert('저장되었습니다.');
+}
+function recList() {
+  $('rec').innerHTML = D.map(r => `<div class="card flex justify-between gap-2"><div>
+    <b>${esc(r.played_on)}</b> ${r.round_no ? `<span class="text-slate-400">${r.round_no}회차</span>` : ''}
+    <div class="text-xs text-slate-300 mt-1">${r.round_teams.map(t => `${t.is_champion ? '🏆' : ''}${esc(t.captain)}(${t.w}-${t.d}-${t.l})`).join(' · ')}</div></div>
+    <div class="flex flex-col gap-1 items-end"><button class="text-sky-400 text-xs" onclick="cardFromRound(${r.id})">🖼 이미지</button><button class="text-rose-400 text-xs" onclick="delRound(${r.id})">삭제</button></div></div>`).join('') || '<p class="text-slate-400">아직 기록이 없습니다.</p>';
+}
+async function delRound(id) {
+  if (!confirm('이 라운드 기록을 삭제할까요?')) return;
+  if (DEMO) { D = D.filter(r => r.id !== id); await load(); return; }
+  if (await rpc('stat_delete', { p_id: id }) === null && !tok()) return;
+  await load();
+}
+
+/* ---------- 집계 ---------- */
+const add = (o, t) => { o.n++; o.c += t.is_champion ? 1 : 0; o.w += t.w; o.d += t.d; o.l += t.l; o.gf = (o.gf || 0) + (t.gf || 0); o.ga = (o.ga || 0) + (t.ga || 0); };
+const SORT = { cap: { k: 'c', d: -1 }, chem: { k: 'n', d: -1 } };
+function sortBy(t, k) {
+  const o = SORT[t];
+  if (o.k === k) o.d = -o.d; else { o.k = k; o.d = k === 'name' ? 1 : -1; }
+  t === 'cap' ? capTab() : chem();
+}
+const th = (t, k, label) => { const on = SORT[t].k === k; return `<th class="cursor-pointer select-none hover:text-emerald-400" onclick="sortBy('${t}','${k}')">${label} <span class="${on ? 'text-emerald-400' : 'text-slate-600'}">${on ? (SORT[t].d < 0 ? '▼' : '▲') : '↕'}</span></th>`; };
+const srt = (t, rows) => { const o = SORT[t]; return rows.sort((a, b) => { const x = a[o.k], y = b[o.k]; const c = typeof x === 'string' ? x.localeCompare(y, 'ko') : x - y; return a.rk - b.rk || c * o.d || b.n - a.n || b.c - a.c || a.name.localeCompare(b.name, 'ko'); }); };
+const stat = (name, o) => { const g = o.w + o.d + o.l, [tag, rk] = kind(name); return { ...o, name, tag, rk, g, cr: o.n ? o.c / o.n : 0, wr: g ? o.w / g : 0, gd: (o.gf || 0) - (o.ga || 0) }; };
+let RV_ALL = false;
+function roundView() {
+  if (!D.length) return '<p class="text-slate-400">아직 기록이 없습니다.</p>';
+  const list = RV_ALL ? D : D.slice(0, 10);
+  const tm = t => {
+    const col = canon(t.team_name || ''), g = t.w + t.d + t.l;
+    const pl = (t.round_players || []).map(p => p.player).sort((a, b) => (a === t.captain ? -1 : b === t.captain ? 1 : 0));
+    return `<details class="mb-1"><summary class="cursor-pointer">${t.is_champion ? '🏆 ' : ''}<b>${esc(t.captain)}</b>${col ? ` (${col})` : ''} · ${g}경기 ${t.w}-${t.d}-${t.l} · 득${t.gf || 0} 실${t.ga || 0}</summary>
+      <div class="text-xs text-slate-400 pl-5 py-1">${pl.map(n => { const [tag] = kind(n); return (n === t.captain ? '👑' : '') + esc(n) + (tag ? `(${tag})` : ''); }).join(', ')}</div></details>`;
+  };
+  return list.map(r => `<div class="card"><div class="flex justify-between items-center mb-2"><div><b>${esc(r.played_on)}</b> ${r.round_no ? `<span class="text-slate-400">${r.round_no}회차</span>` : ''}</div>
+    <button class="text-sky-400 text-xs" onclick="cardFromRound(${r.id})">🖼 이미지</button></div>${r.round_teams.map(tm).join('')}</div>`).join('')
+    + (!RV_ALL && D.length > 10 ? `<button class="inp text-xs" onclick="RV_ALL=true;capTab()">전체 ${D.length}개 라운드 보기</button>` : '');
+}
+function capTab() {
+  $('caprec').innerHTML = roundView();
+  const m = {};
+  T.forEach(t => add(m[t.captain] ??= { n: 0, c: 0, w: 0, d: 0, l: 0 }, t));
+  const rows = srt('cap', Object.entries(m).map(([k, o]) => stat(k, o)));
+  $('cap').innerHTML = rows.length ? `<table class="w-full"><tr>${th('cap', 'name', '팀장')}${th('cap', 'n', '팀장 횟수')}${th('cap', 'g', '누적 경기수')}${th('cap', 'c', '🏆 우승')}${th('cap', 'cr', '우승률')}${th('cap', 'w', '승-무-패')}${th('cap', 'wr', '승률')}${th('cap', 'gf', '득점')}${th('cap', 'ga', '실점')}${th('cap', 'gd', '득실')}</tr>` +
+    rows.map(o => `<tr class="border-b border-slate-800${o.rk ? ' text-slate-400' : ''}"><td class="font-bold">${esc(o.name)}${o.tag ? ` <span class="font-normal text-xs">(${o.tag})</span>` : ''}</td><td>${o.n}</td><td class="font-bold text-sky-400">${o.g}</td><td>${o.c}</td><td>${pct(o.c, o.n)}</td><td>${o.w}-${o.d}-${o.l}</td><td>${pct(o.w, o.g)}</td><td>${o.gf}</td><td>${o.ga}</td><td class="${o.gd >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${o.gd > 0 ? '+' : ''}${o.gd}</td></tr>`).join('') + '</table>'
+    : '<p class="text-slate-400">데이터가 없습니다.</p>';
+}
+function chem() {
+  const p = $('who').value.trim(), N = +$('rng').value, cap = $('capOnly').checked;
+  if (!p) { $('chem').innerHTML = '<p class="text-slate-400">이름을 선택하세요.</p>'; return; }
+  const ts = T.filter(t => (!N || t.ri < N) && (cap ? t.captain === p : t.pl.includes(p)));
+  if (!ts.length) { $('chem').innerHTML = '<p class="text-slate-400">해당 기간 기록이 없습니다.</p>'; return; }
+  const m = {}, me = { n: 0, c: 0, w: 0, d: 0, l: 0 };
+  ts.forEach(t => { add(me, t); t.pl.forEach(q => { if (q === p) return; const o = m[q] ??= { n: 0, c: 0, w: 0, d: 0, l: 0, k: 0 }; add(o, t); if (t.captain === q) o.k++; }); });
+  if (!$('hide0').checked) {   // 같이 한 적 없는 정회원(운영진 포함)도 0회로 표시
+    MEMBERS.filter(x => !x.withdrawn && ['admin', 'sub_admin', 'member'].includes(x.role)).forEach(x => {
+      const n = norm(x.name); if (n !== p && !m[n]) m[n] = { n: 0, c: 0, w: 0, d: 0, l: 0, k: 0 };
+    });
+  }
+  const rows = srt('chem', Object.entries(m).map(([k, o]) => stat(k, o)));
+  $('chem').innerHTML = `<p class="mb-3"><b class="text-emerald-400">${esc(p)}</b> ${cap ? '팀장 ' : '출전 '}${me.n}회 · ${me.w + me.d + me.l}경기 ${me.w}-${me.d}-${me.l} · 🏆 ${me.c}회 (${pct(me.c, me.n)})
+    ${N ? `<span class="text-slate-400">(최근 ${N}회 라운드 기준)</span>` : ''}</p>
+    <table class="w-full"><tr>${th('chem', 'name', '같은 팀 멤버')}${th('chem', 'n', '같이 한 횟수')}${th('chem', 'g', '경기수')}${th('chem', 'c', '🏆 우승')}${th('chem', 'cr', '우승률')}${th('chem', 'w', '승-무-패')}${th('chem', 'k', '그 사람이 팀장')}</tr>` +
+    rows.map(o => `<tr class="border-b border-slate-800${o.rk ? ' text-slate-400' : ''}"><td class="font-bold">${esc(o.name)}${o.tag ? ` <span class="font-normal text-xs">(${o.tag})</span>` : ''}</td><td>${o.n}</td><td>${o.g}</td><td>${o.c}</td><td>${pct(o.c, o.n)}</td><td>${o.w}-${o.d}-${o.l}</td><td>${o.k || '-'}</td></tr>`).join('') +
+    '</table><p class="text-[11px] text-slate-500 mt-2">※ 같이 한 횟수가 3회 미만이면 우승률은 참고용입니다. 열 제목을 누르면 정렬됩니다. 같이 한 적 없는 정회원도 0회로 표시되며, 위 체크박스로 제외할 수 있습니다. 정회원이 아닌 분은 이름 옆에 구분이 표시되고 항상 아래에 모아서 보여 드립니다.</p>';
+}
+
+(async () => { const u = window.DEMO.currentUser(); if (u && ['admin', 'sub_admin', 'member'].includes(u.role)) await demo(); })();
+</script>
+</body></html>

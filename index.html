@@ -1089,7 +1089,7 @@
 
                 rowHtml += `
                     <td class="p-3 text-slate-300 whitespace-nowrap">${m.attendedMatches}회 / ${teamTotalMatches}회 <span class="text-indigo-400 font-bold">(${attRate}%)</span></td>
-                    <td class="p-3 text-slate-300 whitespace-nowrap">${m.fullPhone}<br><span class="text-amber-300">${m.kakaoId || '-'}</span></td>
+                    <td class="p-3 text-slate-300 whitespace-nowrap">${m.fullPhone && m.fullPhone.replace(/[^0-9+]/g, '').length >= 7 ? `<a href="tel:${m.fullPhone.replace(/[^0-9+]/g, '')}" onclick="event.stopPropagation()" class="underline decoration-emerald-400/70 underline-offset-2 hover:text-emerald-300">${m.fullPhone}</a>` : (m.fullPhone || '-')}<br><span class="text-amber-300">${m.kakaoId || '-'}</span></td>
                 `;
 
                 if (isAdmin) {

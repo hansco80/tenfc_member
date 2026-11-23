@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TenFC 투표 [체험판]</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="demo-core.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        details > summary { list-style: none; cursor: pointer; }
+        details > summary::-webkit-details-marker { display: none; }
+        details[open] .chev { transform: rotate(180deg); }
+        .chev { transition: transform .2s; }
+    </style>
+    <style id="tf-kit-css">
+        /* ===== TenFC 공통 UI (5개 페이지 동일 — 수정 시 전부 같이 바꾸세요) ===== */
+        .tf-btn { padding: .5rem 1rem; border-radius: .75rem; font-size: .75rem; line-height: 1rem; font-weight: 700; border: 1px solid transparent; cursor: pointer; white-space: nowrap; transition: background-color .15s, color .15s; text-align: center; }
+        .tf-nav { background: #1e293b; border-color: #334155; color: #cbd5e1; }
+        .tf-nav:hover { background: #334155; }
+        .tf-active { background: #059669; border-color: #059669; color: #fff; box-shadow: 0 4px 6px -1px rgba(0,0,0,.35); }
+        .tf-login { background: #0284c7; color: #fff; box-shadow: 0 4px 6px -1px rgba(0,0,0,.35); }
+        .tf-login:hover { background: #0ea5e9; }
+        .tf-logout { background: rgba(225,29,72,.8); color: #fff; }
+        .tf-logout:hover { background: #e11d48; }
+        .tf-primary { background: #059669; color: #fff; box-shadow: 0 4px 6px -1px rgba(0,0,0,.35); }
+        .tf-primary:hover { background: #10b981; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans">
+
+    <!-- 로딩 화면 -->
+    <div id="loading-overlay" class="fixed inset-0 z-[100] bg-slate-950 flex flex-col items-center justify-center gap-3">
+        <div class="text-5xl animate-bounce">⚽</div>
+        <p class="text-sm font-bold text-emerald-400">⚽ 불러오는 중...</p>
+    </div>
+
+    <div class="max-w-3xl mx-auto p-4 space-y-5">
+
+        <!-- 헤더 -->
+        <header class="flex flex-col md:flex-row justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-xl gap-4">
+            <div>
+                <h1 class="text-2xl font-black text-emerald-400">🗳️ TenFC 투표</h1>
+                <p class="text-xs text-slate-400">접속자: <span class="tf-user text-emerald-400 font-bold">비회원 (방문자)</span></p>
+            </div>
+            <div class="flex gap-2 flex-wrap justify-center md:justify-end">
+                <span class="tf-nav-slot contents"></span>
+                <button onclick="openLoginModal()" id="btn-login" class="tf-btn tf-login">🔑 로그인</button>
+                <button onclick="logoutUser()" id="btn-logout" class="tf-btn tf-logout hidden">🚪 로그아웃</button>
+            </div>
+        </header>
+
+        <!-- 정회원 전용 안내 -->
+        <section id="view-gate" class="hidden bg-slate-900 p-8 rounded-2xl border border-slate-800 shadow-xl text-center space-y-4">
+            <div class="text-4xl">🔒</div>
+            <h2 class="text-lg font-bold text-white">정회원 전용 페이지입니다</h2>
+            <p id="gate-msg" class="text-xs text-slate-400">투표는 정회원 로그인 후 이용할 수 있습니다.</p>
+            <button onclick="openLoginModal()" id="gate-login" class="px-6 py-3 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-xl text-sm transition shadow-md">🔑 정회원 로그인</button>
+        </section>
+
+        <!-- 목록 화면 -->
+        <main id="view-list" class="space-y-4">
+            <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-xl space-y-4">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                    <div>
+                        <h2 class="text-lg font-bold text-white"><i class="fa-solid fa-square-poll-vertical text-emerald-400 mr-2"></i>투표 목록</h2>
+                        <p class="text-xs text-slate-400 mt-0.5">투표는 정회원 로그인 후 참여할 수 있고, 마감된 투표도 기록으로 남습니다.</p>
+                    </div>
+                    <button onclick="openCreateModal()" id="btn-create" class="hidden px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-md">+ 새 투표 만들기</button>
+                </div>
+                <div class="flex gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 w-fit">
+                    <button onclick="setListTab('open')" id="tab-open" class="px-4 py-1.5 rounded-lg text-xs font-bold"></button>
+                    <button onclick="setListTab('closed')" id="tab-closed" class="px-4 py-1.5 rounded-lg text-xs font-bold"></button>
+                </div>
+                <div id="poll-list" class="space-y-3"></div>
+            </div>
+        </main>
+
+        <!-- 상세 화면 -->
+        <section id="view-detail" class="hidden space-y-4"></section>
+    </div>
+
+    <!-- 새 투표 만들기 모달 -->
+    <div id="create-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-slate-900 w-full max-w-lg p-6 rounded-2xl border border-slate-800 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            <h3 id="c-modal-title" class="text-lg font-bold text-white">🗳️ 새 투표 만들기</h3>
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-400 mb-1">투표 제목 <span class="text-rose-400">*</span></label>
+                    <input type="text" id="c-title" maxlength="100" placeholder="예: 12월 송년회 장소를 정해주세요" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">투표 배경 / 상정 이유</label>
+                    <textarea id="c-desc" rows="5" placeholder="이 투표를 올리게 된 배경과 이유, 참고할 내용을 적어주세요. (링크도 입력 가능)" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white"></textarea>
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-slate-400">선택 항목 <span class="text-rose-400">*</span> <span id="c-opt-hint" class="text-slate-500">(2~10개)</span></label>
+                        <button type="button" id="btn-add-option" onclick="addOptionField()" class="text-[11px] text-sky-400 hover:underline">+ 항목 추가</button>
+                    </div>
+                    <div id="c-options" class="space-y-1.5"></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-slate-400 mb-1">투표 방식</label>
+                        <select id="c-anon" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white">
+                            <option value="0">실명 투표 (누가 투표했는지 공개)</option>
+                            <option value="1">익명 투표 (누구인지 숨김)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">선택 방식</label>
+                        <select id="c-multi" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white">
+                            <option value="0">단일 선택 (1개만)</option>
+                            <option value="1">복수 선택 (여러 개 가능)</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">결과 공개 시점</label>
+                    <select id="c-show" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white">
+                        <option value="always">투표하면 바로 공개 (실시간 결과)</option>
+                        <option value="after_close">마감 후에 공개</option>
+                    </select>
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-slate-400">마감 일시</label>
+                        <label class="flex items-center gap-1 text-[11px] text-slate-300"><input type="checkbox" id="c-nodeadline" onchange="toggleNoDeadline()"> 마감일 없음 (운영진이 직접 마감)</label>
+                    </div>
+                    <div id="c-deadline-wrap" class="grid grid-cols-5 gap-1">
+                        <select id="pd-y" onchange="onDtChange('ym')" class="bg-slate-950 border border-slate-800 p-2 rounded-lg text-white"></select>
+                        <select id="pd-m" onchange="onDtChange('ym')" class="bg-slate-950 border border-slate-800 p-2 rounded-lg text-white"></select>
+                        <select id="pd-d" class="bg-slate-950 border border-slate-800 p-2 rounded-lg text-white"></select>
+                        <select id="pd-h" class="bg-slate-950 border border-slate-800 p-2 rounded-lg text-white"></select>
+                        <select id="pd-i" class="bg-slate-950 border border-slate-800 p-2 rounded-lg text-white"></select>
+                    </div>
+                </div>
+            </div>
+            <div class="flex gap-2 pt-2">
+                <button onclick="closeCreateModal()" class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg">취소</button>
+                <button id="btn-save-poll" onclick="savePoll()" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg">투표 등록</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 정회원 로그인 모달 -->
+    <div id="login-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-slate-900 w-full max-w-sm p-6 rounded-2xl border border-slate-800 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-bold text-white">🔑 TenFC 정회원 로그인</h3>
+                <button type="button" onclick="closeLoginModal()" class="text-slate-400 hover:text-white text-sm"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="handleLogin(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-400 mb-1">성명</label>
+                    <input type="text" id="login-name" required placeholder="성명 입력" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">비밀번호 (초기값: 휴대폰 뒷 4자리)</label>
+                    <input type="password" id="login-pw" required placeholder="비밀번호 입력" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white outline-none focus:border-emerald-500">
+                </div>
+                <p id="login-error" class="text-rose-400 text-[11px] hidden">성명 또는 비밀번호가 일치하지 않습니다.</p>
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closeLoginModal()" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg">취소</button>
+                    <button type="submit" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg">로그인</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script id="tf-kit-js">
+        /* ===== TenFC 공통 등급·메뉴 규칙 (5개 페이지 동일 — 수정 시 전부 같이 바꾸세요) =====
+           등급: 주관리자(admin) > 부관리자(sub_admin) > 정회원(member) > 비회원(미로그인·용병·지인)
+           메뉴 노출: 메인·운동일정=모두 / 투표=로그인 사용자 / 팀 집계=정회원 이상 / 평점관리=주관리자
+           ?view=이름 미리보기: 주관리자만 가능, 저장(로그인 전환)하지 않음 */
+        const TF = (() => {
+            const STATS_URL = 'stats.html';
+            const ROLE_LABEL = { admin: '주관리자', sub_admin: '부관리자', member: '정회원', guest: '용병', acquaintance: '지인' };
+            const roleOf = u => (u ? (u.role || 'member') : null);
+            const gone = m => !!(m && (m.isWithdrawn || m.is_withdrawn));
+            const isAdmin = u => roleOf(u) === 'admin';
+            const isStaff = u => ['admin', 'sub_admin'].includes(roleOf(u));
+            const isMember = u => ['admin', 'sub_admin', 'member'].includes(roleOf(u));
+            const label = u => u ? `${u.name} 님 (${ROLE_LABEL[roleOf(u)] || '정회원'})` : '비회원 (방문자)';
+            const ITEMS = [
+                { key: 'home',   t: '🏠 메인',     href: b => b + 'index.html',       ok: () => true },
+                { key: 'match',  t: '⚽ 운동일정', href: b => b + 'match.html',       ok: () => true },
+                { key: 'polls',  t: '🗳️ 투표',     href: b => b + 'polls.html',       ok: u => !!u },
+                { key: 'stats',  t: '📊 팀 집계',  href: () => STATS_URL,             ok: isMember },
+                { key: 'rating', t: '⭐ 평점관리', href: b => b + 'rating_vote.html', ok: isAdmin }
+            ];
+            // 저장된 로그인 사용자 + (주관리자 한정) ?view= 미리보기 대상 결정
+            function resolveUser(members) {
+                const find = n => (n ? members.find(m => m.name === n && !gone(m)) : null) || null;
+                const saved = find(localStorage.getItem('tenfc_demo_user'));
+                const view = new URLSearchParams(location.search).get('view');
+                if (view && isAdmin(saved)) {
+                    const t = find(view) || (view === '테스트' ? { name: '테스트', role: 'guest' } : null);
+                    if (t) return { user: t, real: saved, viewing: true };
+                }
+                return { user: saved, real: saved, viewing: false };
+            }
+            // 상단 우측 메뉴 + 접속자 표기를 등급 규칙대로 다시 그림
+            function renderNav(page, user, opt = {}) {
+                const base = opt.base || '';
+                const html = ITEMS.filter(i => i.ok(user)).map(i => {
+                    let href = i.href(base);
+                    if (i.key === 'stats' && opt.view) href += '?view=' + encodeURIComponent(opt.view);
+                    return `<a href="${href}" class="tf-btn ${i.key === page ? 'tf-active' : 'tf-nav'}"${i.key === page ? ' aria-current="page"' : ''}>${i.t}</a>`;
+                }).join('');
+                document.querySelectorAll('.tf-nav-slot').forEach(el => { el.innerHTML = html; });
+                document.querySelectorAll('.tf-user').forEach(el => { el.textContent = opt.userText || label(user); });
+            }
+            async function issueStatToken(client, name, pw) {
+                try { const { data } = await client.rpc('stat_login', { p_name: name, p_pw: pw }); if (data) localStorage.setItem('tenfc_demo_stat', data); } catch (e) {}
+            }
+            async function clearSession(client) {
+                const tok = localStorage.getItem('tenfc_demo_stat');
+                localStorage.removeItem('tenfc_demo_user');
+                localStorage.removeItem('tenfc_demo_stat');
+                if (tok && client) { try { await client.rpc('stat_logout', { p_token: tok }); } catch (e) {} }
+            }
+            return { STATS_URL, ROLE_LABEL, roleOf, gone, isAdmin, isStaff, isMember, label, resolveUser, renderNav, issueStatToken, clearSession };
+        })();
+    </script>
+
+    <script>
+        const SUPABASE_URL = 'https://demo.invalid';
+        const SUPABASE_KEY = 'demo-key';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const SHARE_BASE = location.href.split('#')[0].split('?')[0];
+        const CREATE_ROLES = ['admin', 'sub_admin'];
+        const NO_VOTE_ROLES = ['guest', 'acquaintance'];
+
+        const WEEK = ['일', '월', '화', '수', '목', '금', '토'];
+        const PALETTE = ['#10b981', '#38bdf8', '#f59e0b', '#e879f9', '#f87171', '#a78bfa', '#2dd4bf', '#fb923c', '#84cc16', '#94a3b8'];
+
+        let membersData = [];
+        let currentUser = null;
+        let polls = [];
+        let optionsByPoll = {};
+        let votesByPoll = {};
+        let currentPollId = null;
+        let listTab = 'open';
+        let chartType = 'bar';
+        let chart = null;
+        let selected = new Set();
+        let submitting = false;
+        let lastClosedState = null;
+        let editingPollId = null;
+        let myVotedPolls = new Set();
+
+        const pad2 = n => String(n).padStart(2, '0');
+        function esc(s) {
+            return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+        function richText(text) {
+            return esc(text).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-sky-400 underline break-all">$1</a>').replace(/\n/g, '<br>');
+        }
+        function fmtDT(iso) {
+            const d = new Date(iso);
+            return `${d.getFullYear()}.${pad2(d.getMonth() + 1)}.${pad2(d.getDate())}(${WEEK[d.getDay()]}) ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+        }
+        function kstDateStr(dateLike) {
+            return new Date(new Date(dateLike).getTime() + 9 * 3600 * 1000).toISOString().split('T')[0];
+        }
+        function isCreator() { return !!currentUser && CREATE_ROLES.includes(currentUser.role); }
+        function canVote() { return !!currentUser && !NO_VOTE_ROLES.includes(currentUser.role); }
+        function isClosed(p) { return p.status === 'closed' || (p.deadline && Date.now() >= new Date(p.deadline).getTime()); }
+        function getPoll(id) { return polls.find(p => p.id === id); }
+
+        async function sha256Hex(text) {
+            const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+            return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        async function voterKey(p, name) {
+            return p.is_anonymous ? await sha256Hex(`${p.id}:${name}`) : name;
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await fetchMembers();
+                if (hasAccess()) { await fetchPolls(); routeFromUrl(); }
+                else showGate();
+            } finally {
+                document.getElementById('loading-overlay').classList.add('hidden');
+            }
+            setInterval(tick, 1000);
+        });
+        window.addEventListener('popstate', routeFromUrl);
+
+        function hasAccess() { return !!currentUser && !NO_VOTE_ROLES.includes(currentUser.role); }
+
+        function showGate() {
+            currentPollId = null;
+            document.title = 'TenFC 투표';
+            if (chart) { chart.destroy(); chart = null; }
+            document.getElementById('view-list').classList.add('hidden');
+            document.getElementById('view-detail').classList.add('hidden');
+            document.getElementById('view-gate').classList.remove('hidden');
+            const msg = document.getElementById('gate-msg');
+            if (currentUser) {
+                msg.innerText = '용병 / 지인 계정은 투표 페이지를 이용할 수 없습니다. 정회원 계정으로 로그인해주세요.';
+            } else {
+                msg.innerText = '투표는 정회원 로그인 후 이용할 수 있습니다.';
+            }
+        }
+
+        function routeFromUrl() {
+            if (!hasAccess()) { showGate(); return; }
+            document.getElementById('view-gate').classList.add('hidden');
+            const id = parseInt(new URLSearchParams(window.location.search).get('id'), 10);
+            if (id && getPoll(id)) showDetail(id, false);
+            else showList(false);
+        }
+
+        const loginRecordedNames = new Set();
+        async function recordLoginSession(user) {
+            if (!user || !user.name || user.name === '테스트' || loginRecordedNames.has(user.name)) return;
+            loginRecordedNames.add(user.name);
+            try {
+                const { data: row } = await supabaseClient.from('members').select('login_count, last_login_at').eq('name', user.name).maybeSingle();
+                const lastLoginAt = row ? row.last_login_at : user.last_login_at;
+                let count = (row ? row.login_count : user.login_count) || 0;
+                if ((lastLoginAt ? kstDateStr(lastLoginAt) : '') !== kstDateStr(new Date())) count += 1;
+                const nowIso = new Date().toISOString();
+                const { error } = await supabaseClient.from('members').update({ login_count: count, last_login_at: nowIso }).eq('name', user.name);
+                if (!error) { user.login_count = count; user.last_login_at = nowIso; }
+            } catch (e) { console.error('로그인 횟수 기록 실패:', e); }
+        }
+
+        async function fetchMembers() {
+            const { data } = await supabaseClient.from('members').select('*');
+            if (data) membersData = data;
+
+            const r = TF.resolveUser(membersData);
+            currentUser = r.user;
+            if (currentUser && !r.viewing) await recordLoginSession(currentUser);
+
+            TF.renderNav('polls', currentUser);
+            document.getElementById('btn-login').classList.toggle('hidden', !!currentUser);
+            document.getElementById('btn-logout').classList.toggle('hidden', !currentUser);
+            document.getElementById('btn-create').classList.toggle('hidden', !isCreator());
+        }
+
+        function openLoginModal() {
+            document.getElementById('login-name').value = '';
+            document.getElementById('login-pw').value = '';
+            document.getElementById('login-error').classList.add('hidden');
+            document.getElementById('login-modal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('login-name').focus(), 50);
+        }
+        function closeLoginModal() { document.getElementById('login-modal').classList.add('hidden'); }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const name = document.getElementById('login-name').value.trim();
+            const pw = document.getElementById('login-pw').value.trim();
+            if (!membersData.length) {
+                const { data } = await supabaseClient.from('members').select('*');
+                if (data) membersData = data;
+            }
+            const user = membersData.find(m => m.name === name && String(m.password) === pw);
+            const err = document.getElementById('login-error');
+            if (!user) { err.innerText = '성명 또는 비밀번호가 일치하지 않습니다.'; err.classList.remove('hidden'); return; }
+            if (user.isWithdrawn || user.is_withdrawn) { err.innerText = '탈퇴 처리된 회원입니다.'; err.classList.remove('hidden'); return; }
+            localStorage.setItem('tenfc_demo_user', user.name);
+            await TF.issueStatToken(supabaseClient, user.name, pw);
+            await recordLoginSession(user);
+            await fetchMembers();
+            closeLoginModal();
+            await afterAuthChange();
+        }
+        async function logoutUser() {
+            if (!confirm('로그아웃 하시겠습니까?')) return;
+            await TF.clearSession(supabaseClient);
+            currentUser = null;
+            await fetchMembers();
+            await afterAuthChange();
+        }
+        async function afterAuthChange() {
+            if (!hasAccess()) { showGate(); return; }
+            await fetchPolls();
+            routeFromUrl();
+        }
+
+        async function fetchPolls() {
+            const { data: pData, error } = await supabaseClient.from('polls').select('*').order('created_at', { ascending: false });
+            if (error) { console.error(error); polls = []; renderList(); return; }
+            polls = pData || [];
+            optionsByPoll = {};
+            votesByPoll = {};
+            if (polls.length) {
+                const ids = polls.map(p => p.id);
+                const { data: oData } = await supabaseClient.from('poll_options').select('*').in('poll_id', ids).order('sort_order', { ascending: true });
+                (oData || []).forEach(o => { (optionsByPoll[o.poll_id] = optionsByPoll[o.poll_id] || []).push(o); });
+                const { data: vData } = await supabaseClient.from('poll_votes').select('*').in('poll_id', ids);
+                (vData || []).forEach(v => { (votesByPoll[v.poll_id] = votesByPoll[v.poll_id] || []).push(v); });
+            }
+            await computeMyVoted();
+            renderList();
+        }
+        async function computeMyVoted() {
+            myVotedPolls = new Set();
+            if (!currentUser) return;
+            for (const p of polls) {
+                const key = await voterKey(p, currentUser.name);
+                if ((votesByPoll[p.id] || []).some(v => v.voter === key)) myVotedPolls.add(p.id);
+            }
+        }
+        async function reloadPollVotes(pollId) {
+            const { data } = await supabaseClient.from('poll_votes').select('*').eq('poll_id', pollId);
+            votesByPoll[pollId] = data || [];
+        }
+        function participants(pollId) { return new Set((votesByPoll[pollId] || []).map(v => v.voter)); }
+
+        function setListTab(t) { listTab = t; renderList(); }
+
+        function renderList() {
+            const open = polls.filter(p => !isClosed(p));
+            const closed = polls.filter(p => isClosed(p));
+            const on = 'px-4 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white';
+            const off = 'px-4 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:bg-slate-800';
+            const to = document.getElementById('tab-open'), tc = document.getElementById('tab-closed');
+            to.innerText = `진행중 (${open.length})`; tc.innerText = `마감·기록 (${closed.length})`;
+            to.className = listTab === 'open' ? on : off;
+            tc.className = listTab === 'closed' ? on : off;
+
+            const list = listTab === 'open' ? open : closed;
+            const box = document.getElementById('poll-list');
+            if (!list.length) {
+                box.innerHTML = `<p class="text-xs text-slate-400 text-center py-8">${listTab === 'open' ? '진행 중인 투표가 없습니다.' : '마감된 투표 기록이 없습니다.'}</p>`;
+                return;
+            }
+            box.innerHTML = list.map(p => {
+                const cnt = participants(p.id).size;
+                const mine = myVotedPolls.has(p.id);
+                const dl = p.deadline ? `마감 ${fmtDT(p.deadline)}` : '마감일 없음';
+                return `
+                <div onclick="showDetail(${p.id}, true)" class="bg-slate-950 border border-slate-800 hover:border-emerald-500 rounded-xl p-4 cursor-pointer transition space-y-2">
+                    <div class="flex flex-wrap gap-1.5 text-[10px] font-bold">
+                        <span class="px-2 py-0.5 rounded ${p.is_anonymous ? 'bg-violet-500/20 text-violet-300' : 'bg-sky-500/20 text-sky-300'}">${p.is_anonymous ? '익명' : '실명'}</span>
+                        ${p.allow_multiple ? '<span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">복수선택</span>' : ''}
+                        ${isClosed(p) ? '<span class="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300">마감</span>' : '<span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">진행중</span>'}
+                        ${mine ? '<span class="px-2 py-0.5 rounded bg-emerald-600 text-white">✓ 참여함</span>' : ''}
+                    </div>
+                    <h3 class="font-bold text-white text-base">${esc(p.title)}</h3>
+                    <p class="text-[11px] text-slate-400">${dl} · 참여 ${cnt}명 · 등록 ${fmtDT(p.created_at)}${p.created_by ? ' · ' + esc(p.created_by) : ''}</p>
+                </div>`;
+            }).join('');
+        }
+
+        function showList(push) {
+            currentPollId = null;
+            document.title = 'TenFC 투표';
+            document.getElementById('view-detail').classList.add('hidden');
+            document.getElementById('view-list').classList.remove('hidden');
+            if (chart) { chart.destroy(); chart = null; }
+            if (push) history.pushState({}, '', window.location.pathname);
+            renderList();
+        }
+
+        async function showDetail(id, push) {
+            const p = getPoll(id);
+            if (!p) { showList(push); return; }
+            currentPollId = id;
+            lastClosedState = isClosed(p);
+            document.title = `🗳️ ${p.title}`;
+            if (push) history.pushState({}, '', `?id=${id}`);
+            selected = new Set();
+            if (currentUser) {
+                const key = await voterKey(p, currentUser.name);
+                (votesByPoll[id] || []).filter(v => v.voter === key).forEach(v => selected.add(v.option_id));
+            }
+            document.getElementById('view-list').classList.add('hidden');
+            document.getElementById('view-detail').classList.remove('hidden');
+            renderDetail();
+            if (push) window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function canSeeResults(p) {
+            if (!currentUser) return false;
+            return p.show_results === 'always' || isClosed(p);
+        }
+
+        function renderDetail() {
+            if (chart) { chart.destroy(); chart = null; }
+            const p = getPoll(currentPollId);
+            if (!p) return;
+            const opts = optionsByPoll[p.id] || [];
+            const closed = isClosed(p);
+            const total = participants(p.id).size;
+            const isAdminUser = isCreator();
+
+            let voteHtml = '';
+            if (closed) {
+                voteHtml = '<p class="text-xs text-rose-300 bg-rose-500/10 border border-rose-500/20 rounded-lg p-3">🔒 마감된 투표입니다.</p>';
+            } else if (!currentUser) {
+                voteHtml = `<div class="text-xs bg-sky-500/10 border border-sky-500/20 rounded-lg p-3 text-sky-200 flex flex-col md:flex-row md:items-center justify-between gap-2">
+                    <span>투표는 정회원 로그인 후 참여할 수 있습니다.</span>
+                    <button onclick="openLoginModal()" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg">🔑 로그인</button></div>`;
+            } else if (!canVote()) {
+                voteHtml = '<p class="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">정회원만 투표할 수 있습니다.</p>';
+            } else {
+                voteHtml = `
+                    <div class="space-y-2">
+                        ${opts.map(o => {
+                            const on = selected.has(o.id);
+                            return `<button type="button" onclick="toggleOption(${o.id})" class="w-full text-left p-3 rounded-xl border text-sm flex items-center gap-3 transition ${on ? 'border-emerald-400 bg-emerald-500/15 text-white' : 'border-slate-800 bg-slate-950 text-slate-300 hover:border-slate-600'}">
+                                <i class="fa-${on ? 'solid' : 'regular'} ${p.allow_multiple ? (on ? 'fa-square-check' : 'fa-square') : (on ? 'fa-circle-dot' : 'fa-circle')} ${on ? 'text-emerald-400' : 'text-slate-500'}"></i>
+                                <span>${esc(o.label)}</span></button>`;
+                        }).join('')}
+                    </div>
+                    <button onclick="submitVote()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-sm transition">${myVotedPolls.has(p.id) ? '투표 변경하기' : '투표하기'}</button>
+                    <p class="text-[11px] text-slate-500">${p.allow_multiple ? '여러 개를 선택할 수 있습니다. ' : '하나만 선택할 수 있습니다. '}마감 전까지 언제든 변경할 수 있습니다.</p>`;
+            }
+
+            const showRes = currentUser && canSeeResults(p) && total > 0;
+            let resultHtml = '';
+            if (!currentUser) {
+                resultHtml = '<p class="text-xs text-slate-400 text-center py-4">로그인하면 투표 결과를 볼 수 있습니다.</p>';
+            } else if (!canSeeResults(p)) {
+                resultHtml = '<p class="text-xs text-slate-400 text-center py-4">🔒 결과는 투표가 마감된 후에 공개됩니다.</p>';
+            } else if (total === 0) {
+                resultHtml = '<p class="text-xs text-slate-400 text-center py-4">아직 투표한 사람이 없습니다.</p>';
+            } else {
+                const stats = optionStats(p);
+                const h = chartType === 'bar' ? Math.max(180, stats.length * 44) : 280;
+                resultHtml = `
+                    <div class="flex gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800 w-fit mb-3">
+                        <button onclick="setChartType('bar')" class="px-3 py-1 rounded text-xs font-bold ${chartType === 'bar' ? 'bg-emerald-600 text-white' : 'text-slate-300'}">📊 막대</button>
+                        <button onclick="setChartType('pie')" class="px-3 py-1 rounded text-xs font-bold ${chartType === 'pie' ? 'bg-emerald-600 text-white' : 'text-slate-300'}">🥧 원</button>
+                    </div>
+                    <div style="height:${h}px;min-height:${h}px;position:relative"><canvas id="poll-chart" style="display:block;width:100%;height:100%"></canvas></div>
+                    <div class="mt-4 space-y-2">
+                        ${stats.map((s, i) => `
+                            <div class="bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs">
+                                <div class="flex justify-between items-center gap-2">
+                                    <span class="font-bold text-white"><span class="inline-block w-2.5 h-2.5 rounded-full mr-1.5" style="background:${PALETTE[i % PALETTE.length]}"></span>${esc(s.label)}</span>
+                                    <span class="text-slate-300">${s.count}표 · ${s.pct}%</span>
+                                </div>
+                                <div class="h-1.5 bg-slate-800 rounded mt-2"><div class="h-1.5 rounded" style="width:${s.pct}%;background:${PALETTE[i % PALETTE.length]}"></div></div>
+                                ${!p.is_anonymous && s.voters.length ? `<details class="mt-2"><summary class="text-[11px] text-sky-300">투표한 사람 보기 (${s.voters.length}명) <i class="fa-solid fa-chevron-down chev"></i></summary><p class="mt-1 text-slate-300 leading-relaxed">${s.voters.map(esc).join(', ')}</p></details>` : ''}
+                            </div>`).join('')}
+                    </div>`;
+            }
+
+            const adminHtml = isAdminUser ? `
+                <div class="flex flex-wrap gap-2 pt-1">
+                    <button onclick="openEditModal()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-sky-300 font-bold rounded-lg text-xs border border-slate-700">✏️ 제목/본문 수정</button>
+                    <button onclick="toggleClosePoll()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold rounded-lg text-xs border border-slate-700">${p.status === 'closed' ? '🔓 투표 다시 열기' : '🔒 지금 투표 마감'}</button>
+                    <button onclick="deletePoll()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-rose-300 font-bold rounded-lg text-xs border border-slate-700">🗑️ 삭제</button>
+                </div>` : '';
+
+            document.getElementById('view-detail').innerHTML = `
+                <button onclick="showList(true)" class="text-xs text-slate-300 hover:text-white"><i class="fa-solid fa-chevron-left mr-1"></i>목록으로</button>
+                <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-xl space-y-4">
+                    <div class="flex flex-wrap gap-1.5 text-[10px] font-bold">
+                        <span class="px-2 py-0.5 rounded ${p.is_anonymous ? 'bg-violet-500/20 text-violet-300' : 'bg-sky-500/20 text-sky-300'}">${p.is_anonymous ? '익명 투표' : '실명 투표'}</span>
+                        <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">${p.allow_multiple ? '복수 선택' : '단일 선택'}</span>
+                        <span class="px-2 py-0.5 rounded bg-slate-700 text-slate-200">결과: ${p.show_results === 'always' ? '실시간 공개' : '마감 후 공개'}</span>
+                        ${closed ? '<span class="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300">마감</span>' : '<span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">진행중</span>'}
+                    </div>
+                    <h2 class="text-xl font-bold text-white">${esc(p.title)}</h2>
+                    <p class="text-[11px] text-slate-400">등록 ${fmtDT(p.created_at)}${p.created_by ? ' · ' + esc(p.created_by) : ''} · 참여 ${total}명</p>
+
+                    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800">
+                        <i class="fa-regular fa-clock text-amber-400"></i>
+                        <span id="cd-label" class="text-[11px] text-slate-400"></span>
+                        <span id="cd-time" class="font-mono font-bold text-amber-300 text-sm"></span>
+                    </div>
+
+                    ${p.description ? `<div class="bg-slate-950 border border-slate-800 rounded-xl p-4">
+                        <h4 class="text-xs font-bold text-emerald-400 mb-1.5">📝 투표 배경 / 상정 이유</h4>
+                        <p class="text-sm text-slate-200 leading-relaxed">${richText(p.description)}</p></div>` : ''}
+
+                    <div class="space-y-2">
+                        <h3 class="text-xs font-bold text-white">✍️ 투표하기</h3>
+                        ${voteHtml}
+                    </div>
+
+                    <div>
+                        <h3 class="text-xs font-bold text-white mb-2">📊 투표 결과</h3>
+                        ${resultHtml}
+                    </div>
+
+                    ${p.is_anonymous ? '<p class="text-[11px] text-violet-300">🕶️ 익명 투표입니다. 누가 어떤 항목을 선택했는지는 표시되지 않습니다.</p>' : ''}
+
+                    <div class="bg-slate-950 px-3 py-2 rounded-xl border border-slate-800 text-xs text-slate-300 flex items-center gap-2">
+                        <span class="whitespace-nowrap">공유 링크:</span>
+                        <input type="text" id="share-link" readonly value="${SHARE_BASE}?poll=${p.id}" class="flex-1 min-w-0 bg-slate-900 text-emerald-400 px-2 py-1 rounded text-xs outline-none border border-slate-800">
+                        <button onclick="copyShare()" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded text-xs transition">복사</button>
+                    </div>
+                    ${adminHtml}
+                </div>`;
+
+            tick();
+            if (showRes) {
+                const targetId = p.id;
+                requestAnimationFrame(() => {
+                    if (currentPollId === targetId) drawChart(p);
+                });
+            }
+        }
+
+        function optionStats(p) {
+            const opts = optionsByPoll[p.id] || [];
+            const votes = votesByPoll[p.id] || [];
+            const total = participants(p.id).size;
+            return opts.map(o => {
+                const vs = votes.filter(v => v.option_id === o.id);
+                const count = Number(vs.length) || 0;
+                return {
+                    id: o.id,
+                    label: o.label,
+                    count,
+                    pct: total ? Math.round(count / total * 100) : 0,
+                    voters: vs.map(v => v.voter)
+                };
+            });
+        }
+
+        function setChartType(t) { chartType = t; renderDetail(); }
+
+        function drawChart(p) {
+            const el = document.getElementById('poll-chart');
+            if (!el || typeof Chart === 'undefined') return;
+            if (chart) { chart.destroy(); chart = null; }
+            const stats = optionStats(p);
+            const labels = stats.map(s => s.label);
+            const data = stats.map(s => Number(s.count) || 0);
+            const colors = stats.map((s, i) => PALETTE[i % PALETTE.length]);
+            if (chartType === 'bar') {
+                chart = new Chart(el, {
+                    type: 'bar',
+                    data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 6 }] },
+                    options: {
+                        indexAxis: 'y',
+                        maintainAspectRatio: false,
+                        animation: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { beginAtZero: true, ticks: { precision: 0, color: '#94a3b8' }, grid: { color: '#1e293b' } },
+                            y: { ticks: { color: '#e2e8f0' }, grid: { display: false } }
+                        }
+                    }
+                });
+            } else {
+                chart = new Chart(el, {
+                    type: 'pie',
+                    data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: '#0f172a', borderWidth: 2 }] },
+                    options: {
+                        maintainAspectRatio: false,
+                        animation: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { color: '#e2e8f0' } },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(ctx) {
+                                        const val = Number(ctx.parsed) || 0;
+                                        const sum = (ctx.dataset.data || []).reduce((a, b) => a + (Number(b) || 0), 0);
+                                        const pct = sum ? ((val / sum) * 100).toFixed(1) : 0;
+                                        return ` ${ctx.label}: ${val}표 (${pct}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function toggleOption(optId) {
+            const p = getPoll(currentPollId);
+            if (!p || isClosed(p)) return;
+            if (p.allow_multiple) {
+                if (selected.has(optId)) selected.delete(optId); else selected.add(optId);
+            } else {
+                selected = new Set([optId]);
+            }
+            renderDetail();
+        }
+
+        async function submitVote() {
+            const p = getPoll(currentPollId);
+            if (!p || submitting) return;
+            if (!canVote()) { alert('정회원 로그인 후 투표할 수 있습니다.'); return; }
+            if (selected.size === 0) { alert('항목을 선택해주세요.'); return; }
+
+            const { data: fresh } = await supabaseClient.from('polls').select('*').eq('id', p.id).maybeSingle();
+            if (fresh) Object.assign(p, fresh);
+            if (isClosed(p)) { alert('투표가 마감되었습니다.'); renderDetail(); return; }
+
+            submitting = true;
+            try {
+                const key = await voterKey(p, currentUser.name);
+                const { error: dErr } = await supabaseClient.from('poll_votes').delete().eq('poll_id', p.id).eq('voter', key);
+                if (dErr) { alert('투표 저장 실패: ' + dErr.message); return; }
+                const rows = Array.from(selected).map(optId => ({ poll_id: p.id, option_id: optId, voter: key }));
+                const { error } = await supabaseClient.from('poll_votes').insert(rows);
+                if (error) { alert('투표 저장 실패: ' + error.message); return; }
+                await reloadPollVotes(p.id);
+                myVotedPolls.add(p.id);
+                alert('투표가 반영되었습니다.');
+                renderDetail();
+            } finally {
+                submitting = false;
+            }
+        }
+
+        async function toggleClosePoll() {
+            if (!isCreator()) return;
+            const p = getPoll(currentPollId);
+            const toClose = p.status !== 'closed';
+            if (!confirm(toClose ? '지금 이 투표를 마감할까요?' : '이 투표를 다시 열까요? (마감 일시가 지났다면 계속 마감 상태입니다)')) return;
+            const { error } = await supabaseClient.from('polls').update({ status: toClose ? 'closed' : 'open' }).eq('id', p.id);
+            if (error) { alert('변경 실패: ' + error.message); return; }
+            p.status = toClose ? 'closed' : 'open';
+            lastClosedState = isClosed(p);
+            renderDetail();
+        }
+        async function deletePoll() {
+            if (!isCreator()) return;
+            const p = getPoll(currentPollId);
+            if (!confirm(`'${p.title}' 투표와 모든 투표 기록이 삭제됩니다. 정말 삭제할까요?`)) return;
+            await supabaseClient.from('poll_votes').delete().eq('poll_id', p.id);
+            await supabaseClient.from('poll_options').delete().eq('poll_id', p.id);
+            const { error } = await supabaseClient.from('polls').delete().eq('id', p.id);
+            if (error) { alert('삭제 실패: ' + error.message); return; }
+            await fetchPolls();
+            showList(true);
+        }
+        function copyShare() {
+            const input = document.getElementById('share-link');
+            input.select();
+            navigator.clipboard.writeText(input.value).then(() => alert('공유 링크가 복사되었습니다.'));
+        }
+
+        function tick() {
+            const p = getPoll(currentPollId);
+            const label = document.getElementById('cd-label'), time = document.getElementById('cd-time');
+            if (!p || !label || !time) return;
+            const closed = isClosed(p);
+            if (p.status === 'closed') { label.innerText = '🔒 운영진이 투표를 마감했습니다'; time.innerText = ''; }
+            else if (!p.deadline) { label.innerText = '마감일 없음 (운영진이 직접 마감)'; time.innerText = ''; }
+            else {
+                const diff = new Date(p.deadline).getTime() - Date.now();
+                if (diff <= 0) { label.innerText = `🔒 투표가 마감되었습니다 (${fmtDT(p.deadline)})`; time.innerText = ''; }
+                else {
+                    const sec = Math.floor(diff / 1000);
+                    const d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+                    label.innerText = '투표 마감까지';
+                    time.innerText = `${d > 0 ? d + '일 ' : ''}${pad2(h)}:${pad2(m)}:${pad2(s)}`;
+                    time.className = `font-mono font-bold text-sm ${diff < 3600 * 1000 ? 'text-rose-400' : 'text-amber-300'}`;
+                }
+            }
+            if (lastClosedState !== null && lastClosedState !== closed) {
+                lastClosedState = closed;
+                renderDetail();
+            }
+        }
+
+        function fillSel(id, items, selected) {
+            document.getElementById(id).innerHTML = items.map(([v, l]) => `<option value="${v}" ${String(v) === String(selected) ? 'selected' : ''}>${l}</option>`).join('');
+        }
+        function selVal(id) { return document.getElementById(id).value; }
+        function refreshDays(selDay) {
+            const y = +selVal('pd-y'), m = +selVal('pd-m');
+            const n = new Date(y, m, 0).getDate();
+            const cur = selDay !== undefined ? selDay : +selVal('pd-d');
+            const items = [];
+            for (let i = 1; i <= n; i++) items.push([i, `${i}일(${WEEK[new Date(y, m - 1, i).getDay()]})`]);
+            fillSel('pd-d', items, Math.min(cur || 1, n));
+        }
+        function setDeadlineSelects(d) {
+            const cy = new Date().getFullYear();
+            const years = [];
+            for (let y = Math.min(cy, d.getFullYear()); y <= Math.max(cy + 1, d.getFullYear()); y++) years.push([y, `${y}년`]);
+            fillSel('pd-y', years, d.getFullYear());
+            const months = [];
+            for (let i = 1; i <= 12; i++) months.push([i, `${i}월`]);
+            fillSel('pd-m', months, d.getMonth() + 1);
+            refreshDays(d.getDate());
+            const hours = [];
+            for (let i = 0; i < 24; i++) hours.push([i, `${pad2(i)}시`]);
+            fillSel('pd-h', hours, d.getHours());
+            const mins = [];
+            for (let i = 0; i < 60; i += 5) mins.push([i, `${pad2(i)}분`]);
+            fillSel('pd-i', mins, d.getMinutes());
+        }
+        function onDtChange(kind) { if (kind === 'ym') refreshDays(); }
+        function getDeadlineValue() {
+            return new Date(+selVal('pd-y'), +selVal('pd-m') - 1, +selVal('pd-d'), +selVal('pd-h'), +selVal('pd-i'));
+        }
+        function toggleNoDeadline() {
+            document.getElementById('c-deadline-wrap').classList.toggle('opacity-40', document.getElementById('c-nodeadline').checked);
+            document.getElementById('c-deadline-wrap').classList.toggle('pointer-events-none', document.getElementById('c-nodeadline').checked);
+        }
+
+        function optionRowHtml(val) {
+            return `<div class="flex gap-1.5 c-opt-row"><input type="text" maxlength="80" value="${esc(val || '')}" placeholder="항목 입력" class="c-opt flex-1 bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white">
+                <button type="button" onclick="removeOptionField(this)" class="px-2.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 border border-slate-700"><i class="fa-solid fa-xmark"></i></button></div>`;
+        }
+        function addOptionField(val) {
+            const box = document.getElementById('c-options');
+            if (box.children.length >= 10) { alert('항목은 최대 10개까지 추가할 수 있습니다.'); return; }
+            box.insertAdjacentHTML('beforeend', optionRowHtml(val));
+        }
+        function removeOptionField(btn) {
+            const box = document.getElementById('c-options');
+            if (box.children.length <= 2) { alert('항목은 최소 2개가 필요합니다.'); return; }
+            btn.closest('.c-opt-row').remove();
+        }
+
+        function openCreateModal() {
+            if (!isCreator()) { alert('⚠️ 투표 만들기는 운영진만 가능합니다.'); return; }
+            editingPollId = null;
+            document.getElementById('c-modal-title').innerText = '🗳️ 새 투표 만들기';
+            document.getElementById('btn-save-poll').innerText = '투표 등록';
+            document.getElementById('btn-add-option').classList.remove('hidden');
+            document.getElementById('c-opt-hint').innerText = '(2~10개)';
+            document.getElementById('c-anon').disabled = false;
+            document.getElementById('c-multi').disabled = false;
+            document.getElementById('c-title').value = '';
+            document.getElementById('c-desc').value = '';
+            document.getElementById('c-anon').value = '0';
+            document.getElementById('c-multi').value = '0';
+            document.getElementById('c-show').value = 'always';
+            document.getElementById('c-nodeadline').checked = false;
+            toggleNoDeadline();
+            document.getElementById('c-options').innerHTML = optionRowHtml('') + optionRowHtml('');
+            const d = new Date();
+            d.setDate(d.getDate() + 3);
+            d.setHours(22, 0, 0, 0);
+            setDeadlineSelects(d);
+            document.getElementById('create-modal').classList.remove('hidden');
+        }
+        function openEditModal() {
+            if (!isCreator()) { alert('⚠️ 투표 수정은 운영진만 가능합니다.'); return; }
+            const p = getPoll(currentPollId);
+            if (!p) return;
+            editingPollId = p.id;
+            document.getElementById('c-modal-title').innerText = '✏️ 투표 수정';
+            document.getElementById('btn-save-poll').innerText = '수정 저장';
+            document.getElementById('c-title').value = p.title;
+            document.getElementById('c-desc').value = p.description || '';
+            document.getElementById('c-show').value = p.show_results || 'always';
+            document.getElementById('c-anon').value = p.is_anonymous ? '1' : '0';
+            document.getElementById('c-multi').value = p.allow_multiple ? '1' : '0';
+            document.getElementById('c-anon').disabled = true;
+            document.getElementById('c-multi').disabled = true;
+            document.getElementById('btn-add-option').classList.add('hidden');
+            document.getElementById('c-opt-hint').innerText = '(투표 시작 후에는 수정할 수 없습니다)';
+            document.getElementById('c-options').innerHTML = (optionsByPoll[p.id] || []).map(o =>
+                `<input type="text" value="${esc(o.label)}" disabled class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-slate-500">`).join('');
+            const hasDl = !!p.deadline;
+            document.getElementById('c-nodeadline').checked = !hasDl;
+            setDeadlineSelects(hasDl ? new Date(p.deadline) : (() => { const d = new Date(); d.setDate(d.getDate() + 3); d.setHours(22, 0, 0, 0); return d; })());
+            toggleNoDeadline();
+            document.getElementById('create-modal').classList.remove('hidden');
+        }
+        function closeCreateModal() { document.getElementById('create-modal').classList.add('hidden'); }
+
+        async function saveEditedPoll() {
+            const p = getPoll(editingPollId);
+            if (!p) return;
+            const title = document.getElementById('c-title').value.trim();
+            const desc = document.getElementById('c-desc').value.trim();
+            if (!title) { alert('투표 제목을 입력해주세요.'); return; }
+            let deadline = null;
+            if (!document.getElementById('c-nodeadline').checked) {
+                const dl = getDeadlineValue();
+                if (dl.getTime() <= Date.now() && !confirm('마감 일시가 현재 시각 이전입니다. 저장하면 이 투표는 바로 마감됩니다. 계속할까요?')) return;
+                deadline = dl.toISOString();
+            }
+            const { error } = await supabaseClient.from('polls').update({
+                title, description: desc, show_results: selVal('c-show'), deadline
+            }).eq('id', p.id);
+            if (error) { alert('수정 실패: ' + error.message); return; }
+            Object.assign(p, { title, description: desc, show_results: selVal('c-show'), deadline });
+            closeCreateModal();
+            document.title = `🗳️ ${p.title}`;
+            renderDetail();
+            alert('투표가 수정되었습니다.');
+        }
+
+        async function savePoll() {
+            if (!isCreator()) { alert('⚠️ 투표 만들기는 운영진만 가능합니다.'); return; }
+            if (editingPollId) { await saveEditedPoll(); return; }
+            const title = document.getElementById('c-title').value.trim();
+            const desc = document.getElementById('c-desc').value.trim();
+            const labels = Array.from(document.querySelectorAll('.c-opt')).map(i => i.value.trim()).filter(Boolean);
+            if (!title) { alert('투표 제목을 입력해주세요.'); return; }
+            if (labels.length < 2) { alert('선택 항목을 2개 이상 입력해주세요.'); return; }
+            if (new Set(labels).size !== labels.length) { alert('중복된 항목이 있습니다.'); return; }
+            const noDeadline = document.getElementById('c-nodeadline').checked;
+            let deadline = null;
+            if (!noDeadline) {
+                const dl = getDeadlineValue();
+                if (dl.getTime() <= Date.now()) { alert('마감 일시는 현재 시각 이후로 설정해주세요.'); return; }
+                deadline = dl.toISOString();
+            }
+
+            const btn = document.getElementById('btn-save-poll');
+            btn.disabled = true;
+            try {
+                const { data, error } = await supabaseClient.from('polls').insert([{
+                    title, description: desc,
+                    is_anonymous: selVal('c-anon') === '1',
+                    allow_multiple: selVal('c-multi') === '1',
+                    show_results: selVal('c-show'),
+                    deadline, status: 'open',
+                    created_by: currentUser.name
+                }]).select();
+                if (error || !data || !data[0]) { alert('투표 등록 실패' + (error ? ': ' + error.message : '')); return; }
+                const pollId = data[0].id;
+                const { error: oErr } = await supabaseClient.from('poll_options').insert(labels.map((label, i) => ({ poll_id: pollId, label, sort_order: i })));
+                if (oErr) {
+                    await supabaseClient.from('polls').delete().eq('id', pollId);
+                    alert('항목 저장 실패: ' + oErr.message);
+                    return;
+                }
+                closeCreateModal();
+                await fetchPolls();
+                alert('투표가 등록되었습니다. 상세 화면의 공유 링크를 카톡에 붙여넣어 보세요.');
+                await showDetail(pollId, true);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

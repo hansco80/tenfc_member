@@ -1,0 +1,1326 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>회원 평점 평가 시스템 [체험판]</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="demo-core.js"></script>
+    <style>
+        .vote-btn-active { transform: scale(1.04); box-shadow: 0 0 12px rgba(16, 185, 129, 0.45); }
+        @keyframes pulse-border {
+            0% { border-color: rgba(245, 158, 11, 0.4); }
+            50% { border-color: rgba(245, 158, 11, 0.9); box-shadow: 0 0 12px rgba(245, 158, 11, 0.3); }
+            100% { border-color: rgba(245, 158, 11, 0.4); }
+        }
+        .urgent-eval-card {
+            animation: pulse-border 2s infinite;
+        }
+    </style>
+    <style id="tf-kit-css">
+        /* ===== TenFC 공통 UI (5개 페이지 동일 — 수정 시 전부 같이 바꾸세요) ===== */
+        .tf-btn { padding: .5rem 1rem; border-radius: .75rem; font-size: .75rem; line-height: 1rem; font-weight: 700; border: 1px solid transparent; cursor: pointer; white-space: nowrap; transition: background-color .15s, color .15s; text-align: center; }
+        .tf-nav { background: #1e293b; border-color: #334155; color: #cbd5e1; }
+        .tf-nav:hover { background: #334155; }
+        .tf-active { background: #059669; border-color: #059669; color: #fff; box-shadow: 0 4px 6px -1px rgba(0,0,0,.35); }
+        .tf-login { background: #0284c7; color: #fff; box-shadow: 0 4px 6px -1px rgba(0,0,0,.35); }
+        .tf-login:hover { background: #0ea5e9; }
+        .tf-logout { background: rgba(225,29,72,.8); color: #fff; }
+        .tf-logout:hover { background: #e11d48; }
+        .tf-primary { background: #059669; color: #fff; box-shadow: 0 4px 6px -1px rgba(0,0,0,.35); }
+        .tf-primary:hover { background: #10b981; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans p-3 md:p-6">
+
+    <!-- 로딩/권한 체크 오버레이 -->
+    <div id="loading-screen" class="max-w-md mx-auto mt-20 text-center bg-slate-800 p-8 rounded-2xl border border-slate-700 shadow-xl">
+        <div class="text-3xl mb-3">⚖️</div>
+        <p id="loading-msg" class="text-sm text-slate-300">운영진 권한 및 데이터를 확인하는 중입니다...</p>
+    </div>
+
+    <!-- 메인 컨테이너 -->
+    <div id="main-app" class="max-w-5xl mx-auto hidden space-y-5">
+
+        <!-- 상단 헤더 -->
+        <header class="flex flex-col md:flex-row justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-xl gap-4">
+            <div>
+                <h1 class="text-2xl font-black text-emerald-400">⚖️ 회원 평점 평가 시스템</h1>
+                <p class="text-xs text-slate-400">접속자: <span class="tf-user text-emerald-400 font-bold">비회원 (방문자)</span><span class="text-slate-500"> · 블라인드 상대평가 · 익명 합의제</span></p>
+            </div>
+            <div class="flex gap-2 flex-wrap justify-center md:justify-end">
+                <span class="tf-nav-slot contents"></span>
+                <button onclick="tfLogout()" class="tf-btn tf-logout">🚪 로그아웃</button>
+            </div>
+        </header>
+
+        <!-- 세션 선택 및 이전 기록 바 -->
+        <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+            <div class="flex items-center gap-2 w-full md:w-auto">
+                <label class="text-xs font-bold text-slate-400 whitespace-nowrap">📅 평가 세션:</label>
+                <select id="session-selector" onchange="onSelectSession(this.value)" class="w-full md:w-72 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-emerald-500">
+                    <option value="">불러오는 중...</option>
+                </select>
+            </div>
+            <div id="session-meta-badges" class="flex flex-wrap gap-2 text-xs"></div>
+            <button onclick="openNewSessionModal()" class="tf-btn tf-primary">➕ 새 평가 세션 시작</button>
+        </div>
+
+        <!-- 활성 세션이 없을 때 안내 -->
+        <div id="empty-session-box" class="hidden bg-slate-800 p-10 rounded-2xl border border-slate-700 text-center space-y-3">
+            <div class="text-4xl">📋</div>
+            <h2 class="text-lg font-bold text-white">진행 중인 평점 평가 세션이 없습니다</h2>
+            <p class="text-xs text-slate-400">당일 운동 팀별 명단을 붙여넣어 새로운 평점 평가를 시작해 보세요.</p>
+            <button onclick="openNewSessionModal()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shadow transition">
+                ➕ 당일 명단으로 새 평가 시작하기
+            </button>
+        </div>
+
+        <!-- 활성 세션 대시보드 -->
+        <div id="active-session-board" class="hidden space-y-5">
+
+            <!-- 진행 현황 및 유틸리티 바 -->
+            <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 space-y-4">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 border-b border-slate-700 pb-3">
+                    <div>
+                        <h2 id="session-title" class="text-base font-bold text-white"></h2>
+                        <p id="session-rule-desc" class="text-xs text-amber-300 mt-0.5"></p>
+                    </div>
+                    <div class="flex gap-2 flex-wrap">
+                        <button onclick="copyNudgeKakao()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-lg shadow transition">
+                            💬 투표 독촉 카톡 복사
+                        </button>
+                        <button id="delete-session-btn" onclick="deleteCurrentSession()" class="px-3 py-1.5 bg-rose-950/70 hover:bg-rose-800 border border-rose-700/50 text-rose-300 text-xs font-bold rounded-lg transition">
+                            🗑️ 세션 삭제
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 관리자별 투표 진행률 -->
+                <div id="admin-progress-grid" class="grid grid-cols-1 sm:grid-cols-3 gap-2.5"></div>
+
+                <!-- 필터 탭 -->
+                <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+                    <div class="flex gap-1.5 flex-wrap">
+                        <button onclick="setFilter('all')" id="filter-all" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white transition">전체 인원</button>
+                        <button onclick="setFilter('unvoted')" id="filter-unvoted" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-700 text-slate-300 hover:bg-slate-600 transition">내 미투표만</button>
+                        <button onclick="setFilter('urgent')" id="filter-urgent" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-700 text-slate-300 hover:bg-slate-600 transition">⭐ 필수평가 (2주경과)</button>
+                        <button onclick="setFilter('conflict')" id="filter-conflict" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-700 text-slate-300 hover:bg-slate-600 transition">🔥 의견엇갈림 / !·? 시그널</button>
+                    </div>
+                    <div class="text-[11px] text-slate-400">
+                        <span class="text-sky-400 font-bold">?</span> 관망 &nbsp;|&nbsp; <span class="text-rose-400 font-bold">!</span> 확신 &nbsp;|&nbsp; <span class="text-amber-400 font-bold">⭐ 2주 경과</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 팀별 선수 평가 리스트 -->
+            <div id="teams-evaluation-container" class="space-y-6"></div>
+
+            <!-- 최종 합의 및 DB 반영 섹션 -->
+            <div id="final-approval-section" class="bg-slate-800 p-5 rounded-2xl border-2 border-emerald-500/40 shadow-xl space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-700 pb-3">
+                    <div>
+                        <h3 class="text-base font-extrabold text-emerald-400">🏁 최종 집계 및 DB 실제 반영</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">참석 주관리자 중 2명 이상이 [최종 결과 반영 동의]를 누르고 모든 필수평가가 완료되면 회원 DB 평점에 즉시 반영됩니다.</p>
+                    </div>
+                    <span id="final-status-badge" class="px-3 py-1 rounded-full text-xs font-bold bg-slate-900 border border-slate-700 text-slate-300">집계 대기중</span>
+                </div>
+
+                <!-- 변동 예정자 미리보기 -->
+                <div id="summary-preview-box" class="bg-slate-900/80 p-4 rounded-xl border border-slate-700 text-xs space-y-2"></div>
+
+                <!-- 최종 동의 버튼 영역 -->
+                <div id="approval-controls" class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+                    <div id="approval-badges" class="flex flex-wrap gap-2 text-xs"></div>
+                    <button id="approve-btn" onclick="toggleFinalApproval()" class="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold rounded-xl shadow-lg transition">
+                        ✅ 최종 결과 반영 동의하기
+                    </button>
+                </div>
+
+                <!-- 카톡 공지문 생성 영역 -->
+                <div id="kakao-result-box" class="hidden bg-slate-950 p-4 rounded-xl border border-amber-500/40 space-y-2.5">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold text-amber-400">📢 단톡방 발송용 평점 업데이트 공지문</span>
+                        <button onclick="copyKakaoAnnouncement()" class="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded transition">
+                            📋 카톡 공지 복사하기
+                        </button>
+                    </div>
+                    <textarea id="kakao-announcement-text" rows="5" readonly class="w-full p-3 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-100 font-mono focus:outline-none"></textarea>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 새 평가 세션 생성 모달 -->
+    <div id="new-session-modal" class="fixed inset-0 bg-black/75 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-slate-800 w-full max-w-lg p-6 rounded-2xl border border-slate-700 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                <h3 class="text-lg font-bold text-emerald-400">➕ 새 평가 세션 생성</h3>
+                <button onclick="closeNewSessionModal()" class="text-slate-400 hover:text-white text-xl font-bold">&times;</button>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1">운동 날짜</label>
+                <input type="date" id="new-match-date" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-emerald-500">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1">당일 운동 팀별 명단 붙여넣기</label>
+                <textarea id="new-lineup-text" rows="10" class="w-full p-3 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white font-mono focus:outline-none focus:border-emerald-500" placeholder="⚽ 1팀 [레드]&#10;김민준(80)*&#10;강지호(85)&#10;..."></textarea>
+                <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">
+                    ※ 명단에 없는 신규 용병이나 지인이 포함되어 있다면 세션 생성 시 자동으로 등록 팝업이 뜹니다.
+                </p>
+            </div>
+
+            <div id="parse-error-box" class="hidden p-3 bg-rose-950/70 border border-rose-600/60 rounded-lg text-xs text-rose-200"></div>
+
+            <div class="flex gap-2 pt-2">
+                <button type="button" onclick="closeNewSessionModal()" class="flex-1 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold rounded-lg">취소</button>
+                <button type="button" onclick="handleLineupSubmission()" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shadow">분석 및 평가 시작</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 미등록 인원(용병/지인) 즉시 등록 모달 -->
+    <div id="quick-register-modal" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-slate-800 w-full max-w-md p-6 rounded-2xl border border-amber-500/50 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                <h3 class="text-base font-bold text-amber-400">⚠️ 미등록 1회성 멤버 발견</h3>
+                <span id="unregistered-counter" class="text-xs text-slate-400">1 / 1명</span>
+            </div>
+            <p id="unregistered-desc" class="text-xs text-slate-300 leading-relaxed">
+                기존 멤버 리스트에 없는 인원이 감지되었습니다. 아래 정보를 입력하면 DB에 즉시 등록되고 평가가 진행됩니다.
+            </p>
+
+            <form id="quick-reg-form" onsubmit="submitQuickRegister(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">성명</label>
+                    <input type="text" id="q-name" readonly class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-xs text-emerald-400 font-bold">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">회원 구분 *</label>
+                        <select id="q-role" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-xs text-white">
+                            <option value="guest">용병</option>
+                            <option value="acquaintance">지인</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">출생년도 *</label>
+                        <input type="text" id="q-birth" required placeholder="예: 95 (→ 1995.01.01)" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-xs text-white">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">기본등급 *</label>
+                        <select id="q-grade" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-xs text-white">
+                            <option value="B">상 B</option>
+                            <option value="C" selected>중 C</option>
+                            <option value="D">하 D</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">카카오톡 구분</label>
+                        <input type="text" id="q-kakao" placeholder="예: 당근, 오픈톡" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-xs text-white">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">연락처 (선택)</label>
+                    <input type="text" id="q-phone" placeholder="예: 01012345678 (→ 010-1234-5678)" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-xs text-white">
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="skipUnregisteredMember()" class="px-4 py-2 bg-slate-700 text-slate-300 text-xs rounded">이번만 제외</button>
+                    <button type="submit" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded">DB 등록 후 진행</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script id="tf-kit-js">
+        /* ===== TenFC 공통 등급·메뉴 규칙 (5개 페이지 동일 — 수정 시 전부 같이 바꾸세요) =====
+           등급: 주관리자(admin) > 부관리자(sub_admin) > 정회원(member) > 비회원(미로그인·용병·지인)
+           메뉴 노출: 메인·운동일정=모두 / 투표=로그인 사용자 / 팀 집계=정회원 이상 / 평점관리=주관리자
+           ?view=이름 미리보기: 주관리자만 가능, 저장(로그인 전환)하지 않음 */
+        const TF = (() => {
+            const STATS_URL = 'stats.html';
+            const ROLE_LABEL = { admin: '주관리자', sub_admin: '부관리자', member: '정회원', guest: '용병', acquaintance: '지인' };
+            const roleOf = u => (u ? (u.role || 'member') : null);
+            const gone = m => !!(m && (m.isWithdrawn || m.is_withdrawn));
+            const isAdmin = u => roleOf(u) === 'admin';
+            const isStaff = u => ['admin', 'sub_admin'].includes(roleOf(u));
+            const isMember = u => ['admin', 'sub_admin', 'member'].includes(roleOf(u));
+            const label = u => u ? `${u.name} 님 (${ROLE_LABEL[roleOf(u)] || '정회원'})` : '비회원 (방문자)';
+            const ITEMS = [
+                { key: 'home',   t: '🏠 메인',     href: b => b + 'index.html',       ok: () => true },
+                { key: 'match',  t: '⚽ 운동일정', href: b => b + 'match.html',       ok: () => true },
+                { key: 'polls',  t: '🗳️ 투표',     href: b => b + 'polls.html',       ok: u => !!u },
+                { key: 'stats',  t: '📊 팀 집계',  href: () => STATS_URL,             ok: isMember },
+                { key: 'rating', t: '⭐ 평점관리', href: b => b + 'rating_vote.html', ok: isAdmin }
+            ];
+            // 저장된 로그인 사용자 + (주관리자 한정) ?view= 미리보기 대상 결정
+            function resolveUser(members) {
+                const find = n => (n ? members.find(m => m.name === n && !gone(m)) : null) || null;
+                const saved = find(localStorage.getItem('tenfc_demo_user'));
+                const view = new URLSearchParams(location.search).get('view');
+                if (view && isAdmin(saved)) {
+                    const t = find(view) || (view === '테스트' ? { name: '테스트', role: 'guest' } : null);
+                    if (t) return { user: t, real: saved, viewing: true };
+                }
+                return { user: saved, real: saved, viewing: false };
+            }
+            // 상단 우측 메뉴 + 접속자 표기를 등급 규칙대로 다시 그림
+            function renderNav(page, user, opt = {}) {
+                const base = opt.base || '';
+                const html = ITEMS.filter(i => i.ok(user)).map(i => {
+                    let href = i.href(base);
+                    if (i.key === 'stats' && opt.view) href += '?view=' + encodeURIComponent(opt.view);
+                    return `<a href="${href}" class="tf-btn ${i.key === page ? 'tf-active' : 'tf-nav'}"${i.key === page ? ' aria-current="page"' : ''}>${i.t}</a>`;
+                }).join('');
+                document.querySelectorAll('.tf-nav-slot').forEach(el => { el.innerHTML = html; });
+                document.querySelectorAll('.tf-user').forEach(el => { el.textContent = opt.userText || label(user); });
+            }
+            async function issueStatToken(client, name, pw) {
+                try { const { data } = await client.rpc('stat_login', { p_name: name, p_pw: pw }); if (data) localStorage.setItem('tenfc_demo_stat', data); } catch (e) {}
+            }
+            async function clearSession(client) {
+                const tok = localStorage.getItem('tenfc_demo_stat');
+                localStorage.removeItem('tenfc_demo_user');
+                localStorage.removeItem('tenfc_demo_stat');
+                if (tok && client) { try { await client.rpc('stat_logout', { p_token: tok }); } catch (e) {} }
+            }
+            return { STATS_URL, ROLE_LABEL, roleOf, gone, isAdmin, isStaff, isMember, label, resolveUser, renderNav, issueStatToken, clearSession };
+        })();
+    </script>
+
+    <script>
+        const SUPABASE_URL = 'https://demo.invalid';
+        const SUPABASE_KEY = 'demo-key';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const ratingHierarchy = ["F-", "F", "F+", "E-", "E", "E+", "D-", "D", "D+", "C-", "C", "C+", "B-", "B", "B+", "A-", "A", "A+"];
+        const scoreMap = {
+            "A+": 10.0, "A": 9.5, "A-": 9.0,
+            "B+": 8.5,  "B": 8.0,  "B-": 7.5,
+            "C+": 7.0,  "C": 6.5,  "C-": 6.0,
+            "D+": 5.5,  "D": 5.0,  "D-": 4.5,
+            "E+": 4.0,  "E": 3.5,  "E-": 3.0,
+            "F+": 2.5,  "F": 2.0,  "F-": 1.5
+        };
+
+        let membersData = [];
+        let currentUser = null;
+        let sessionsList = [];
+        let currentSession = null;
+        let sessionVotes = [];
+        let currentFilter = 'all';
+
+        let pendingUnregisteredQueue = [];
+        let totalUnregisteredCount = 0;
+        let cachedMatchDate = '';
+        let cachedRawText = '';
+
+        function formatBirthToDate(rawBirth) {
+            const digitsOnly = String(rawBirth || '').replace(/[^0-9]/g, '');
+            if (digitsOnly.length === 2) {
+                const yr2 = parseInt(digitsOnly, 10);
+                const fullYear = yr2 >= 50 ? 1900 + yr2 : 2000 + yr2;
+                return `${fullYear}.01.01`;
+            }
+            if (digitsOnly.length >= 4) {
+                const yr4 = digitsOnly.slice(0, 4);
+                return `${yr4}.01.01`;
+            }
+            return String(rawBirth || '').trim();
+        }
+
+        function formatPhoneNumber(rawPhone) {
+            const digits = String(rawPhone || '').replace(/[^0-9]/g, '');
+            if (!digits) return '010-XXXX-XXXX';
+            if (digits.length === 11 && digits.startsWith('010')) {
+                return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7, 11)}`;
+            }
+            if (digits.length === 8) {
+                return `010-${digits.slice(0, 4)}-${digits.slice(4, 8)}`;
+            }
+            if (digits.length === 10) {
+                return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+            }
+            return rawPhone.trim();
+        }
+
+        function formatDbCreatedDate(dateObj = new Date()) {
+            const yyyy = dateObj.getFullYear();
+            const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const dd = String(dateObj.getDate()).padStart(2, '0');
+            return `${yyyy}.${mm}.${dd}`;
+        }
+
+        async function init() {
+            const { data: members, error } = await supabaseClient.from('members').select('*');
+            if (error || !members) {
+                showAuthError('회원 데이터를 불러오지 못했습니다.');
+                return;
+            }
+
+            membersData = members.map(m => ({
+                id: m.id,
+                name: m.name,
+                rating: m.rating || 'C',
+                role: m.role || 'member',
+                isWithdrawn: m.is_withdrawn || false,
+                position: m.position || '',
+                history: m.history ? (typeof m.history === 'string' ? JSON.parse(m.history) : m.history) : []
+            }));
+
+            const resolved = TF.resolveUser(membersData);
+            const targetUser = resolved.user;
+
+            if (!TF.isAdmin(targetUser)) {
+                showAuthError('⛔ 접근 권한이 없습니다. 주관리자(3인)만 접근 가능한 페이지입니다.');
+                return;
+            }
+
+            currentUser = targetUser;
+            TF.renderNav('rating', currentUser);
+            document.getElementById('loading-screen').classList.add('hidden');
+            document.getElementById('main-app').classList.remove('hidden');
+
+            await loadSessionsList();
+        }
+
+        async function tfLogout() {
+            if (!confirm('로그아웃 하시겠습니까?')) return;
+            await TF.clearSession(supabaseClient);
+            window.location.href = 'index.html';
+        }
+
+        function showAuthError(msg) {
+            document.getElementById('loading-msg').innerHTML = `
+                <span class="text-rose-400 font-bold block mb-4">${msg}</span>
+                <a href="index.html" class="tf-btn tf-primary inline-block">🏠 메인 로그인으로 이동</a>
+            `;
+        }
+
+        async function loadSessionsList(selectId = null) {
+            const { data, error } = await supabaseClient
+                .from('rating_sessions')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(20);
+
+            if (error) return;
+
+            sessionsList = data || [];
+            const selector = document.getElementById('session-selector');
+
+            if (sessionsList.length === 0) {
+                selector.innerHTML = '<option value="">생성된 평가 세션 없음</option>';
+                document.getElementById('empty-session-box').classList.remove('hidden');
+                document.getElementById('active-session-board').classList.add('hidden');
+                return;
+            }
+
+            document.getElementById('empty-session-box').classList.add('hidden');
+            selector.innerHTML = sessionsList.map(s => {
+                const statusLabel = s.status === 'completed' ? '[반영완료]' : '[투표중]';
+                return `<option value="${s.id}">${statusLabel} ${s.match_date} (${s.mode}인 모드 · ${s.parsed_players.length}명)</option>`;
+            }).join('');
+
+            const targetId = selectId || sessionsList[0].id;
+            selector.value = targetId;
+            await onSelectSession(targetId);
+        }
+
+        async function onSelectSession(sessionId) {
+            if (!sessionId) return;
+            const found = sessionsList.find(s => s.id === sessionId);
+            if (!found) return;
+            currentSession = found;
+
+            await fetchSessionVotes();
+            renderSessionBoard();
+        }
+
+        async function fetchSessionVotes() {
+            const { data, error } = await supabaseClient
+                .from('rating_votes')
+                .select('*')
+                .eq('session_id', currentSession.id);
+
+            if (!error && data) sessionVotes = data;
+        }
+
+        function openNewSessionModal() {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            document.getElementById('new-match-date').value = `${yyyy}-${mm}-${dd}`;
+            document.getElementById('new-lineup-text').value = (window.DEMO && DEMO.sampleLineup()) || '';
+            document.getElementById('parse-error-box').classList.add('hidden');
+            document.getElementById('new-session-modal').classList.remove('hidden');
+        }
+
+        function closeNewSessionModal() {
+            document.getElementById('new-session-modal').classList.add('hidden');
+        }
+
+        function handleLineupSubmission() {
+            cachedMatchDate = document.getElementById('new-match-date').value;
+            cachedRawText = document.getElementById('new-lineup-text').value;
+            const errBox = document.getElementById('parse-error-box');
+            errBox.classList.add('hidden');
+
+            if (!cachedMatchDate || !cachedRawText.trim()) {
+                errBox.innerText = '운동 날짜와 당일 팀별 명단을 입력해 주세요.';
+                errBox.classList.remove('hidden');
+                return;
+            }
+
+            const lines = cachedRawText.split(/\n+/);
+            const detectedUnregistered = [];
+            const seenNames = new Set();
+
+            lines.forEach(line => {
+                const trimmed = line.trim();
+                if (!trimmed || trimmed.startsWith('⚽') || /^[1-4]팀/.test(trimmed) || trimmed.includes('팀 [')) return;
+
+                const tokens = trimmed.split(/[,\/]+/);
+                tokens.forEach(token => {
+                    const clean = token.trim();
+                    if (!clean) return;
+
+                    const pureName = clean
+                        .replace(/\([^)]*\)/g, '')
+                        .replace(/（[^）]*）/g, '')
+                        .replace(/[\*\-\s]/g, '');
+                    if (!pureName) return;
+
+                    const found = membersData.find(m => !m.isWithdrawn && (
+                        m.name === clean ||
+                        m.name === pureName ||
+                        m.name === pureName.replace(/^용병/, '').replace(/^지인/, '') ||
+                        ('용병-' + m.name) === clean ||
+                        ('지인-' + m.name) === clean
+                    ));
+
+                    if (!found && !seenNames.has(pureName)) {
+                        seenNames.add(pureName);
+                        detectedUnregistered.push(pureName);
+                    }
+                });
+            });
+
+            if (detectedUnregistered.length > 0) {
+                pendingUnregisteredQueue = detectedUnregistered;
+                totalUnregisteredCount = detectedUnregistered.length;
+                closeNewSessionModal();
+                showNextUnregisteredModal();
+            } else {
+                processValidatedLineup();
+            }
+        }
+
+        function showNextUnregisteredModal() {
+            if (pendingUnregisteredQueue.length === 0) {
+                processValidatedLineup();
+                return;
+            }
+            const currentName = pendingUnregisteredQueue[0];
+            const currentIndex = totalUnregisteredCount - pendingUnregisteredQueue.length + 1;
+            document.getElementById('unregistered-counter').innerText = `${currentIndex} / ${totalUnregisteredCount}명`;
+            document.getElementById('q-name').value = currentName;
+            document.getElementById('q-role').value = 'guest';
+            document.getElementById('q-birth').value = '';
+            document.getElementById('q-grade').value = 'C';
+            document.getElementById('q-kakao').value = '';
+            document.getElementById('q-phone').value = '';
+            document.getElementById('quick-register-modal').classList.remove('hidden');
+        }
+
+        async function submitQuickRegister(e) {
+            e.preventDefault();
+            const name = document.getElementById('q-name').value;
+            const role = document.getElementById('q-role').value;
+            const rawBirth = document.getElementById('q-birth').value.trim();
+            const formattedBirth = formatBirthToDate(rawBirth);
+            const selectedGrade = document.getElementById('q-grade').value || 'C';
+            const initialScore = scoreMap[selectedGrade] ?? 6.5;
+            const rawKakao = document.getElementById('q-kakao').value.trim();
+            const kakaoId = rawKakao || (role === 'guest' ? '용병' : '지인');
+            const phone = formatPhoneNumber(document.getElementById('q-phone').value);
+
+            const now = new Date();
+            const todayStr = `${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
+            const dbCreatedDate = formatDbCreatedDate(now);
+
+            const newMember = {
+                name: name,
+                password: '1234',
+                full_phone: phone,
+                kakao_id: kakaoId,
+                photo: '',
+                birth: formattedBirth,
+                address: '',
+                position: '멀티',
+                rating: selectedGrade,
+                join_date: '2026년',
+                role: role,
+                is_withdrawn: false,
+                attended_matches: 0,
+                history: [{ date: todayStr, score: initialScore }],
+                feedback: `DB생성일: ${dbCreatedDate}`,
+                login_count: 0,
+                last_login_at: null
+            };
+
+            const { error } = await supabaseClient.from('members').insert([newMember]);
+            if (error) {
+                alert('등록 실패: ' + error.message);
+                return;
+            }
+
+            membersData.push({
+                id: name,
+                name: name,
+                rating: selectedGrade,
+                role: role,
+                isWithdrawn: false,
+                position: '멀티',
+                history: [{ date: todayStr, score: initialScore }]
+            });
+
+            document.getElementById('quick-register-modal').classList.add('hidden');
+            pendingUnregisteredQueue.shift();
+            showNextUnregisteredModal();
+        }
+
+        function skipUnregisteredMember() {
+            document.getElementById('quick-register-modal').classList.add('hidden');
+            pendingUnregisteredQueue.shift();
+            showNextUnregisteredModal();
+        }
+
+        async function processValidatedLineup() {
+            const matchDate = cachedMatchDate;
+            const rawText = cachedRawText;
+
+            const lines = rawText.split(/\n+/);
+            let currentTeam = '미지정팀';
+            const parsedList = [];
+            const seenNames = new Set();
+
+            lines.forEach(line => {
+                const trimmed = line.trim();
+                if (!trimmed) return;
+
+                if (trimmed.startsWith('⚽') || /^[1-4]팀/.test(trimmed) || trimmed.includes('팀 [')) {
+                    currentTeam = trimmed.replace(/^⚽\s*/, '').trim();
+                    return;
+                }
+
+                const tokens = trimmed.split(/[,\/]+/);
+                tokens.forEach(token => {
+                    const clean = token.trim();
+                    if (!clean) return;
+
+                    const pureName = clean
+                        .replace(/\([^)]*\)/g, '')
+                        .replace(/（[^）]*）/g, '')
+                        .replace(/[\*\-\s]/g, '');
+                    if (!pureName) return;
+
+                    const found = membersData.find(m => !m.isWithdrawn && (
+                        m.name === clean ||
+                        m.name === pureName ||
+                        m.name === pureName.replace(/^용병/, '').replace(/^지인/, '') ||
+                        ('용병-' + m.name) === clean ||
+                        ('지인-' + m.name) === clean
+                    ));
+
+                    if (found && !seenNames.has(found.name)) {
+                        seenNames.add(found.name);
+
+                        const hist = Array.isArray(found.history) ? found.history : [];
+
+                        let isOutdated = false;
+                        if (hist.length > 0) {
+                            const lastEntry = hist[hist.length - 1];
+                            if (lastEntry.date && lastEntry.date.includes('.')) {
+                                const parts = lastEntry.date.split('.');
+                                const currentYear = new Date().getFullYear();
+                                const lastDateObj = new Date(currentYear, parseInt(parts[0]) - 1, parseInt(parts[1]));
+                                const sessionDateObj = new Date(matchDate);
+                                const diffDays = (sessionDateObj - lastDateObj) / (1000 * 3600 * 24);
+                                if (diffDays >= 14) isOutdated = true;
+                            }
+                        } else {
+                            isOutdated = true;
+                        }
+
+                        parsedList.push({
+                            name: found.name,
+                            team: currentTeam,
+                            role: found.role,
+                            position: found.position,
+                            rating: found.rating,
+                            score: scoreMap[found.rating] || 6.5,
+                            history: hist,
+                            isOutdated: isOutdated
+                        });
+                    }
+                });
+            });
+
+            const attendingAdmins = parsedList.filter(p => p.role === 'admin').map(p => p.name);
+            if (attendingAdmins.length < 2) {
+                alert(`⚠️ 참석한 주관리자가 ${attendingAdmins.length}명입니다. 최고 관리자 2명 이상 참석 시에만 평가가 가능합니다.`);
+                return;
+            }
+
+            const mode = attendingAdmins.length >= 3 ? 3 : 2;
+
+            const allRegularScores = membersData
+                .filter(m => !m.isWithdrawn && ['member', 'admin', 'sub_admin'].includes(m.role))
+                .map(m => scoreMap[m.rating] || 6.5);
+
+            const dayAllScores = parsedList.map(p => p.score);
+
+            const teamScoreMap = {};
+            parsedList.forEach(p => {
+                if (!teamScoreMap[p.team]) teamScoreMap[p.team] = [];
+                teamScoreMap[p.team].push(p.score);
+            });
+
+            const enrichedPlayers = parsedList.map(p => {
+                const isRegular = ['member', 'admin', 'sub_admin'].includes(p.role);
+                return {
+                    ...p,
+                    teamRank: getRankInfo(p.score, teamScoreMap[p.team]),
+                    dayRank: getRankInfo(p.score, dayAllScores),
+                    totalRank: isRegular ? getRankInfo(p.score, allRegularScores) : '비정회원(용병/지인)'
+                };
+            });
+
+            const { data: inserted, error } = await supabaseClient
+                .from('rating_sessions')
+                .insert([{
+                    match_date: matchDate,
+                    raw_lineup: rawText,
+                    parsed_players: enrichedPlayers,
+                    attending_admins: attendingAdmins,
+                    mode: mode,
+                    status: 'voting',
+                    final_approvals: [],
+                    created_by: currentUser.name
+                }])
+                .select()
+                .single();
+
+            if (error) {
+                alert('세션 저장 실패: ' + error.message);
+                return;
+            }
+
+            await loadSessionsList(inserted.id);
+        }
+
+        function getRankInfo(targetScore, scoreList) {
+            let rank = 1;
+            for (const s of scoreList) {
+                if (s > targetScore) rank++;
+            }
+            return `${rank}위/${scoreList.length}명`;
+        }
+
+        function setFilter(filterType) {
+            currentFilter = filterType;
+            ['all', 'unvoted', 'urgent', 'conflict'].forEach(f => {
+                const btn = document.getElementById(`filter-${f}`);
+                if (btn) {
+                    if (f === filterType) {
+                        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white transition';
+                    } else {
+                        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-700 text-slate-300 hover:bg-slate-600 transition';
+                    }
+                }
+            });
+            renderSessionBoard();
+        }
+
+        function getTwoMatchDelta(vals) {
+            const countMap = {};
+            vals.forEach(v => { countMap[v] = (countMap[v] || 0) + 1; });
+            for (const [valStr, cnt] of Object.entries(countMap)) {
+                const v = Number(valStr);
+                if (cnt >= 2) {
+                    if (v === 2) return 1;
+                    if (v === -2) return -1;
+                    return v;
+                }
+            }
+            return null;
+        }
+
+        function evaluatePlayerResult(playerName) {
+            const pVotes = sessionVotes.filter(v => v.player_name === playerName && currentSession.attending_admins.includes(v.voter_name));
+            const requiredCount = currentSession.mode;
+            const isComplete = pVotes.length >= requiredCount;
+
+            const signals = pVotes.map(v => v.signal).filter(Boolean);
+            const hasConflictOrSignal = signals.length > 0 || (pVotes.length >= 2 && new Set(pVotes.map(v => v.vote_value)).size > 1);
+
+            const vals = pVotes.map(v => v.vote_value);
+            const provisionalDelta = vals.length >= 2 ? getTwoMatchDelta(vals) : null;
+
+            if (!isComplete) {
+                return {
+                    isComplete: false,
+                    votedCount: pVotes.length,
+                    requiredCount,
+                    delta: 0,
+                    provisionalDelta,
+                    label: `대기중 (${pVotes.length}/${requiredCount})`,
+                    signals,
+                    hasConflictOrSignal,
+                    pVotes
+                };
+            }
+
+            if (requiredCount === 2) {
+                if (vals[0] === vals[1] && vals[0] !== 0) {
+                    const clamped = vals[0] > 0 ? 1 : -1;
+                    return { isComplete: true, votedCount: 2, requiredCount: 2, delta: clamped, provisionalDelta: clamped, label: clamped === 1 ? '▲ 1단계 상향 합의' : '▼ 1단계 하향 합의', signals, hasConflictOrSignal, pVotes };
+                }
+                return { isComplete: true, votedCount: 2, requiredCount: 2, delta: 0, provisionalDelta: 0, label: '- 유지 (합의)', signals, hasConflictOrSignal, pVotes };
+            }
+
+            if (vals.every(v => v === 2)) return { isComplete: true, votedCount: 3, requiredCount: 3, delta: 2, provisionalDelta: 2, label: '▲▲ 2단계 상향 (만장일치)', signals, hasConflictOrSignal, pVotes };
+            if (vals.every(v => v === -2)) return { isComplete: true, votedCount: 3, requiredCount: 3, delta: -2, provisionalDelta: -2, label: '▼▼ 2단계 하향 (만장일치)', signals, hasConflictOrSignal, pVotes };
+
+            const matchedDelta = getTwoMatchDelta(vals);
+            if (matchedDelta !== null) {
+                const lbl = matchedDelta === 1
+                    ? '▲ 1단계 상향 (다수결)'
+                    : (matchedDelta === -1 ? '▼ 1단계 하향 (다수결)' : '- 유지 (다수결)');
+                return { isComplete: true, votedCount: 3, requiredCount: 3, delta: matchedDelta, provisionalDelta: matchedDelta, label: lbl, signals, hasConflictOrSignal, pVotes };
+            }
+
+            const upCount = vals.filter(v => v > 0).length;
+            const downCount = vals.filter(v => v < 0).length;
+            if (upCount >= 2) return { isComplete: true, votedCount: 3, requiredCount: 3, delta: 1, provisionalDelta: 1, label: '▲ 1단계 상향 (상향 합의)', signals, hasConflictOrSignal, pVotes };
+            if (downCount >= 2) return { isComplete: true, votedCount: 3, requiredCount: 3, delta: -1, provisionalDelta: -1, label: '▼ 1단계 하향 (하향 합의)', signals, hasConflictOrSignal, pVotes };
+
+            return { isComplete: true, votedCount: 3, requiredCount: 3, delta: 0, provisionalDelta: 0, label: '- 유지 (3인 합의)', signals, hasConflictOrSignal, pVotes };
+        }
+
+        function getAdjustedRating(currentRating, delta) {
+            let idx = ratingHierarchy.indexOf(currentRating);
+            if (idx === -1) idx = 10;
+            const nextIdx = Math.max(0, Math.min(ratingHierarchy.length - 1, idx + delta));
+            return ratingHierarchy[nextIdx];
+        }
+
+        function renderSessionBoard() {
+            document.getElementById('active-session-board').classList.remove('hidden');
+
+            const players = currentSession.parsed_players;
+            const admins = currentSession.attending_admins;
+            const isCompleted = currentSession.status === 'completed';
+
+            document.getElementById('session-title').innerText = `📅 ${currentSession.match_date} 정기운동 평점 평가 (총 ${players.length}명)`;
+            document.getElementById('session-rule-desc').innerText = currentSession.mode === 3
+                ? `🛡️ 3인 참석 모드 (${admins.join(', ')}) · 2명 이상 일치 시 1단계 / 3명 만장일치 시 2단계 조정`
+                : `🛡️ 2인 참석 모드 (${admins.join(', ')}) · 2명 모두 일치 시에만 1단계 조정 가능 (2단계 불가)`;
+
+            document.getElementById('session-meta-badges').innerHTML = `
+                <span class="px-2.5 py-1 bg-slate-900 border border-slate-700 rounded-lg text-slate-300">참석 운영진: <strong class="text-emerald-400">${admins.join(', ')}</strong></span>
+                <span class="px-2.5 py-1 bg-slate-900 border border-slate-700 rounded-lg text-slate-300">상태: <strong class="${isCompleted ? 'text-sky-400' : 'text-amber-400'}">${isCompleted ? 'DB 반영 완료' : '블라인드 투표 진행중'}</strong></span>
+            `;
+
+            const progressHtml = admins.map(adminName => {
+                const count = sessionVotes.filter(v => v.voter_name === adminName).length;
+                const pct = Math.round((count / players.length) * 100);
+                const isMe = adminName === currentUser.name;
+                return `
+                    <div class="bg-slate-900/80 p-3 rounded-xl border ${isMe ? 'border-emerald-500/50' : 'border-slate-700'}">
+                        <div class="flex justify-between items-center text-xs mb-1.5">
+                            <span class="font-bold ${isMe ? 'text-emerald-400' : 'text-slate-200'}">${adminName} ${isMe ? '(나)' : ''}</span>
+                            <span class="font-mono text-slate-300">${count} / ${players.length}명 (${pct}%)</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                            <div class="bg-emerald-500 h-full transition-all duration-300" style="width: ${pct}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            document.getElementById('admin-progress-grid').innerHTML = progressHtml;
+
+            const teamGroups = {};
+            players.forEach(p => {
+                if (!teamGroups[p.team]) teamGroups[p.team] = [];
+                teamGroups[p.team].push(p);
+            });
+
+            const container = document.getElementById('teams-evaluation-container');
+            container.innerHTML = '';
+
+            const isAttendingAdmin = admins.includes(currentUser.name);
+
+            for (const [teamName, teamPlayers] of Object.entries(teamGroups)) {
+                const filteredPlayers = teamPlayers.filter(p => {
+                    const myVote = sessionVotes.find(v => v.player_name === p.name && v.voter_name === currentUser.name);
+                    const evalRes = evaluatePlayerResult(p.name);
+                    if (currentFilter === 'unvoted') return !myVote;
+                    if (currentFilter === 'urgent') return p.isOutdated;
+                    if (currentFilter === 'conflict') return evalRes.hasConflictOrSignal;
+                    return true;
+                });
+
+                if (filteredPlayers.length === 0) continue;
+
+                const section = document.createElement('div');
+                section.className = 'bg-slate-800 p-4 md:p-5 rounded-2xl border border-slate-700 space-y-3';
+                section.innerHTML = `
+                    <div class="flex justify-between items-center border-b border-slate-700 pb-2.5">
+                        <h3 class="text-sm font-extrabold text-emerald-400">⚽ ${teamName}</h3>
+                        <span class="text-xs text-slate-400">${filteredPlayers.length}명 표시</span>
+                    </div>
+                    <div class="space-y-3" id="team-list-${teamName}"></div>
+                `;
+
+                const listDiv = section.querySelector(`[id="team-list-${teamName}"]`);
+
+                filteredPlayers.forEach(p => {
+                    const myVote = sessionVotes.find(v => v.player_name === p.name && v.voter_name === currentUser.name);
+                    const myVal = myVote ? myVote.vote_value : null;
+                    const mySig = myVote ? (myVote.signal || '') : '';
+                    const evalRes = evaluatePlayerResult(p.name);
+
+                    const otherVotes = evalRes.pVotes.filter(v => v.voter_name !== currentUser.name);
+                    let blindBadgesHtml = '';
+
+                    if (otherVotes.length === 0) {
+                        blindBadgesHtml = `<span class="text-[11px] text-slate-500">다른 운영진 투표 대기중</span>`;
+                    } else {
+                        blindBadgesHtml = otherVotes.map((ov, idx) => {
+                            const sigTag = ov.signal ? `<span class="ml-1 px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-extrabold">${ov.signal}</span>` : '';
+                            if (myVal === null && !isCompleted) {
+                                return `<span class="px-2 py-1 bg-slate-900 border border-slate-700 rounded text-[11px] text-slate-300">익명${idx + 1}: 🔒 완료${sigTag}</span>`;
+                            } else {
+                                const vText = formatVoteValue(ov.vote_value);
+                                return `<span class="px-2 py-1 bg-slate-900 border border-emerald-500/40 rounded text-[11px] text-emerald-300 font-bold">익명${idx + 1}: ${vText}${sigTag}</span>`;
+                            }
+                        }).join(' ');
+                    }
+
+                    let resultBadge = `<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-900 text-slate-400 border border-slate-700">${evalRes.label}</span>`;
+                    if (evalRes.isComplete) {
+                        if (evalRes.delta > 0) {
+                            const nextR = getAdjustedRating(p.rating, evalRes.delta);
+                            resultBadge = `<span class="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-emerald-950 text-emerald-300 border border-emerald-500/50">${evalRes.label} (${p.rating} → ${nextR})</span>`;
+                        } else if (evalRes.delta < 0) {
+                            const nextR = getAdjustedRating(p.rating, evalRes.delta);
+                            resultBadge = `<span class="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-rose-950 text-rose-300 border border-rose-500/50">${evalRes.label} (${p.rating} → ${nextR})</span>`;
+                        } else {
+                            resultBadge = `<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-900 text-slate-300 border border-slate-600">${evalRes.label}</span>`;
+                        }
+                    } else if (evalRes.provisionalDelta && evalRes.provisionalDelta !== 0) {
+                        const provR = getAdjustedRating(p.rating, evalRes.provisionalDelta);
+                        const isUp = evalRes.provisionalDelta > 0;
+                        resultBadge = `<span class="px-2.5 py-1 rounded-lg text-xs font-bold ${isUp ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/30' : 'bg-rose-950/60 text-rose-300 border-rose-500/30'} border">${evalRes.label} · 2인일치 (${p.rating} → ${provR})</span>`;
+                    }
+
+                    const disableTwoStep = currentSession.mode === 2;
+                    const disabledAttr = (isCompleted || !isAttendingAdmin) ? 'disabled' : '';
+
+                    const liveMember = membersData.find(m => m.name === p.name);
+                    const hist = liveMember && Array.isArray(liveMember.history) ? liveMember.history : (Array.isArray(p.history) ? p.history : []);
+
+                    let historyText = '기록 없음';
+                    let lastEvalDate = '없음';
+                    if (hist.length > 0) {
+                        const recent3 = hist.slice(-3);
+                        historyText = recent3.map(h => reverseScoreToGrade(h.score)).join(' → ');
+                        lastEvalDate = hist[hist.length - 1].date;
+                    }
+
+                    const isUrgent = p.isOutdated;
+                    const cardBorderClass = isUrgent ? 'urgent-eval-card bg-slate-900/95 border-amber-500/80' : (myVal !== null ? 'bg-slate-900/90 border-slate-700' : 'bg-slate-900/40 border-amber-500/30');
+
+                    const card = document.createElement('div');
+                    card.className = `p-3.5 rounded-xl border ${cardBorderClass} space-y-2.5 relative`;
+                    card.innerHTML = `
+                        ${isUrgent ? '<div class="absolute -top-2.5 right-3 bg-amber-500 text-slate-950 text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow">⭐ 평가일 2주 경과 (필수평가)</div>' : ''}
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                            <div>
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="text-sm font-extrabold text-white">${p.name}</span>
+                                    <span class="px-2 py-0.5 bg-emerald-950 text-emerald-400 border border-emerald-500/40 rounded text-xs font-extrabold">현재: ${p.rating}</span>
+                                    <span class="text-[11px] text-slate-400">최근평가일: <strong class="text-slate-200">${lastEvalDate}</strong></span>
+                                </div>
+                                <div class="mt-1">
+                                    <span class="text-emerald-400 font-bold font-mono text-xs">변천사: ${historyText}</span>
+                                </div>
+                                <div class="flex flex-wrap gap-2 mt-1 text-[11px] text-slate-300">
+                                    <span class="bg-slate-800 px-2 py-0.5 rounded">소속팀 순위: <strong class="text-sky-400">${p.teamRank}</strong></span>
+                                    <span class="bg-slate-800 px-2 py-0.5 rounded">당일 전체: <strong class="text-amber-300">${p.dayRank}</strong></span>
+                                    <span class="bg-slate-800 px-2 py-0.5 rounded">팀 전체순위: <strong class="text-purple-300">${p.totalRank}</strong></span>
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-1.5">
+                                ${blindBadgesHtml}
+                                ${resultBadge}
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2 pt-2 border-t border-slate-800">
+                            <div class="grid grid-cols-5 gap-1.5 flex-1">
+                                ${renderVoteOptionBtn(p.name, 2, '▲▲ +2', myVal, disableTwoStep || isCompleted || !isAttendingAdmin)}
+                                ${renderVoteOptionBtn(p.name, 1, '▲ +1', myVal, isCompleted || !isAttendingAdmin)}
+                                ${renderVoteOptionBtn(p.name, 0, '- 유지', myVal, isCompleted || !isAttendingAdmin)}
+                                ${renderVoteOptionBtn(p.name, -1, '▼ -1', myVal, isCompleted || !isAttendingAdmin)}
+                                ${renderVoteOptionBtn(p.name, -2, '▼▼ -2', myVal, disableTwoStep || isCompleted || !isAttendingAdmin)}
+                            </div>
+                            <div class="flex gap-1.5 justify-end">
+                                <button ${disabledAttr} onclick="castSignal('${p.name}', '?')" class="px-3 py-1.5 rounded-lg text-xs font-extrabold border transition ${mySig === '?' ? 'bg-sky-600 border-sky-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'} disabled:opacity-40" title="관망">
+                                    ? 관망
+                                </button>
+                                <button ${disabledAttr} onclick="castSignal('${p.name}', '!')" class="px-3 py-1.5 rounded-lg text-xs font-extrabold border transition ${mySig === '!' ? 'bg-amber-600 border-amber-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'} disabled:opacity-40" title="확신">
+                                    ! 확신
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    listDiv.appendChild(card);
+                });
+
+                container.appendChild(section);
+            }
+
+            renderFinalSummaryAndApproval();
+        }
+
+        const reverseScoreMap = {
+            10.0: "A+", 9.5: "A", 9.0: "A-",
+            8.5: "B+", 8.0: "B", 7.5: "B-",
+            7.0: "C+", 6.5: "C", 6.0: "C-",
+            5.5: "D+", 5.0: "D", 4.5: "D-",
+            4.0: "E+", 3.5: "E", 3.0: "E-",
+            2.5: "F+", 2.0: "F", 1.5: "F-"
+        };
+        function reverseScoreToGrade(scoreVal) {
+            return reverseScoreMap[scoreVal] || scoreVal;
+        }
+
+        function renderVoteOptionBtn(playerName, val, label, currentVal, isDisabled) {
+            const isSelected = currentVal === val;
+            let colorClass = 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700';
+            if (isSelected) {
+                if (val > 0) colorClass = 'bg-emerald-600 border-emerald-400 text-white vote-btn-active';
+                else if (val < 0) colorClass = 'bg-rose-600 border-rose-400 text-white vote-btn-active';
+                else colorClass = 'bg-slate-600 border-slate-400 text-white vote-btn-active';
+            }
+            return `
+                <button ${isDisabled ? 'disabled' : ''} onclick="castVote('${playerName}', ${val})"
+                    class="py-1.5 px-2 rounded-lg text-xs font-bold border transition ${colorClass} disabled:opacity-35 disabled:cursor-not-allowed" title="한 번 더 누르면 미투표 상태로 초기화됩니다">
+                    ${label}
+                </button>
+            `;
+        }
+
+        function formatVoteValue(val) {
+            if (val === 2) return '▲▲ (+2)';
+            if (val === 1) return '▲ (+1)';
+            if (val === 0) return '- (유지)';
+            if (val === -1) return '▼ (-1)';
+            if (val === -2) return '▼▼ (-2)';
+            return '';
+        }
+
+        async function castVote(playerName, voteValue) {
+            if (currentSession.status === 'completed') return;
+            if (!currentSession.attending_admins.includes(currentUser.name)) {
+                alert('당일 운동에 참석한 주관리자만 투표할 수 있습니다.');
+                return;
+            }
+
+            const existing = sessionVotes.find(v => v.player_name === playerName && v.voter_name === currentUser.name);
+
+            if (existing && existing.vote_value === voteValue) {
+                const { error } = await supabaseClient
+                    .from('rating_votes')
+                    .delete()
+                    .eq('id', existing.id);
+
+                if (error) {
+                    alert('투표 초기화 실패: ' + error.message);
+                    return;
+                }
+            } else {
+                const currentSignal = existing ? (existing.signal || '') : '';
+                const { error } = await supabaseClient
+                    .from('rating_votes')
+                    .upsert({
+                        session_id: currentSession.id,
+                        player_name: playerName,
+                        voter_name: currentUser.name,
+                        vote_value: voteValue,
+                        signal: currentSignal,
+                        updated_at: new Date().toISOString()
+                    }, { onConflict: 'session_id,player_name,voter_name' });
+
+                if (error) {
+                    alert('투표 저장 실패: ' + error.message);
+                    return;
+                }
+            }
+
+            await fetchSessionVotes();
+            renderSessionBoard();
+        }
+
+        async function castSignal(playerName, sigChar) {
+            if (currentSession.status === 'completed') return;
+            if (!currentSession.attending_admins.includes(currentUser.name)) {
+                alert('당일 운동에 참석한 주관리자만 시그널을 남길 수 있습니다.');
+                return;
+            }
+
+            const existing = sessionVotes.find(v => v.player_name === playerName && v.voter_name === currentUser.name);
+            const nextSignal = (existing && existing.signal === sigChar) ? '' : sigChar;
+
+            if (!existing) {
+                alert('먼저 상/하향/유지 중 본인의 기본 의견을 선택한 뒤 ? 또는 ! 시그널을 활성화해 주세요.');
+                return;
+            }
+
+            const { error } = await supabaseClient
+                .from('rating_votes')
+                .update({ signal: nextSignal, updated_at: new Date().toISOString() })
+                .eq('id', existing.id);
+
+            if (error) {
+                alert('시그널 저장 실패: ' + error.message);
+                return;
+            }
+
+            await fetchSessionVotes();
+            renderSessionBoard();
+        }
+
+        function renderFinalSummaryAndApproval() {
+            const players = currentSession.parsed_players;
+            const admins = currentSession.attending_admins;
+            const approvals = currentSession.final_approvals || [];
+            const isCompleted = currentSession.status === 'completed';
+
+            let allPlayersVoted = true;
+            const changes = [];
+            const previewItems = [];
+
+            players.forEach(p => {
+                const res = evaluatePlayerResult(p.name);
+                if (!res.isComplete) allPlayersVoted = false;
+
+                const finalNewRating = res.isComplete ? getAdjustedRating(p.rating, res.delta) : p.rating;
+                changes.push({
+                    name: p.name,
+                    oldRating: p.rating,
+                    newRating: finalNewRating,
+                    delta: res.delta,
+                    isComplete: res.isComplete
+                });
+
+                const activeDelta = res.isComplete ? res.delta : (res.provisionalDelta || 0);
+                if (activeDelta !== 0) {
+                    previewItems.push({
+                        name: p.name,
+                        oldRating: p.rating,
+                        newRating: getAdjustedRating(p.rating, activeDelta),
+                        delta: activeDelta,
+                        isProvisional: !res.isComplete
+                    });
+                }
+            });
+
+            const previewBox = document.getElementById('summary-preview-box');
+            const actualChanges = changes.filter(c => c.delta !== 0);
+
+            if (previewItems.length === 0) {
+                previewBox.innerHTML = `<p class="text-slate-400">현재까지 합의(또는 2인 일치)된 등급 변동 인원이 없습니다.</p>`;
+            } else {
+                previewBox.innerHTML = `
+                    <p class="font-bold text-slate-200 mb-1.5">📊 등급 변동 예정 인원 (총 ${previewItems.length}명):</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        ${previewItems.map(c => `
+                            <div class="flex justify-between items-center bg-slate-800 px-3 py-1.5 rounded border ${c.isProvisional ? 'border-amber-500/40' : 'border-slate-700'}">
+                                <span class="font-bold text-white">
+                                    ${c.name}
+                                    ${c.isProvisional ? '<span class="ml-1 text-[10px] text-amber-300 font-normal">(2인일치·대기중)</span>' : ''}
+                                </span>
+                                <span class="${c.delta > 0 ? 'text-emerald-400' : 'text-rose-400'} font-extrabold">
+                                    ${c.oldRating} → ${c.newRating} (${c.delta > 0 ? '+' + c.delta : c.delta})
+                                </span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            document.getElementById('approval-badges').innerHTML = admins.map(a => {
+                const ok = approvals.includes(a);
+                return `<span class="px-2.5 py-1 rounded-lg border font-bold ${ok ? 'bg-emerald-950 border-emerald-500 text-emerald-300' : 'bg-slate-900 border-slate-700 text-slate-400'}">
+                    ${a}: ${ok ? '✅ 동의완료' : '⏳ 대기중'}
+                </span>`;
+            }).join('');
+
+            const approveBtn = document.getElementById('approve-btn');
+            const statusBadge = document.getElementById('final-status-badge');
+
+            if (isCompleted) {
+                statusBadge.innerText = '✅ DB 반영 완료';
+                statusBadge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-emerald-950 border border-emerald-500 text-emerald-300';
+                approveBtn.classList.add('hidden');
+                generateKakaoAnnouncement(actualChanges);
+            } else {
+                approveBtn.classList.remove('hidden');
+                statusBadge.innerText = allPlayersVoted ? '투표 완료 · 최종 동의 대기' : '투표 진행중';
+                const iApproved = approvals.includes(currentUser.name);
+                approveBtn.innerText = iApproved ? '↩️ 내 최종 동의 취소하기' : `✅ 최종 결과 반영 동의하기 (${approvals.length}/2명)`;
+                approveBtn.disabled = !admins.includes(currentUser.name);
+
+                if (approvals.length >= 2) {
+                    applyRatingsToDatabase(changes, allPlayersVoted);
+                }
+            }
+        }
+
+        async function toggleFinalApproval() {
+            if (currentSession.status === 'completed') return;
+
+            const players = currentSession.parsed_players;
+            const uncompletedUrgent = players.filter(p => {
+                if (!p.isOutdated) return false;
+                const res = evaluatePlayerResult(p.name);
+                return !res.isComplete;
+            });
+
+            if (uncompletedUrgent.length > 0) {
+                alert(`⚠️ 아직 평가가 완료되지 않은 필수평가(2주 경과) 대상자가 ${uncompletedUrgent.length}명 있습니다.\n\n해당 인원들의 투표와 합의를 모두 완료해야 최종 동의를 진행할 수 있습니다!`);
+                return;
+            }
+
+            const approvals = [...(currentSession.final_approvals || [])];
+            const idx = approvals.indexOf(currentUser.name);
+
+            if (idx === -1) {
+                if (!confirm('현재 집계된 결과로 실제 회원 평점을 업데이트하는 데 최종 동의하시겠습니까?\n(2명 이상 동의 시 즉시 DB에 반영됩니다.)')) return;
+                approvals.push(currentUser.name);
+            } else {
+                approvals.splice(idx, 1);
+            }
+
+            const { error } = await supabaseClient
+                .from('rating_sessions')
+                .update({ final_approvals: approvals })
+                .eq('id', currentSession.id);
+
+            if (error) {
+                alert('동의 처리 실패: ' + error.message);
+                return;
+            }
+
+            currentSession.final_approvals = approvals;
+            renderFinalSummaryAndApproval();
+        }
+
+        async function applyRatingsToDatabase(changes, allPlayersVoted) {
+            if (currentSession.status === 'completed') return;
+            if (!allPlayersVoted) return;
+
+            currentSession.status = 'completed';
+
+            const [matchYear, matchMonth, matchDay] = currentSession.match_date.split('-');
+            const sessionDateStr = `${matchMonth}.${matchDay}`;
+
+            for (const c of changes) {
+                if (!c.isComplete) continue;
+                const member = membersData.find(m => m.name === c.name);
+                if (!member) continue;
+
+                const newScore = scoreMap[c.newRating] || 6.5;
+                let historyArr = Array.isArray(member.history) ? [...member.history] : [];
+
+                const existIdx = historyArr.findIndex(h => h.date === sessionDateStr);
+                if (existIdx !== -1) {
+                    historyArr[existIdx].score = newScore;
+                } else {
+                    historyArr.push({ date: sessionDateStr, score: newScore });
+                }
+
+                await supabaseClient
+                    .from('members')
+                    .update({
+                        rating: c.newRating,
+                        history: historyArr
+                    })
+                    .eq('name', c.name);
+            }
+
+            await supabaseClient
+                .from('rating_sessions')
+                .update({ status: 'completed' })
+                .eq('id', currentSession.id);
+
+            alert(`🎉 주관리자 2명 이상 최종 동의로 금일 평가 세션 결과가 회원 DB에 성공적으로 반영되었습니다!`);
+            await loadSessionsList(currentSession.id);
+        }
+
+        function generateKakaoAnnouncement(changes) {
+            const box = document.getElementById('kakao-result-box');
+            box.classList.remove('hidden');
+
+            const upTwo = changes.filter(c => c.delta === 2).map(c => c.name);
+            const upOne = changes.filter(c => c.delta === 1).map(c => c.name);
+            const totalCount = changes.length;
+
+            let lines = [`[평점 업데이트 회원 총${totalCount}명]`];
+            if (upTwo.length > 0) lines.push(`🔺️🔺️${upTwo.join(',')} (2단계 조정)`);
+            if (upOne.length > 0) lines.push(`🔺️${upOne.join(',')} (1단계 조정)`);
+            lines.push(`하향 조정 인원은 공개하지 않습니다`);
+
+            document.getElementById('kakao-announcement-text').value = lines.join('\n');
+        }
+
+        function copyKakaoAnnouncement() {
+            const text = document.getElementById('kakao-announcement-text').value;
+            navigator.clipboard.writeText(text).then(() => alert('단톡방 공지문이 클립보드에 복사되었습니다!'));
+        }
+
+        function copyNudgeKakao() {
+            const players = currentSession.parsed_players;
+            const admins = currentSession.attending_admins;
+            const statusLines = admins.map(a => {
+                const cnt = sessionVotes.filter(v => v.voter_name === a).length;
+                return `- ${a}: ${cnt}/${players.length}명 완료`;
+            });
+            const msg = `⚖️ [${currentSession.match_date} 평점 평가 안내]\n${statusLines.join('\n')}\n\n운영진 페이지에서 블라인드 투표를 완료해 주세요!`;
+            navigator.clipboard.writeText(msg).then(() => alert('투표 독촉 메시지가 클립보드에 복사되었습니다!'));
+        }
+
+        async function deleteCurrentSession() {
+            if (!confirm('현재 평가 세션을 삭제하시겠습니까?')) return;
+            const { error } = await supabaseClient.from('rating_sessions').delete().eq('id', currentSession.id);
+            if (error) {
+                alert('삭제 실패: ' + error.message);
+                return;
+            }
+            await loadSessionsList();
+        }
+
+        init();
+    </script>
+</body>
+</html>

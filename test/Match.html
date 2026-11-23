@@ -1,0 +1,2316 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TenFC 매치 & 투표 시스템 [체험판]</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS SDK -->
+    <script src="demo-core.js"></script>
+    <!-- FontAwesome 아이콘 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .draggable-item { cursor: grab; user-select: none; -webkit-user-select: none; }
+        .drag-handle { touch-action: none; cursor: grab; }
+        .draggable-item:active { cursor: grabbing; }
+        .drag-over { background-color: rgba(16, 185, 129, 0.1); outline: 2px dashed #10b981; }
+        details > summary { list-style: none; cursor: pointer; }
+        details > summary::-webkit-details-marker { display: none; }
+        details[open] .chev { transform: rotate(180deg); }
+        .chev { transition: transform .2s; }
+    </style>
+    <style id="tf-kit-css">
+        /* ===== TenFC 공통 UI (5개 페이지 동일 — 수정 시 전부 같이 바꾸세요) ===== */
+        .tf-btn { padding: .5rem 1rem; border-radius: .75rem; font-size: .75rem; line-height: 1rem; font-weight: 700; border: 1px solid transparent; cursor: pointer; white-space: nowrap; transition: background-color .15s, color .15s; text-align: center; }
+        .tf-nav { background: #1e293b; border-color: #334155; color: #cbd5e1; }
+        .tf-nav:hover { background: #334155; }
+        .tf-active { background: #059669; border-color: #059669; color: #fff; box-shadow: 0 4px 6px -1px rgba(0,0,0,.35); }
+        .tf-login { background: #0284c7; color: #fff; box-shadow: 0 4px 6px -1px rgba(0,0,0,.35); }
+        .tf-login:hover { background: #0ea5e9; }
+        .tf-logout { background: rgba(225,29,72,.8); color: #fff; }
+        .tf-logout:hover { background: #e11d48; }
+        .tf-primary { background: #059669; color: #fff; box-shadow: 0 4px 6px -1px rgba(0,0,0,.35); }
+        .tf-primary:hover { background: #10b981; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans">
+
+    <!-- 로딩 화면 -->
+    <div id="loading-overlay" class="fixed inset-0 z-[100] bg-slate-950 flex flex-col items-center justify-center gap-3">
+        <div class="text-5xl animate-bounce">⚽</div>
+        <p class="text-sm font-bold text-emerald-400">⚽ 불러오는 중...</p>
+    </div>
+
+    <div class="max-w-4xl mx-auto p-4 space-y-6">
+
+        <!-- 헤더 섹션 -->
+        <header class="flex flex-col md:flex-row justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-xl gap-4">
+            <div>
+                <h1 class="text-2xl font-black text-emerald-400">⚽ TenFC Match Hub</h1>
+                <p class="text-xs text-slate-400">접속자: <span class="tf-user text-emerald-400 font-bold">비회원 (방문자)</span></p>
+            </div>
+            <div class="flex gap-2 flex-wrap justify-center md:justify-end">
+                <span class="tf-nav-slot contents"></span>
+                <button onclick="openLoginModal()" id="btn-login" class="tf-btn tf-login">🔑 로그인</button>
+                <button onclick="logoutUser()" id="btn-logout" class="tf-btn tf-logout hidden">🚪 로그아웃</button>
+            </div>
+        </header>
+
+        <!-- 페이지 내 탭 (주관리자 전용) -->
+        <div id="match-tabs" class="hidden flex gap-2 flex-wrap">
+            <button onclick="switchTab('calendar')" id="btn-calendar" class="px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs transition shadow-md">📅 일정 달력</button>
+            <button onclick="switchTab('admin')" id="btn-admin" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700">⚙️ 관리자/팀짜기</button>
+        </div>
+
+        <!-- [탭 1] 일정 달력 및 투표 메인 페이지 -->
+        <main id="tab-calendar" class="space-y-6">
+            <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl space-y-4">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                    <div>
+                        <h2 class="text-lg font-bold text-white"><i class="fa-solid fa-calendar-days text-emerald-400 mr-2"></i>운동 일정 및 사전 투표</h2>
+                        <p class="text-xs text-slate-400 mt-0.5">일정 등록·수정·삭제는 운영진만 가능합니다. 달력의 아이콘(또는 목록의 카드)을 눌러 투표에 참여하세요.</p>
+                    </div>
+                    <button onclick="openMatchModal()" id="btn-create" class="hidden px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-md">
+                        + 새 운동 일정 등록하기
+                    </button>
+                </div>
+
+                <!-- 보기 전환 / 월 이동 -->
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div class="flex gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                        <button onclick="setViewMode('calendar')" id="vm-calendar" class="px-3 py-1.5 rounded-lg text-xs font-bold">📅 달력으로 보기</button>
+                        <button onclick="setViewMode('list')" id="vm-list" class="px-3 py-1.5 rounded-lg text-xs font-bold">📋 목록으로 보기</button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="changeMonth(-1)" class="w-8 h-8 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs border border-slate-700"><i class="fa-solid fa-chevron-left"></i></button>
+                        <span id="month-label" class="text-sm font-bold text-white min-w-[96px] text-center">-</span>
+                        <button onclick="changeMonth(1)" class="w-8 h-8 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs border border-slate-700"><i class="fa-solid fa-chevron-right"></i></button>
+                        <button onclick="goToday()" class="px-3 h-8 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs border border-slate-700">오늘</button>
+                    </div>
+                </div>
+
+                <!-- 유형 범례 -->
+                <div id="type-legend" class="flex flex-wrap gap-3 text-[11px] text-slate-300"></div>
+
+                <!-- 달력 보기 -->
+                <div id="calendar-view">
+                    <div class="grid grid-cols-7 gap-1 text-center text-[11px] font-bold mb-1">
+                        <div class="text-rose-400">일</div><div class="text-slate-400">월</div><div class="text-slate-400">화</div><div class="text-slate-400">수</div><div class="text-slate-400">목</div><div class="text-slate-400">금</div><div class="text-sky-400">토</div>
+                    </div>
+                    <div id="calendar-grid" class="grid grid-cols-7 gap-1"></div>
+                </div>
+
+                <!-- 목록 보기 (월별) -->
+                <div id="list-view" class="hidden">
+                    <div id="matches-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2"></div>
+                </div>
+            </div>
+
+            <!-- 선택된 매치 상세 및 투표 페이지 -->
+            <div id="match-detail-section" class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl space-y-6 hidden">
+                <div class="border-b border-slate-800 pb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span id="detail-type-badge" class="text-xs px-2 py-1 bg-emerald-500/20 text-emerald-400 font-bold rounded">정기운동</span>
+                            <h2 id="detail-title" class="text-xl font-bold text-white">매치 상세 정보</h2>
+                        </div>
+                        <p id="detail-deadline" class="text-xs text-slate-400 mt-1">마감: -</p>
+                        <div class="mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800">
+                            <i class="fa-regular fa-clock text-amber-400"></i>
+                            <span id="countdown-label" class="text-[11px] text-slate-400">투표 마감까지</span>
+                            <span id="countdown-time" class="font-mono font-bold text-amber-300 text-sm">--:--:--</span>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="bg-slate-950 px-3 py-2 rounded-xl border border-slate-800 text-xs text-slate-300 flex items-center gap-2">
+                            <span>매치 공유 링크:</span>
+                            <input type="text" id="share-link-input" readonly class="bg-slate-900 text-emerald-400 px-2 py-1 rounded text-xs w-44 outline-none border border-slate-800">
+                            <button onclick="copyShareLink()" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded text-xs transition">복사</button>
+                        </div>
+                        <button id="btn-edit-match" onclick="openMatchModal(currentMatchId)" class="hidden w-full px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition">✏️ 일정 수정 / 삭제 / 투표 마감</button>
+                    </div>
+                </div>
+
+                <!-- 구장 안내 정보 -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs">
+                    <h4 class="font-bold text-emerald-400 mb-1"><i class="fa-solid fa-futbol mr-1"></i> 구장 특징 및 안내</h4>
+                    <p id="venue-name" class="text-slate-300 font-bold">-</p>
+                    <p id="venue-address" class="text-slate-400 mt-1">주소: -</p>
+                    <p id="venue-parking" class="text-slate-400">주차: -</p>
+                    <p id="venue-notes" class="text-slate-400">특이사항: -</p>
+                    <p id="venue-cost" class="text-slate-400">비용: -</p>
+                </div>
+
+                <!-- 투표 버튼 그룹 -->
+                <div class="space-y-3">
+                    <h3 class="font-bold text-xs text-white uppercase tracking-wider">✍️ 사전 투표하기 (정회원 전용)</h3>
+                    <div class="grid grid-cols-3 gap-3">
+                        <button onclick="castVote('참석')" id="vote-btn-attend" class="py-3 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-xl text-white transition text-xs shadow-md disabled:opacity-40 disabled:cursor-not-allowed">✅ 참석</button>
+                        <button onclick="castVote('미정')" id="vote-btn-maybe" class="py-3 bg-amber-600 hover:bg-amber-500 font-bold rounded-xl text-white transition text-xs shadow-md disabled:opacity-40 disabled:cursor-not-allowed">❓ 미정</button>
+                        <button onclick="castVote('불참')" id="vote-btn-absent" class="py-3 bg-rose-600 hover:bg-rose-500 font-bold rounded-xl text-white transition text-xs shadow-md disabled:opacity-40 disabled:cursor-not-allowed">❌ 불참</button>
+                    </div>
+                    <p class="text-[11px] text-amber-300/90 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2.5 leading-relaxed">
+                        💡 <b>미정</b>을 선택하면 운동 시작 <b>6시간 전까지는 참석 명단에 (미정)으로</b> 표시되고, <b>6시간 이내가 되면 자동으로 불참 (미정)으로 변경</b>됩니다. 참석 → 불참 → 다시 참석으로 바꾸면 투표 순서는 맨 뒤로 갑니다.
+                    </p>
+                </div>
+
+                <!-- 지인 / 용병 / 가입전 참가 신청 영역 (접기/펼치기) -->
+                <details id="guest-section-details" class="bg-slate-950 rounded-xl border border-slate-800">
+                    <summary class="p-4 flex justify-between items-center">
+                        <h3 class="font-bold text-xs text-amber-400 uppercase tracking-wider"><i class="fa-solid fa-user-plus mr-1"></i> 지인 / 용병 / 가입전 참가 신청</h3>
+                        <i class="fa-solid fa-chevron-down chev text-amber-400 text-xs"></i>
+                    </summary>
+                    <div class="px-4 pb-4 space-y-3">
+                        <p id="guest-notice-text" class="text-[11px] text-slate-400">※ 모든 항목은 필수 입력입니다.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-5 gap-2">
+                            <select id="guest-type" class="bg-slate-900 border border-slate-800 p-2 rounded-lg text-xs text-white">
+                                <option value="용병">용병</option>
+                                <option value="지인">지인</option>
+                                <option value="가입전 참가">가입전 참가</option>
+                            </select>
+                            <input type="text" id="guest-name" placeholder="성명 (필수)" class="bg-slate-900 border border-slate-800 p-2 rounded-lg text-xs text-white">
+                            <input type="text" id="guest-birth" placeholder="출생년도 (필수, 예: 98)" inputmode="numeric" class="bg-slate-900 border border-slate-800 p-2 rounded-lg text-xs text-white">
+                            <input type="text" id="guest-phone" placeholder="연락처 (필수, 예: 010-1234-5678)" inputmode="tel" class="bg-slate-900 border border-slate-800 p-2 rounded-lg text-xs text-white">
+                            <select id="guest-skill" class="bg-slate-900 border border-slate-800 p-2 rounded-lg text-xs text-white">
+                                <option value="" selected>실력 선택 (필수)</option>
+                                <option value="하">실력: 하 (아마3↓)</option>
+                                <option value="중">실력: 중 (아마4~5)</option>
+                                <option value="상">실력: 상 (아마5↑)</option>
+                            </select>
+                        </div>
+                        <button onclick="applyGuest()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg text-xs transition border border-slate-700">게스트/용병 등록 신청하기</button>
+                    </div>
+                </details>
+
+                <!-- 현재 확정 및 대기 인원 현황 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                        <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-2">
+                            <h4 id="confirmed-title" class="font-bold text-emerald-400 text-xs">✅ 참석 확정 명단</h4>
+                            <span id="confirmed-avg" class="hidden text-[11px] text-slate-400"></span>
+                        </div>
+                        <ul id="confirmed-list" class="space-y-1.5 text-xs text-slate-300">
+                            <li>등록된 투표가 없습니다.</li>
+                        </ul>
+                    </div>
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                        <h4 class="font-bold text-amber-400 text-xs mb-2">⏳ 대기자 명단 (용병/지인 및 정원 초과)</h4>
+                        <ul id="waiting-list" class="space-y-1.5 text-xs text-slate-400">
+                            <li>대기 인원이 없습니다.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                    <h4 id="declined-title" class="font-bold text-rose-400 text-xs mb-2">❌ 불참 명단</h4>
+                    <ul id="declined-list" class="space-y-1.5 text-xs text-slate-400">
+                        <li>불참 투표가 없습니다.</li>
+                    </ul>
+                </div>
+
+                <!-- 운영진 전용 버튼 그룹 -->
+                <div class="flex flex-wrap gap-2">
+                    <button id="btn-copy-roster" onclick="copyRosterText()" class="hidden px-4 py-2 bg-slate-800 hover:bg-slate-700 text-sky-300 font-bold rounded-xl text-xs transition border border-slate-700">📋 참석·대기 명단 텍스트 복사</button>
+                    <button id="btn-goto-team" onclick="goTeamBuild()" class="hidden px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs transition shadow-md">⚽ 이 일정으로 팀짜기</button>
+                    <button id="btn-copy-promo" onclick="copyPromoText()" class="hidden px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-md">📢 오픈톡방 홍보용 맞춤글</button>
+                </div>
+
+                <!-- 비회원 안내 및 당근 카페 링크 -->
+                <div class="bg-emerald-950/20 border border-emerald-500/20 p-4 rounded-xl flex flex-col md:flex-row justify-between items-center gap-3">
+                    <p class="text-xs text-emerald-300">💡 비회원 방문자이신가요? 정회원 가입 또는 기타 문의 사항은 당근카페를 확인 해주세요~</p>
+                    <a href="https://cafe.daangn.com/2050-dongbaegpu" target="_blank" rel="noopener noreferrer" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition whitespace-nowrap shadow">
+                        🥕 당근 카페 문의하기
+                    </a>
+                </div>
+            </div>
+        </main>
+
+        <!-- [탭 2] 관리자 팀 빌딩 & 드래그앤드롭 모듈 페이지 (주관리자 전용) -->
+        <main id="tab-admin" class="space-y-6 hidden">
+            <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl space-y-4">
+                <div class="space-y-3">
+                    <div>
+                        <h2 class="text-lg font-bold text-white"><i class="fa-solid fa-wand-magic-sparkles text-amber-400 mr-2"></i>주관리자 팀짜기 모듈 (드래그 앤 드롭 지원)</h2>
+                        <p class="text-xs text-slate-400">팀을 짤 일정을 고르거나 명단 텍스트를 붙여넣어 편성합니다. 12명 이하일 때는 자동으로 2팀, 13명 이상일 때는 3팀으로 구성되며 카톡 복사 시 팀장 다음 연장자 순으로 정렬됩니다.</p>
+                    </div>
+
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+                        <p class="text-xs font-bold text-white">① 팀을 짤 일정 선택</p>
+                        <div class="flex flex-col md:flex-row gap-2 md:items-center">
+                            <select id="team-match-select" class="flex-1 bg-slate-900 border border-slate-800 p-2.5 rounded-lg text-xs text-white"></select>
+                            <label class="flex items-center gap-1.5 text-xs text-slate-300 whitespace-nowrap">
+                                <input type="checkbox" id="team-include-waiting" checked> 대기자(용병/지인 등)도 포함
+                            </label>
+                            <button onclick="runTeamFromMatch()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs transition shadow-md whitespace-nowrap">⚡ 이 일정으로 팀 짜기</button>
+                        </div>
+                        <details open class="bg-slate-900 rounded-lg border border-slate-800">
+                            <summary class="p-3 text-xs font-bold text-sky-300 flex justify-between items-center">
+                                <span>② 일정과 상관없이 직접 붙여넣기 (이름만 / 팀 편성 그대로)</span>
+                                <i class="fa-solid fa-chevron-down chev text-xs"></i>
+                            </summary>
+                            <div class="px-3 pb-3 space-y-2">
+                                <textarea id="team-paste" rows="7" placeholder="■ 이름만 붙여넣으면 자동으로 팀을 짭니다.&#10;김민준 이서준 박도윤 …  (줄바꿈·띄어쓰기·쉼표·/ 모두 가능)&#10;&#10;■ 팀 편성을 붙여넣으면 그대로 반영됩니다. (*는 팀장)&#10;⚽ 1팀&#10;김민준(80)* / 이서준(81) / 박도윤(84)&#10;⚽ 2팀&#10;최하준(93)* / 정시우(81)" class="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-xs text-white font-mono"></textarea>
+                                <button onclick="runTeamFromText()" class="w-full py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg text-xs transition">📋 붙여넣은 내용으로 팀 구성하기</button>
+                            </div>
+                        </details>
+                    </div>
+
+                    <div class="flex flex-col md:flex-row justify-between md:items-center gap-2">
+                        <p id="team-source-label" class="text-xs font-bold text-emerald-300">📌 팀짜기 기준: (아직 선택되지 않았습니다)</p>
+                        <button onclick="runAutoBalance()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold rounded-lg text-xs transition border border-slate-700 whitespace-nowrap">🔄 같은 명단으로 재편성</button>
+                    </div>
+                </div>
+
+                <!-- 팀 드래그앤드롭 존 및 실시간 점수 표시 -->
+                <div id="teams-grid-wrapper" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- 1팀 -->
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+                        <div class="flex justify-between items-center border-b border-slate-900 pb-2">
+                            <h3 class="font-bold text-emerald-400 text-xs">⚽ 1팀</h3>
+                            <div class="text-right text-[11px]">
+                                <span class="text-slate-400">총점: </span><span id="score-team1" class="font-bold text-white">0.0</span> |
+                                <span class="text-slate-400">평균: </span><span id="avg-team1" class="font-bold text-emerald-400">0.0</span>
+                            </div>
+                        </div>
+                        <div class="space-y-2 min-h-[220px] p-1 rounded-lg transition" id="team1-dropzone" data-zone="team1">
+                            <p class="text-xs text-slate-500 text-center py-10">팀 편성을 실행해주세요.</p>
+                        </div>
+                    </div>
+
+                    <!-- 2팀 -->
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+                        <div class="flex justify-between items-center border-b border-slate-900 pb-2">
+                            <h3 class="font-bold text-indigo-400 text-xs">⚽ 2팀</h3>
+                            <div class="text-right text-[11px]">
+                                <span class="text-slate-400">총점: </span><span id="score-team2" class="font-bold text-white">0.0</span> |
+                                <span class="text-slate-400">평균: </span><span id="avg-team2" class="font-bold text-indigo-400">0.0</span>
+                            </div>
+                        </div>
+                        <div class="space-y-2 min-h-[220px] p-1 rounded-lg transition" id="team2-dropzone" data-zone="team2">
+                            <p class="text-xs text-slate-500 text-center py-10">팀 편성을 실행해주세요.</p>
+                        </div>
+                    </div>
+
+                    <!-- 3팀 -->
+                    <div id="team3-card" class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+                        <div class="flex justify-between items-center border-b border-slate-900 pb-2">
+                            <h3 class="font-bold text-amber-400 text-xs">⚽ 3팀</h3>
+                            <div class="text-right text-[11px]">
+                                <span class="text-slate-400">총점: </span><span id="score-team3" class="font-bold text-white">0.0</span> |
+                                <span class="text-slate-400">평균: </span><span id="avg-team3" class="font-bold text-amber-400">0.0</span>
+                            </div>
+                        </div>
+                        <div class="space-y-2 min-h-[220px] p-1 rounded-lg transition" id="team3-dropzone" data-zone="team3">
+                            <p class="text-xs text-slate-500 text-center py-10">팀 편성을 실행해주세요.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 카톡 복사 영역 -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-4">
+                    <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                        <div>
+                            <h4 class="font-bold text-white text-xs">🛡️ 카톡 복붙 명단 생성</h4>
+                            <p class="text-[11px] text-slate-400 mt-0.5">팀장(*) 다음 연장자 순으로 자동 정렬되며, 정회원 외 인원은 이름 옆에 (출생년도)(회원구분)이 표시됩니다.</p>
+                        </div>
+                        <button onclick="copyKakaoFormat()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs transition shadow">📋 카톡 복붙용 명단 복사</button>
+                    </div>
+                    <div class="bg-slate-900 p-3 rounded-lg border border-slate-800 font-mono text-xs text-emerald-300 whitespace-pre-line" id="kakao-preview">
+⚽ 1팀
+(팀 편성 후 생성됩니다)
+                    </div>
+                </div>
+            </div>
+        </main>
+
+    </div>
+
+    <!-- 일정 등록/수정 모달 -->
+    <div id="match-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-slate-900 w-full max-w-md p-6 rounded-2xl border border-slate-800 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            <h3 id="match-modal-title" class="text-lg font-bold text-white">📅 새 운동 일정 등록</h3>
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-400 mb-1">운동 유형</label>
+                    <div class="flex items-center gap-2">
+                        <select id="new-match-type" onchange="updateTypePreview()" class="flex-1 bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white">
+                            <option value="정기운동">정기운동</option>
+                            <option value="자율참여">자율참여</option>
+                            <option value="플랩">플랩</option>
+                            <option value="벙개">벙개</option>
+                        </select>
+                        <span id="type-preview" class="w-9 h-9 rounded-full flex items-center justify-center text-white"></span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-slate-400 mb-1">운동 일시</label>
+                    <div class="grid grid-cols-5 gap-1">
+                        <select id="md-y" onchange="onDtChange('md','ym')" class="bg-slate-950 border border-slate-800 p-2 rounded-lg text-white"></select>
+                        <select id="md-m" onchange="onDtChange('md','ym')" class="bg-slate-950 border border-slate-800 p-2 rounded-lg text-white"></select>
+                        <select id="md-d" onchange="onDtChange('md','x')" class="bg-slate-950 border border-slate-800 p-2 rounded-lg text-white"></select>
+                        <select id="md-h" onchange="onDtChange('md','x')" class="bg-slate-950 border border-slate-800 p-2 rounded-lg text-white"></select>
+                        <select id="md-i" onchange="onDtChange('md','x')" class="bg-slate-950 border border-slate-800 p-2 rounded-lg text-white"></select>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-slate-400">투표 마감 시간 <span class="text-slate-500">(기본: 운동 전날 22시)</span></label>
+                        <button type="button" onclick="resetDeadline()" class="text-[11px] text-sky-400 hover:underline">기본값으로</button>
+                    </div>
+                    <div class="grid grid-cols-5 gap-1">
+                        <select id="dl-y" onchange="onDtChange('dl','ym')" class="bg-slate-950 border border-slate-800 p-2 rounded-lg text-white"></select>
+                        <select id="dl-m" onchange="onDtChange('dl','ym')" class="bg-slate-950 border border-slate-800 p-2 rounded-lg text-white"></select>
+                        <select id="dl-d" onchange="onDtChange('dl','x')" class="bg-slate-950 border border-slate-800 p-2 rounded-lg text-white"></select>
+                        <select id="dl-h" onchange="onDtChange('dl','x')" class="bg-slate-950 border border-slate-800 p-2 rounded-lg text-white"></select>
+                        <select id="dl-i" onchange="onDtChange('dl','x')" class="bg-slate-950 border border-slate-800 p-2 rounded-lg text-white"></select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <label class="block text-slate-400 mb-1">비용 구분</label>
+                        <select id="new-cost-type" onchange="onCostTypeChange()" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white">
+                            <option value="무료" selected>무료</option>
+                            <option value="유료">유료</option>
+                        </select>
+                    </div>
+                    <div id="cost-amount-wrap" class="hidden">
+                        <label class="block text-slate-400 mb-1">금액</label>
+                        <input type="text" id="new-cost-amount" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white" value="10,000원">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1">정원</label>
+                        <input type="number" id="new-capacity" min="1" max="99" inputmode="numeric" placeholder="예: 15" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-slate-400 mb-1">자주 쓰는 구장 선택</label>
+                    <select id="venue-select" onchange="onVenueSelect()" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white"></select>
+                    <div class="flex gap-2 mt-1.5">
+                        <button type="button" onclick="saveVenueOnly()" class="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-sky-300 font-bold rounded-lg border border-slate-700">💾 구장 정보 저장 (수정)</button>
+                        <button type="button" id="btn-delete-venue" onclick="deleteVenue()" class="hidden py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-rose-300 font-bold rounded-lg border border-slate-700">🗑️ 구장 삭제</button>
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-1">아래 구장 정보를 고친 뒤 저장하면 해당 구장이 수정되고, 새 이름으로 저장하면 자주 쓰는 구장에 추가됩니다.</p>
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">구장 이름</label>
+                    <input type="text" id="new-venue-name" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">구장 주소</label>
+                    <input type="text" id="new-venue-address" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">주차 안내</label>
+                    <input type="text" id="new-venue-parking" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">특이사항 / 안내</label>
+                    <input type="text" id="new-venue-notes" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white">
+                </div>
+
+                <div id="status-wrap" class="hidden">
+                    <label class="block text-slate-400 mb-1">모집 상태 <span class="text-slate-500">('마감'을 선택하면 투표가 강제로 종료됩니다)</span></label>
+                    <select id="edit-status" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white">
+                        <option value="모집중">모집중 (마감시간까지 투표 가능)</option>
+                        <option value="마감">마감 (지금 즉시 투표 종료)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex gap-2 pt-2">
+                <button onclick="closeMatchModal()" class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg">취소</button>
+                <button id="btn-delete-match" onclick="deleteMatch()" class="hidden py-2 px-4 bg-rose-700 hover:bg-rose-600 text-white text-xs font-bold rounded-lg">삭제</button>
+                <button id="btn-save-match" onclick="saveMatch()" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg">등록 완료</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 정회원 로그인 모달 -->
+    <div id="login-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-slate-900 w-full max-w-sm p-6 rounded-2xl border border-slate-800 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-bold text-white">🔑 TenFC 정회원 로그인</h3>
+                <button type="button" onclick="closeLoginModal()" class="text-slate-400 hover:text-white text-sm"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="handleLogin(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-400 mb-1">성명</label>
+                    <input type="text" id="login-name" required placeholder="성명 입력" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">비밀번호 (초기값: 휴대폰 뒷 4자리)</label>
+                    <input type="password" id="login-pw" required placeholder="비밀번호 입력" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white outline-none focus:border-emerald-500">
+                </div>
+                <p id="login-error" class="text-rose-400 text-[11px] hidden">성명 또는 비밀번호가 일치하지 않습니다.</p>
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closeLoginModal()" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg">취소</button>
+                    <button type="submit" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg">로그인</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 운영진용 대기자 정보 수정 모달 -->
+    <div id="waiting-edit-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-slate-900 w-full max-w-sm p-6 rounded-2xl border border-slate-800 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-bold text-white">✏️ 대기자 정보 수정</h3>
+                <button type="button" onclick="closeWaitingEditModal()" class="text-slate-400 hover:text-white text-sm">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form onsubmit="saveWaitingEdit(event)" class="space-y-3 text-xs">
+                <input type="hidden" id="edit-wait-id">
+                <div>
+                    <label class="block text-slate-400 mb-1">성명</label>
+                    <input type="text" id="edit-wait-name" required class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">구분</label>
+                    <select id="edit-wait-type" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white">
+                        <option value="용병">용병</option>
+                        <option value="지인">지인</option>
+                        <option value="가입전 참가">가입전 참가</option>
+                        <option value="정회원">정회원</option>
+                        <option value="당근">당근</option>
+                        <option value="플랩">플랩</option>
+                        <option value="오픈톡">오픈톡</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">출생년도 (예: 98, 1998, 미입력)</label>
+                    <input type="text" id="edit-wait-birth" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">연락처 (예: 010-1234-5678, 미입력)</label>
+                    <input type="text" id="edit-wait-phone" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">실력</label>
+                    <select id="edit-wait-skill" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white">
+                        <option value="하">하 (아마3↓)</option>
+                        <option value="중">중 (아마4~5)</option>
+                        <option value="상">상 (아마5↑)</option>
+                    </select>
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closeWaitingEditModal()" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg">취소</button>
+                    <button type="submit" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 자바스크립트 로직 -->
+    <script id="tf-kit-js">
+        /* ===== TenFC 공통 등급·메뉴 규칙 (5개 페이지 동일 — 수정 시 전부 같이 바꾸세요) =====
+           등급: 주관리자(admin) > 부관리자(sub_admin) > 정회원(member) > 비회원(미로그인·용병·지인)
+           메뉴 노출: 메인·운동일정=모두 / 투표=로그인 사용자 / 팀 집계=정회원 이상 / 평점관리=주관리자
+           ?view=이름 미리보기: 주관리자만 가능, 저장(로그인 전환)하지 않음 */
+        const TF = (() => {
+            const STATS_URL = 'stats.html';
+            const ROLE_LABEL = { admin: '주관리자', sub_admin: '부관리자', member: '정회원', guest: '용병', acquaintance: '지인' };
+            const roleOf = u => (u ? (u.role || 'member') : null);
+            const gone = m => !!(m && (m.isWithdrawn || m.is_withdrawn));
+            const isAdmin = u => roleOf(u) === 'admin';
+            const isStaff = u => ['admin', 'sub_admin'].includes(roleOf(u));
+            const isMember = u => ['admin', 'sub_admin', 'member'].includes(roleOf(u));
+            const label = u => u ? `${u.name} 님 (${ROLE_LABEL[roleOf(u)] || '정회원'})` : '비회원 (방문자)';
+            const ITEMS = [
+                { key: 'home',   t: '🏠 메인',     href: b => b + 'index.html',       ok: () => true },
+                { key: 'match',  t: '⚽ 운동일정', href: b => b + 'match.html',       ok: () => true },
+                { key: 'polls',  t: '🗳️ 투표',     href: b => b + 'polls.html',       ok: u => !!u },
+                { key: 'stats',  t: '📊 팀 집계',  href: () => STATS_URL,             ok: isMember },
+                { key: 'rating', t: '⭐ 평점관리', href: b => b + 'rating_vote.html', ok: isAdmin }
+            ];
+            // 저장된 로그인 사용자 + (주관리자 한정) ?view= 미리보기 대상 결정
+            function resolveUser(members) {
+                const find = n => (n ? members.find(m => m.name === n && !gone(m)) : null) || null;
+                const saved = find(localStorage.getItem('tenfc_demo_user'));
+                const view = new URLSearchParams(location.search).get('view');
+                if (view && isAdmin(saved)) {
+                    const t = find(view) || (view === '테스트' ? { name: '테스트', role: 'guest' } : null);
+                    if (t) return { user: t, real: saved, viewing: true };
+                }
+                return { user: saved, real: saved, viewing: false };
+            }
+            // 상단 우측 메뉴 + 접속자 표기를 등급 규칙대로 다시 그림
+            function renderNav(page, user, opt = {}) {
+                const base = opt.base || '';
+                const html = ITEMS.filter(i => i.ok(user)).map(i => {
+                    let href = i.href(base);
+                    if (i.key === 'stats' && opt.view) href += '?view=' + encodeURIComponent(opt.view);
+                    return `<a href="${href}" class="tf-btn ${i.key === page ? 'tf-active' : 'tf-nav'}"${i.key === page ? ' aria-current="page"' : ''}>${i.t}</a>`;
+                }).join('');
+                document.querySelectorAll('.tf-nav-slot').forEach(el => { el.innerHTML = html; });
+                document.querySelectorAll('.tf-user').forEach(el => { el.textContent = opt.userText || label(user); });
+            }
+            async function issueStatToken(client, name, pw) {
+                try { const { data } = await client.rpc('stat_login', { p_name: name, p_pw: pw }); if (data) localStorage.setItem('tenfc_demo_stat', data); } catch (e) {}
+            }
+            async function clearSession(client) {
+                const tok = localStorage.getItem('tenfc_demo_stat');
+                localStorage.removeItem('tenfc_demo_user');
+                localStorage.removeItem('tenfc_demo_stat');
+                if (tok && client) { try { await client.rpc('stat_logout', { p_token: tok }); } catch (e) {} }
+            }
+            return { STATS_URL, ROLE_LABEL, roleOf, gone, isAdmin, isStaff, isMember, label, resolveUser, renderNav, issueStatToken, clearSession };
+        })();
+    </script>
+
+    <script>
+        const SUPABASE_URL = 'https://demo.invalid';
+        const SUPABASE_KEY = 'demo-key';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const scoreMap = {
+            "A+": 10.0, "A": 9.5, "A-": 9.0,
+            "B+": 8.5,  "B": 8.0,  "B-": 7.5,
+            "C+": 7.0,  "C": 6.5,  "C-": 6.0,
+            "D+": 5.5,  "D": 5.0,  "D-": 4.5,
+            "E+": 4.0,  "E": 3.5,  "E-": 3.0,
+            "F+": 2.5,  "F": 2.0,  "F-": 1.5
+        };
+        const skillGrade = { '상': 'B', '중': 'C', '하': 'D' };
+        const guestSkillScore = { '상': scoreMap['B'], '중': scoreMap['C'], '하': scoreMap['D'] };
+
+        const WEEK = ['일','월','화','수','목','금','토'];
+        const STAFF_ROLES = ['admin', 'sub_admin'];
+
+        const TYPE_STYLE = {
+            '정기운동': { icon: 'fa-futbol', bg: 'bg-emerald-500', badge: 'bg-emerald-500/20 text-emerald-300', border: 'border-l-emerald-500', text: 'text-emerald-300' },
+            '자율참여': { icon: 'fa-hand',   bg: 'bg-amber-500',   badge: 'bg-amber-500/20 text-amber-300',     border: 'border-l-amber-500',   text: 'text-amber-300' },
+            '플랩':     { icon: 'fa-star',   bg: 'bg-sky-500',     badge: 'bg-sky-500/20 text-sky-300',         border: 'border-l-sky-500',     text: 'text-sky-300' },
+            '벙개':     { icon: 'fa-bolt',   bg: 'bg-fuchsia-500', badge: 'bg-fuchsia-500/20 text-fuchsia-300', border: 'border-l-fuchsia-500', text: 'text-fuchsia-300' }
+        };
+        function typeStyle(t) {
+            return TYPE_STYLE[t] || { icon: 'fa-futbol', bg: 'bg-slate-500', badge: 'bg-slate-500/20 text-slate-300', border: 'border-l-slate-500', text: 'text-slate-300' };
+        }
+
+        const FAVORITE_VENUES = [
+            { name: '동백2동 행정복지센터 다목적구장', address: '용인시 기흥구 동백동', parking_info: '지하 주차장 2시간 무료 지원', notes: '풋살화(TF화) 전용' }
+        ];
+
+        const SHARE_BASE = '';
+
+        let currentMatchId = null;
+        let allVotesByMatch = {};
+        const titleFromLink = new URLSearchParams(window.location.search).get('id') !== null;
+        let matchesList = [];
+        let membersData = [];
+        let venuesCache = [];
+        let currentUser = null;
+        let currentMatchVotes = [];
+        let editingMatchId = null;
+        let dlTouched = false;
+        let viewMode = 'calendar';
+        let viewYear = new Date().getFullYear();
+        let viewMonth = new Date().getMonth();
+        let lastAfterCut = null;
+        let lastClosed = null;
+
+        let teamDataState = { team1: [], team2: [], team3: [] };
+
+        const pad2 = n => String(n).padStart(2, '0');
+        function esc(s) {
+            return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+        function isStaff() { return !!currentUser && STAFF_ROLES.includes(currentUser.role); }
+        function currentMatch() { return matchesList.find(m => m.id === currentMatchId); }
+        function capOf(m) { return (m && m.capacity) ? m.capacity : 18; }
+        function fmtMDW(d) { return `${d.getMonth() + 1}월 ${d.getDate()}일 (${WEEK[d.getDay()]}) ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
+        function fmtShort(d) { return `${d.getMonth() + 1}/${d.getDate()}(${WEEK[d.getDay()]}) ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
+        function fmtVoteTime(iso) {
+            if (!iso) return '';
+            const d = new Date(iso);
+            return `${d.getMonth() + 1}/${d.getDate()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+        }
+        function defaultDeadline(matchDate) {
+            const d = new Date(matchDate);
+            d.setDate(d.getDate() - 1);
+            d.setHours(22, 0, 0, 0);
+            return d;
+        }
+        function getDeadline(m) { return m.deadline ? new Date(m.deadline) : defaultDeadline(new Date(m.match_date)); }
+        function isClosed(m) { return m.status === '마감' || Date.now() >= getDeadline(m).getTime(); }
+        function isAfterCutoff(m) { return Date.now() >= new Date(m.match_date).getTime() - 6 * 3600 * 1000; }
+
+        function normBirth(raw) {
+            if (raw === null || raw === undefined) return '';
+            const s = String(raw).trim();
+            if (!s) return '';
+            if (/^\d{4}/.test(s)) return s.slice(2, 4);
+            if (/^\d{2}$/.test(s)) return s;
+            return '';
+        }
+        function memberBirth(m) {
+            if (!m) return '';
+            return normBirth(m.birth_year ?? m.birth ?? m.birthday ?? m.birth_date ?? m.birthyear);
+        }
+        function memberOfVote(v) {
+            if (['용병', '지인', '가입전 참가'].includes(v.guest_type)) return null;
+            return membersData.find(m => m.name === v.guest_name) || null;
+        }
+        function getBirthOf(v) {
+            const b = normBirth(v.guest_birth);
+            if (b) return b;
+            return memberBirth(memberOfVote(v));
+        }
+        function isStaffVote(v) {
+            const mem = memberOfVote(v);
+            return !!mem && STAFF_ROLES.includes(mem.role);
+        }
+
+        function linkify(text) {
+            return esc(text).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-sky-400 underline break-all">$1</a>');
+        }
+
+        function maskName(name) {
+            if (!name || name.length < 2) return name;
+            if (name.length === 2) return name[0] + '*';
+            return name[0] + '*' + name.slice(2);
+        }
+        function getMaskedPhone(phone) {
+            if (!phone) return '번호없음';
+            const cleaned = phone.replace(/[^0-9]/g, '');
+            return cleaned.length >= 4 ? cleaned.slice(-4) : phone;
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            renderLegend();
+            updateViewModeButtons();
+            try {
+                await fetchMembers();
+                await fetchMatches();
+            } finally {
+                document.getElementById('loading-overlay').classList.add('hidden');
+            }
+            setInterval(tick, 1000);
+        });
+
+        function kstDateStr(dateLike) {
+            return new Date(new Date(dateLike).getTime() + 9 * 3600 * 1000).toISOString().split('T')[0];
+        }
+        const loginRecordedNames = new Set();
+        async function recordLoginSession(user) {
+            if (!user || !user.name || user.name === '테스트' || loginRecordedNames.has(user.name)) return;
+            loginRecordedNames.add(user.name);
+            try {
+                const { data: row } = await supabaseClient.from('members').select('login_count, last_login_at').eq('name', user.name).maybeSingle();
+                const lastLoginAt = row ? row.last_login_at : user.last_login_at;
+                let count = (row ? row.login_count : user.login_count) || 0;
+                const todayStr = kstDateStr(new Date());
+                const lastDateStr = lastLoginAt ? kstDateStr(lastLoginAt) : '';
+                if (lastDateStr !== todayStr) count += 1;
+                const nowIso = new Date().toISOString();
+                const { error } = await supabaseClient.from('members').update({ login_count: count, last_login_at: nowIso }).eq('name', user.name);
+                if (!error) { user.login_count = count; user.last_login_at = nowIso; }
+            } catch (e) {
+                console.error('로그인 횟수 기록 실패:', e);
+            }
+        }
+
+        async function fetchMembers() {
+            try {
+                const { data, error } = await supabaseClient.from('members').select('*');
+                if (!error && data) membersData = data;
+
+                const r = TF.resolveUser(membersData);
+                currentUser = r.user;
+                if (currentUser && !r.viewing) await recordLoginSession(currentUser);
+
+                TF.renderNav('match', currentUser);
+                document.getElementById('match-tabs').classList.toggle('hidden', !TF.isAdmin(currentUser));
+                document.getElementById('btn-login').classList.toggle('hidden', !!currentUser);
+                document.getElementById('btn-logout').classList.toggle('hidden', !currentUser);
+                document.getElementById('btn-create').classList.toggle('hidden', !isStaff());
+                updateGuestTypeOptions();
+            } catch (err) {
+                console.error('회원 정보 조회 중 예외 발생:', err);
+            }
+        }
+
+        function updateGuestTypeOptions() {
+            const selectEl = document.getElementById('guest-type');
+            if (!selectEl) return;
+            const staff = isStaff();
+
+            if (staff) {
+                selectEl.innerHTML = `
+                    <option value="용병">용병</option>
+                    <option value="지인">지인</option>
+                    <option value="가입전 참가">가입전 참가</option>
+                    <option value="정회원">정회원 (운영진 전용)</option>
+                    <option value="당근">당근 (운영진 전용)</option>
+                    <option value="플랩">플랩 (운영진 전용)</option>
+                    <option value="오픈톡">오픈톡 (운영진 전용)</option>
+                `;
+            } else {
+                selectEl.innerHTML = `
+                    <option value="용병">용병</option>
+                    <option value="지인">지인</option>
+                    <option value="가입전 참가">가입전 참가</option>
+                `;
+            }
+        }
+
+        function openLoginModal() {
+            document.getElementById('login-name').value = '';
+            document.getElementById('login-pw').value = '';
+            document.getElementById('login-error').classList.add('hidden');
+            document.getElementById('login-modal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('login-name').focus(), 50);
+        }
+
+        function closeLoginModal() {
+            document.getElementById('login-modal').classList.add('hidden');
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const name = document.getElementById('login-name').value.trim();
+            const pw = document.getElementById('login-pw').value.trim();
+
+            if (!membersData.length) {
+                const { data } = await supabaseClient.from('members').select('*');
+                if (data) membersData = data;
+            }
+
+            const user = membersData.find(m => m.name === name && String(m.password) === pw);
+            if (!user) {
+                document.getElementById('login-error').innerText = '성명 또는 비밀번호가 일치하지 않습니다.';
+                document.getElementById('login-error').classList.remove('hidden');
+                return;
+            }
+            if (user.isWithdrawn || user.is_withdrawn) {
+                document.getElementById('login-error').innerText = '탈퇴 처리된 회원입니다.';
+                document.getElementById('login-error').classList.remove('hidden');
+                return;
+            }
+
+            localStorage.setItem('tenfc_demo_user', user.name);
+            await TF.issueStatToken(supabaseClient, user.name, pw);
+            await recordLoginSession(user);
+            if (window.location.search.includes('view=')) {
+                const url = new URL(window.location.href);
+                url.searchParams.delete('view');
+                window.history.replaceState({}, '', url);
+            }
+
+            await fetchMembers();
+            if (currentMatchId) await selectMatch(currentMatchId, false);
+            closeLoginModal();
+        }
+
+        async function logoutUser() {
+            if (!confirm('로그아웃 하시겠습니까?')) return;
+            await TF.clearSession(supabaseClient);
+            currentUser = null;
+            if (window.location.search.includes('view=')) {
+                const url = new URL(window.location.href);
+                url.searchParams.delete('view');
+                window.history.replaceState({}, '', url);
+            }
+            switchTab('calendar');
+            await fetchMembers();
+            if (currentMatchId) await selectMatch(currentMatchId, false);
+        }
+
+        function switchTab(tab) {
+            if (tab === 'calendar') {
+                document.getElementById('tab-calendar').classList.remove('hidden');
+                document.getElementById('tab-admin').classList.add('hidden');
+                document.getElementById('btn-calendar').className = 'px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs transition shadow-md';
+                if (currentUser && currentUser.role === 'admin') {
+                    document.getElementById('btn-admin').className = 'px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700';
+                }
+            } else {
+                if (!currentUser || currentUser.role !== 'admin') {
+                    alert('⚠️ 관리자 팀짜기 메뉴는 주관리자만 접근할 수 있습니다.');
+                    return;
+                }
+                populateTeamMatchSelect();
+                document.getElementById('tab-calendar').classList.add('hidden');
+                document.getElementById('tab-admin').classList.remove('hidden');
+                document.getElementById('btn-admin').className = 'px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs transition shadow-md';
+                document.getElementById('btn-calendar').className = 'px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700';
+            }
+        }
+
+        function renderLegend() {
+            document.getElementById('type-legend').innerHTML = Object.keys(TYPE_STYLE).map(t => {
+                const s = TYPE_STYLE[t];
+                return `<span class="inline-flex items-center gap-1.5"><span class="w-5 h-5 rounded-full ${s.bg} text-white flex items-center justify-center text-[10px]"><i class="fa-solid ${s.icon}"></i></span>${t}</span>`;
+            }).join('');
+        }
+
+        function setViewMode(mode) {
+            viewMode = mode;
+            updateViewModeButtons();
+            renderSchedule();
+        }
+        function updateViewModeButtons() {
+            const on = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white';
+            const off = 'px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:bg-slate-800';
+            document.getElementById('vm-calendar').className = viewMode === 'calendar' ? on : off;
+            document.getElementById('vm-list').className = viewMode === 'list' ? on : off;
+            document.getElementById('calendar-view').classList.toggle('hidden', viewMode !== 'calendar');
+            document.getElementById('list-view').classList.toggle('hidden', viewMode !== 'list');
+        }
+        function changeMonth(delta) {
+            const d = new Date(viewYear, viewMonth + delta, 1);
+            viewYear = d.getFullYear();
+            viewMonth = d.getMonth();
+            renderSchedule();
+        }
+        function goToday() {
+            const t = new Date();
+            viewYear = t.getFullYear();
+            viewMonth = t.getMonth();
+            renderSchedule();
+        }
+
+        async function loadAllVotes() {
+            allVotesByMatch = {};
+            const ids = matchesList.map(m => m.id);
+            if (!ids.length) return;
+            const { data } = await supabaseClient.from('match_votes').select('*').in('match_id', ids);
+            (data || []).forEach(v => { (allVotesByMatch[v.match_id] = allVotesByMatch[v.match_id] || []).push(v); });
+        }
+
+        async function fetchMatches() {
+            try {
+                const { data, error } = await supabaseClient.from('matches').select('*, venues(*)').order('match_date', { ascending: true });
+                if (error) { console.error(error); return; }
+                matchesList = data || [];
+                await loadAllVotes();
+
+                const urlParams = new URLSearchParams(window.location.search);
+                const matchIdParam = urlParams.get('id');
+                let target = null;
+                if (matchIdParam) target = matchesList.find(m => m.id === parseInt(matchIdParam));
+                if (!target && matchesList.length > 0) {
+                    const now = Date.now() - 3 * 3600 * 1000;
+                    target = matchesList.find(m => new Date(m.match_date).getTime() >= now) || matchesList[matchesList.length - 1];
+                }
+                if (currentMatchId && matchesList.find(m => m.id === currentMatchId)) target = matchesList.find(m => m.id === currentMatchId);
+
+                if (target) {
+                    const d = new Date(target.match_date);
+                    viewYear = d.getFullYear();
+                    viewMonth = d.getMonth();
+                    renderSchedule();
+                    selectMatch(target.id, false);
+                } else {
+                    currentMatchId = null;
+                    document.getElementById('match-detail-section').classList.add('hidden');
+                    renderSchedule();
+                }
+            } catch (err) {
+                console.error('매치 로딩 예외:', err);
+            }
+        }
+
+        function renderSchedule() {
+            document.getElementById('month-label').innerText = `${viewYear}년 ${viewMonth + 1}월`;
+            updateViewModeButtons();
+            if (viewMode === 'calendar') renderCalendar(); else renderMatchesGrid();
+        }
+
+        function monthMatches() {
+            return matchesList.filter(m => {
+                const d = new Date(m.match_date);
+                return d.getFullYear() === viewYear && d.getMonth() === viewMonth;
+            });
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            const first = new Date(viewYear, viewMonth, 1);
+            const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+            const byDay = {};
+            monthMatches().forEach(m => {
+                const day = new Date(m.match_date).getDate();
+                (byDay[day] = byDay[day] || []).push(m);
+            });
+            const today = new Date();
+            let html = '';
+            for (let i = 0; i < first.getDay(); i++) html += '<div class="min-h-[64px] md:min-h-[104px]"></div>';
+            for (let d = 1; d <= daysInMonth; d++) {
+                const list = byDay[d] || [];
+                const isToday = today.getFullYear() === viewYear && today.getMonth() === viewMonth && today.getDate() === d;
+                const dow = new Date(viewYear, viewMonth, d).getDay();
+                const numColor = dow === 0 ? 'text-rose-400' : dow === 6 ? 'text-sky-400' : 'text-slate-300';
+                const clickAttr = list.length ? `onclick="selectMatch(${list[0].id}, true)"` : '';
+                html += `
+                    <div ${clickAttr} class="min-h-[64px] md:min-h-[104px] bg-slate-950 border ${isToday ? 'border-emerald-400' : 'border-slate-800'} rounded-lg p-1 ${list.length ? 'cursor-pointer hover:border-slate-600' : ''}">
+                        <div class="text-[11px] ${numColor} ${isToday ? 'font-black' : ''}">${d}</div>
+                        <div class="mt-1 space-y-1">
+                            ${list.map(m => {
+                                const s = typeStyle(m.match_type);
+                                const t = new Date(m.match_date);
+                                const sel = currentMatchId === m.id ? 'ring-2 ring-white' : '';
+                                const venue = m.venues ? m.venues.name : '구장 미정';
+                                const L = computeLists(m, allVotesByMatch[m.id] || []);
+                                return `<button type="button" onclick="event.stopPropagation(); selectMatch(${m.id}, true)" title="${esc(m.match_type)} ${pad2(t.getHours())}:${pad2(t.getMinutes())} ${esc(venue)} · 참석 ${L.confirmed.length}/${L.cap}명" class="block w-full text-left">
+                                    <span class="flex items-center gap-1">
+                                        <span class="w-5 h-5 shrink-0 rounded-full ${s.bg} text-white flex items-center justify-center text-[10px] ${sel}"><i class="fa-solid ${s.icon}"></i></span>
+                                        <span class="text-[9px] text-slate-400 hidden sm:inline">${pad2(t.getHours())}:${pad2(t.getMinutes())}</span>
+                                    </span>
+                                    <span class="hidden md:block text-[10px] text-slate-300 truncate mt-0.5">${esc(venue)}</span>
+                                    <span class="hidden md:block text-[10px] font-bold ${s.text}">참석 ${L.confirmed.length}/${L.cap}${L.waiting.length ? ` <span class="text-amber-400 font-normal">(대기 ${L.waiting.length})</span>` : ''}</span>
+                                </button>`;
+                            }).join('')}
+                        </div>
+                    </div>`;
+            }
+            grid.innerHTML = html;
+        }
+
+        function renderMatchesGrid() {
+            const grid = document.getElementById('matches-grid');
+            const list = monthMatches();
+            if (list.length === 0) {
+                grid.innerHTML = `<p class="text-xs text-slate-400 md:col-span-2 text-center py-6">${viewMonth + 1}월에 등록된 운동 일정이 없습니다.</p>`;
+                return;
+            }
+            grid.innerHTML = list.map(m => {
+                const dateStr = fmtMDW(new Date(m.match_date));
+                const venueName = m.venues ? m.venues.name : '구장 미정';
+                const costDisplay = m.cost_type === '무료' ? '무료' : `${m.cost_amount || '유료'}`;
+                const s = typeStyle(m.match_type);
+                const closed = isClosed(m);
+                const L = computeLists(m, allVotesByMatch[m.id] || []);
+                return `
+                    <div onclick="selectMatch(${m.id}, true)" class="bg-slate-950 border-2 border-l-8 ${s.border} ${currentMatchId === m.id ? 'border-emerald-400' : 'border-slate-800 hover:border-slate-700'} p-4 rounded-xl cursor-pointer transition shadow-md space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs px-2 py-0.5 ${s.badge} font-bold rounded"><i class="fa-solid ${s.icon} mr-1"></i>${esc(m.match_type)}</span>
+                            <span class="text-xs text-slate-400">${esc(costDisplay)} ${closed ? '· <span class="text-rose-400">마감</span>' : ''}</span>
+                        </div>
+                        <h3 class="font-bold text-white text-base">${dateStr}</h3>
+                        <p class="text-xs text-slate-300 truncate"><i class="fa-solid fa-location-dot text-red-400 mr-1"></i> ${esc(venueName)}</p>
+                        <div class="flex justify-between items-center pt-2 border-t border-slate-900 text-xs">
+                            <span class="${s.text} font-bold">참석 ${L.confirmed.length} / ${L.cap}명${L.waiting.length ? ` <span class="text-amber-400 font-normal">(대기 ${L.waiting.length})</span>` : ''}</span>
+                            <span class="text-slate-400 underline">투표 참여하기 &rarr;</span>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        function setMatchTitle(m) {
+            if (!titleFromLink || !m) return;
+            const d = new Date(m.match_date);
+            const venue = m.venues ? m.venues.name : '구장 미정';
+            document.title = `${d.getMonth() + 1}월${d.getDate()}일 (${WEEK[d.getDay()]}) ${pad2(d.getHours())}:${pad2(d.getMinutes())} ${venue} 매치`;
+        }
+
+        async function selectMatch(matchId, scroll) {
+            currentMatchId = matchId;
+            renderSchedule();
+
+            const match = matchesList.find(m => m.id === matchId);
+            if (!match) return;
+
+            document.getElementById('match-detail-section').classList.remove('hidden');
+            setMatchTitle(match);
+
+            const s = typeStyle(match.match_type);
+            const badge = document.getElementById('detail-type-badge');
+            badge.className = `text-xs px-2 py-1 ${s.badge} font-bold rounded`;
+            badge.innerHTML = `<i class="fa-solid ${s.icon} mr-1"></i>${esc(match.match_type)}`;
+            document.getElementById('detail-title').innerText = `${fmtMDW(new Date(match.match_date))} 매치`;
+            document.getElementById('detail-deadline').innerText = `투표 마감: ${fmtShort(getDeadline(match))} · 정원 ${capOf(match)}명`;
+            document.getElementById('confirmed-title').innerText = `✅ 참석 명단 (정원 ${capOf(match)}명 / 선착순)`;
+
+            if (match.venues) {
+                document.getElementById('venue-name').innerText = match.venues.name;
+                document.getElementById('venue-address').innerText = `주소: ${match.venues.address || '정보 없음'}`;
+                document.getElementById('venue-parking').innerHTML = `주차: ${linkify(match.venues.parking_info || '정보 없음')}`;
+                document.getElementById('venue-notes').innerHTML = `특이사항: ${linkify(match.venues.notes || '없음')}`;
+            } else {
+                document.getElementById('venue-name').innerText = '구장 미정';
+                document.getElementById('venue-address').innerText = '주소: 정보 없음';
+                document.getElementById('venue-parking').innerText = '주차: 정보 없음';
+                document.getElementById('venue-notes').innerText = '특이사항: 없음';
+            }
+            document.getElementById('venue-cost').innerText = `비용: ${match.cost_type === '무료' ? '무료' : (match.cost_amount || '유료')}`;
+
+            document.getElementById('share-link-input').value = SHARE_BASE ? `${SHARE_BASE}?id=${match.id}` : `${window.location.origin}${window.location.pathname}?id=${match.id}`;
+            document.getElementById('btn-edit-match').classList.toggle('hidden', !isStaff());
+            document.getElementById('btn-copy-roster').classList.toggle('hidden', !isStaff());
+            document.getElementById('btn-copy-promo').classList.toggle('hidden', !isStaff());
+            document.getElementById('btn-goto-team').classList.toggle('hidden', !(currentUser && currentUser.role === 'admin'));
+
+            checkGuestSectionAvailability(match);
+
+            lastAfterCut = null;
+            lastClosed = null;
+            tick();
+            await loadMatchVotes(matchId);
+
+            if (scroll) document.getElementById('match-detail-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function checkGuestSectionAvailability(match) {
+            const guestDetails = document.getElementById('guest-section-details');
+            const noticeText = document.getElementById('guest-notice-text');
+            if (!match || !guestDetails) return;
+
+            const afterCut = isAfterCutoff(match);
+            const staff = isStaff();
+
+            if (afterCut && !staff) {
+                guestDetails.open = false;
+                guestDetails.style.opacity = '0.5';
+                noticeText.innerHTML = '<span class="text-rose-400 font-bold">⚠️ 운동 시작 6시간 전부터는 일반 용병/지인 신청이 마감되었습니다. (운영진은 수동 등록 가능)</span>';
+            } else {
+                guestDetails.style.opacity = '1';
+                noticeText.innerHTML = staff ? '<span class="text-emerald-400">💡 [운영진 모드] 추가 인원은 1차로 대기자 명단에 등록되며, [참석시키기] 버튼으로 참석 명단에 반영할 수 있습니다.</span>' : '※ 모든 항목은 필수 입력입니다.';
+            }
+        }
+
+        function copyShareLink() {
+            const input = document.getElementById('share-link-input');
+            input.select();
+            navigator.clipboard.writeText(input.value).then(() => {
+                alert('매치 공유 링크가 클립보드에 복사되었습니다!');
+            });
+        }
+
+        function tick() {
+            const m = currentMatch();
+            if (!m) return;
+            const label = document.getElementById('countdown-label');
+            const time = document.getElementById('countdown-time');
+            const dl = getDeadline(m);
+            const diff = dl.getTime() - Date.now();
+            const closed = isClosed(m);
+
+            if (m.status === '마감') {
+                label.innerText = '🔒 운영진이 투표를 마감했습니다 (미정 투표자만 운동 6시간 전까지 참석/불참 변경 가능)';
+                time.innerText = '';
+            } else if (diff <= 0) {
+                label.innerText = '🔒 투표가 마감되었습니다 (미정 투표자만 운동 6시간 전까지 참석/불참 변경 가능)';
+                time.innerText = '';
+            } else {
+                const sec = Math.floor(diff / 1000);
+                const d = Math.floor(sec / 86400);
+                const h = Math.floor((sec % 86400) / 3600);
+                const mi = Math.floor((sec % 3600) / 60);
+                const s = sec % 60;
+                label.innerText = '투표 마감까지';
+                time.innerText = `${d > 0 ? d + '일 ' : ''}${pad2(h)}:${pad2(mi)}:${pad2(s)}`;
+                time.className = `font-mono font-bold text-sm ${diff < 3600 * 1000 ? 'text-rose-400' : 'text-amber-300'}`;
+            }
+
+            if (lastClosed !== closed) {
+                lastClosed = closed;
+                document.getElementById('vote-btn-maybe').disabled = closed;
+                document.getElementById('vote-btn-attend').disabled = false;
+                document.getElementById('vote-btn-absent').disabled = false;
+                renderSchedule();
+            }
+            const afterCut = isAfterCutoff(m);
+            if (lastAfterCut !== afterCut) {
+                const first = lastAfterCut === null;
+                lastAfterCut = afterCut;
+                if (!first) {
+                    renderVoteLists();
+                    checkGuestSectionAvailability(m);
+                }
+            }
+        }
+
+        function fillSel(id, items, selected) {
+            document.getElementById(id).innerHTML = items.map(([v, l]) => `<option value="${v}" ${String(v) === String(selected) ? 'selected' : ''}>${l}</option>`).join('');
+        }
+        function selVal(id) { return document.getElementById(id).value; }
+
+        function refreshDays(p, selDay) {
+            const y = +selVal(p + '-y'), m = +selVal(p + '-m');
+            const n = new Date(y, m, 0).getDate();
+            const cur = selDay !== undefined ? selDay : +selVal(p + '-d');
+            const items = [];
+            for (let i = 1; i <= n; i++) items.push([i, `${i}일(${WEEK[new Date(y, m - 1, i).getDay()]})`]);
+            fillSel(p + '-d', items, Math.min(cur || 1, n));
+        }
+        function setDt(p, d) {
+            const cy = new Date().getFullYear();
+            const y0 = Math.min(cy, d.getFullYear()), y1 = Math.max(cy + 1, d.getFullYear());
+            const years = [];
+            for (let y = y0; y <= y1; y++) years.push([y, `${y}년`]);
+            fillSel(p + '-y', years, d.getFullYear());
+            const months = [];
+            for (let i = 1; i <= 12; i++) months.push([i, `${i}월`]);
+            fillSel(p + '-m', months, d.getMonth() + 1);
+            refreshDays(p, d.getDate());
+            const hours = [];
+            for (let i = 0; i < 24; i++) hours.push([i, `${pad2(i)}시`]);
+            fillSel(p + '-h', hours, d.getHours());
+            const mins = [];
+            for (let i = 0; i < 60; i += 5) mins.push([i, `${pad2(i)}분`]);
+            if (d.getMinutes() % 5 !== 0) { mins.push([d.getMinutes(), `${pad2(d.getMinutes())}분`]); mins.sort((a, b) => a[0] - b[0]); }
+            fillSel(p + '-i', mins, d.getMinutes());
+        }
+        function getDt(p) {
+            return new Date(+selVal(p + '-y'), +selVal(p + '-m') - 1, +selVal(p + '-d'), +selVal(p + '-h'), +selVal(p + '-i'));
+        }
+        function onDtChange(p, kind) {
+            if (kind === 'ym') refreshDays(p);
+            if (p === 'md' && !dlTouched) setDt('dl', defaultDeadline(getDt('md')));
+            if (p === 'dl') dlTouched = true;
+        }
+        function resetDeadline() {
+            dlTouched = false;
+            setDt('dl', defaultDeadline(getDt('md')));
+        }
+
+        function updateTypePreview() {
+            const t = selVal('new-match-type');
+            const s = typeStyle(t);
+            const el = document.getElementById('type-preview');
+            el.className = `w-9 h-9 rounded-full flex items-center justify-center text-white ${s.bg}`;
+            el.innerHTML = `<i class="fa-solid ${s.icon}"></i>`;
+        }
+        function onCostTypeChange() {
+            document.getElementById('cost-amount-wrap').classList.toggle('hidden', selVal('new-cost-type') === '무료');
+        }
+
+        async function loadVenues() {
+            const { data } = await supabaseClient.from('venues').select('*');
+            const map = new Map();
+            (data || []).forEach(v => {
+                if (!v.name) return;
+                const key = v.name.trim();
+                if (!map.has(key) || v.id > map.get(key).id) map.set(key, { ...v });
+            });
+            if (map.size === 0) FAVORITE_VENUES.forEach(v => map.set(v.name.trim(), { ...v, id: null }));
+            venuesCache = Array.from(map.values());
+        }
+        function renderVenueSelect(selectedName) {
+            const items = [['', '✏️ 직접 입력 (새 구장)']].concat(venuesCache.map(v => [v.name, v.name]));
+            fillSel('venue-select', items, selectedName || '');
+            updateVenueButtons();
+        }
+        function updateVenueButtons() {
+            document.getElementById('btn-delete-venue').classList.toggle('hidden', !selVal('venue-select'));
+        }
+        function onVenueSelect() {
+            const name = selVal('venue-select');
+            updateVenueButtons();
+            const v = venuesCache.find(x => x.name === name);
+            if (!v) {
+                ['new-venue-name', 'new-venue-address', 'new-venue-parking', 'new-venue-notes'].forEach(id => document.getElementById(id).value = '');
+                document.getElementById('new-venue-name').focus();
+                return;
+            }
+            document.getElementById('new-venue-name').value = v.name || '';
+            document.getElementById('new-venue-address').value = v.address || '';
+            document.getElementById('new-venue-parking').value = v.parking_info || '';
+            document.getElementById('new-venue-notes').value = v.notes || '';
+        }
+
+        function readVenueFields() {
+            return {
+                name: document.getElementById('new-venue-name').value.trim(),
+                address: document.getElementById('new-venue-address').value.trim(),
+                parking_info: document.getElementById('new-venue-parking').value.trim(),
+                notes: document.getElementById('new-venue-notes').value.trim()
+            };
+        }
+
+        async function saveVenueOnly() {
+            if (!isStaff()) { alert('⚠️ 운영진만 가능합니다.'); return; }
+            const payload = readVenueFields();
+            if (!payload.name) { alert('구장 이름을 입력해주세요.'); return; }
+            const oldName = selVal('venue-select');
+            const cached = venuesCache.find(v => v.name === oldName);
+
+            if (oldName && cached && cached.id) {
+                const { data, error } = await supabaseClient.from('venues').update(payload).eq('name', oldName).select();
+                if (error) { alert('구장 수정 실패: ' + error.message); return; }
+                if (!data || data.length === 0) { alert('구장을 수정할 수 없습니다.'); return; }
+            } else {
+                const { error } = await supabaseClient.from('venues').insert([payload]);
+                if (error) { alert('구장 저장 실패: ' + error.message); return; }
+            }
+            await loadVenues();
+            renderVenueSelect(payload.name);
+            await fetchMatches();
+            alert('구장 정보가 저장되었습니다.');
+        }
+
+        async function deleteVenue() {
+            if (!isStaff()) { alert('⚠️ 운영진만 가능합니다.'); return; }
+            const name = selVal('venue-select');
+            if (!name) return;
+            if (!confirm(`'${name}' 구장을 자주 쓰는 구장에서 삭제할까요?`)) return;
+
+            const { data: rows, error } = await supabaseClient.from('venues').select('id').eq('name', name);
+            if (error) { alert('구장 조회 실패: ' + error.message); return; }
+            if (!rows || rows.length === 0) { alert('저장된 구장이 아니라 삭제할 것이 없습니다.'); return; }
+
+            const used = new Set(matchesList.map(m => m.venue_id));
+            const freeIds = rows.map(r => r.id).filter(id => !used.has(id));
+            if (freeIds.length) {
+                const { error: dErr } = await supabaseClient.from('venues').delete().in('id', freeIds);
+                if (dErr) { alert('구장 삭제 실패: ' + dErr.message); return; }
+            }
+            const remaining = rows.length - freeIds.length;
+            ['new-venue-name', 'new-venue-address', 'new-venue-parking', 'new-venue-notes'].forEach(id => document.getElementById(id).value = '');
+            await loadVenues();
+            renderVenueSelect('');
+            if (remaining > 0) {
+                alert(`구장을 삭제했지만, 이미 등록된 일정 ${remaining}건에서 쓰는 구장 기록은 남아 있습니다.`);
+            } else {
+                alert('구장이 삭제되었습니다.');
+            }
+        }
+
+        async function openMatchModal(matchId) {
+            if (!isStaff()) { alert('⚠️ 일정 등록·수정은 운영진만 가능합니다.'); return; }
+            editingMatchId = matchId || null;
+            await loadVenues();
+
+            if (editingMatchId) {
+                const m = matchesList.find(x => x.id === editingMatchId);
+                if (!m) return;
+                document.getElementById('match-modal-title').innerText = '✏️ 운동 일정 수정';
+                document.getElementById('btn-save-match').innerText = '수정 저장';
+                document.getElementById('btn-delete-match').classList.remove('hidden');
+                document.getElementById('status-wrap').classList.remove('hidden');
+                document.getElementById('new-match-type').value = m.match_type;
+                setDt('md', new Date(m.match_date));
+                dlTouched = true;
+                setDt('dl', getDeadline(m));
+                document.getElementById('new-cost-type').value = m.cost_type === '유료' ? '유료' : '무료';
+                document.getElementById('new-cost-amount').value = m.cost_amount || '10,000원';
+                document.getElementById('new-capacity').value = capOf(m);
+                document.getElementById('edit-status').value = m.status === '마감' ? '마감' : '모집중';
+                const v = m.venues || {};
+                renderVenueSelect(v.name);
+                document.getElementById('new-venue-name').value = v.name || '';
+                document.getElementById('new-venue-address').value = v.address || '';
+                document.getElementById('new-venue-parking').value = v.parking_info || '';
+                document.getElementById('new-venue-notes').value = v.notes || '';
+            } else {
+                document.getElementById('match-modal-title').innerText = '📅 새 운동 일정 등록';
+                document.getElementById('btn-save-match').innerText = '등록 완료';
+                document.getElementById('btn-delete-match').classList.add('hidden');
+                document.getElementById('status-wrap').classList.add('hidden');
+                document.getElementById('new-match-type').value = '정기운동';
+                const d = new Date();
+                d.setDate(d.getDate() + 1);
+                d.setHours(20, 0, 0, 0);
+                setDt('md', d);
+                dlTouched = false;
+                setDt('dl', defaultDeadline(d));
+                document.getElementById('new-cost-type').value = '무료';
+                document.getElementById('new-cost-amount').value = '10,000원';
+                document.getElementById('new-capacity').value = 18;
+                const first = venuesCache[0];
+                renderVenueSelect(first ? first.name : '');
+                if (first) onVenueSelect();
+            }
+            updateTypePreview();
+            onCostTypeChange();
+            document.getElementById('match-modal').classList.remove('hidden');
+        }
+        function closeMatchModal() { document.getElementById('match-modal').classList.add('hidden'); }
+
+        async function saveMatch() {
+            if (!isStaff()) { alert('⚠️ 일정 등록·수정은 운영진만 가능합니다.'); return; }
+
+            const matchType = selVal('new-match-type');
+            const costType = selVal('new-cost-type');
+            const costAmount = costType === '무료' ? '' : document.getElementById('new-cost-amount').value.trim();
+            const capacity = parseInt(selVal('new-capacity'), 10);
+            if (!capacity || capacity < 1) { alert('정원을 숫자로 입력해주세요.'); return; }
+            const matchDate = getDt('md');
+            const deadline = getDt('dl');
+            const venueName = document.getElementById('new-venue-name').value.trim();
+            const venueAddress = document.getElementById('new-venue-address').value.trim();
+            const parkingInfo = document.getElementById('new-venue-parking').value.trim();
+            const venueNotes = document.getElementById('new-venue-notes').value.trim();
+
+            if (!venueName) { alert('구장 이름을 입력해주세요.'); return; }
+            if (deadline.getTime() > matchDate.getTime()) {
+                if (!confirm('투표 마감 시간이 운동 시작 이후입니다. 그대로 저장할까요?')) return;
+            }
+
+            const venuePayload = { name: venueName, address: venueAddress, parking_info: parkingInfo, notes: venueNotes };
+            const existing = venuesCache.find(v => v.name.trim() === venueName && v.id);
+            let venueId;
+            if (existing) {
+                const { error } = await supabaseClient.from('venues').update(venuePayload).eq('name', venueName);
+                if (error) { alert('구장 정보 수정 실패: ' + error.message); return; }
+                venueId = existing.id;
+            } else {
+                const { data, error } = await supabaseClient.from('venues').insert([venuePayload]).select();
+                if (error || !data || !data[0]) { alert('구장 등록 실패'); return; }
+                venueId = data[0].id;
+            }
+
+            const payload = {
+                match_date: matchDate.toISOString(),
+                match_type: matchType,
+                cost_type: costType,
+                cost_amount: costAmount,
+                venue_id: venueId,
+                capacity: capacity,
+                deadline: deadline.toISOString()
+            };
+
+            if (editingMatchId) {
+                payload.status = selVal('edit-status');
+                const { error } = await supabaseClient.from('matches').update(payload).eq('id', editingMatchId);
+                if (error) { alert('일정 수정 실패: ' + error.message); return; }
+                alert('일정이 수정되었습니다.');
+            } else {
+                payload.status = '모집중';
+                const { data, error } = await supabaseClient.from('matches').insert([payload]).select();
+                if (error) { alert('일정 등록 실패: ' + error.message); return; }
+                if (data && data[0]) currentMatchId = data[0].id;
+                alert('새로운 운동 일정이 등록되었습니다!');
+            }
+            closeMatchModal();
+            await fetchMatches();
+        }
+
+        async function deleteMatch() {
+            if (!isStaff() || !editingMatchId) return;
+            if (!confirm('이 일정과 모든 투표 기록이 삭제됩니다. 정말 삭제할까요?')) return;
+            const { error: vErr } = await supabaseClient.from('match_votes').delete().eq('match_id', editingMatchId);
+            if (vErr) { alert('투표 기록 삭제 실패: ' + vErr.message); return; }
+            const { error } = await supabaseClient.from('matches').delete().eq('id', editingMatchId);
+            if (error) { alert('일정 삭제 실패: ' + error.message); return; }
+            alert('일정이 삭제되었습니다.');
+            if (currentMatchId === editingMatchId) currentMatchId = null;
+            closeMatchModal();
+            await fetchMatches();
+        }
+
+        let voting = false;
+        async function castVote(status) {
+            const m = currentMatch();
+            if (!m) return;
+            if (voting) return;
+
+            if (!currentUser) {
+                alert('참석 / 미정 / 불참 버튼은 정회원 전용입니다.\n\n■ 정회원이시라면\n   상단의 [🔑 로그인] 후 투표해 주세요.\n\n■ 지인 / 용병 / 가입전 참가자라면\n   아래 [지인 / 용병 / 가입전 참가 신청]에서 신청해 주세요.');
+                return;
+            }
+            const voterName = currentUser.name;
+            const matchId = currentMatchId;
+
+            let assignedGuestType = '정회원';
+            if (currentUser) {
+                if (currentUser.role === 'guest') assignedGuestType = '용병';
+                else if (currentUser.role === 'acquaintance') assignedGuestType = '지인';
+            }
+
+            const insertVote = () => supabaseClient.from('match_votes').insert([{
+                match_id: matchId,
+                guest_name: voterName,
+                guest_type: assignedGuestType,
+                status: status,
+                voted_at: new Date().toISOString()
+            }]);
+
+            voting = true;
+            try {
+                const { data: rows, error: selErr } = await supabaseClient.from('match_votes').select('*').eq('match_id', matchId).eq('guest_name', voterName).order('voted_at', { ascending: true });
+                if (selErr) { alert('투표 조회 실패: ' + selErr.message); return; }
+
+                const mine = (rows || []).filter(r => !r.guest_phone && !r.registered_by);
+
+                if (isClosed(m)) {
+                    const cur = mine.length ? mine[mine.length - 1].status : null;
+                    if (cur !== '미정' || status === '미정') {
+                        alert('투표가 마감되었습니다.\n마감 후에는 [미정]으로 투표한 인원만 참석/불참으로 변경할 수 있습니다.');
+                        return;
+                    }
+                    if (isAfterCutoff(m)) {
+                        alert('운동 시작 6시간 이내에는 변경할 수 없습니다.\n(미정은 불참 (미정)으로 처리됩니다)');
+                        return;
+                    }
+                }
+
+                if (mine.length > 0) {
+                    const latest = mine[mine.length - 1];
+                    if (mine.length === 1 && latest.status === status) { alert(`이미 [${status}]로 투표하셨습니다.`); return; }
+
+                    const keep = mine[0];
+                    const extraIds = mine.slice(1).map(r => r.id);
+                    if (extraIds.length) {
+                        await supabaseClient.from('match_votes').delete().in('id', extraIds);
+                    }
+                    const votedAt = (latest.status === status) ? latest.voted_at : new Date().toISOString();
+                    const { data: upd, error: updErr } = await supabaseClient.from('match_votes')
+                        .update({ status: status, guest_type: assignedGuestType, voted_at: votedAt })
+                        .eq('id', keep.id).select();
+                    if (updErr || !upd || upd.length === 0) {
+                        await supabaseClient.from('match_votes').delete().eq('id', keep.id);
+                        await insertVote();
+                    }
+                } else {
+                    await insertVote();
+                }
+
+                alert(`투표가 반영되었습니다: [${status}]`);
+                await loadMatchVotes(matchId);
+            } finally {
+                voting = false;
+            }
+        }
+
+        async function applyGuest() {
+            const m = currentMatch();
+            if (!m) return;
+            const staff = isStaff();
+
+            if (isAfterCutoff(m) && !staff) {
+                alert('⚠️ 운동 시작 6시간 전부터는 일반 용병/지인 신청이 마감되었습니다.');
+                return;
+            }
+
+            const type = document.getElementById('guest-type').value;
+            const name = document.getElementById('guest-name').value.trim();
+            const birth = document.getElementById('guest-birth').value.trim();
+            const phone = document.getElementById('guest-phone').value.trim();
+            const skill = document.getElementById('guest-skill').value;
+
+            if (!staff) {
+                if (!name) { alert('성명을 입력해주세요.'); document.getElementById('guest-name').focus(); return; }
+                if (!/^(\d{2}|(19|20)\d{2})$/.test(birth)) { alert('출생년도를 입력해주세요. (예: 98 또는 1998)'); document.getElementById('guest-birth').focus(); return; }
+                if (!/^\d{10,11}$/.test(phone.replace(/[^0-9]/g, ''))) { alert('연락처를 정확히 입력해주세요. (예: 010-1234-5678)'); document.getElementById('guest-phone').focus(); return; }
+                if (!skill) { alert('실력을 선택해주세요.'); document.getElementById('guest-skill').focus(); return; }
+            } else {
+                if (!name) { alert('성명을 입력해주세요.'); document.getElementById('guest-name').focus(); return; }
+            }
+
+            // 운영진이 개별 추가한 인원은 1차적으로 대기자 명단에 먼저 등록되도록 [대기이동] 태그 부여
+            const registrar = currentUser ? currentUser.name : '비회원';
+            const registeredByVal = staff
+                ? (registrar && registrar !== '비회원' ? `${registrar} [대기이동]` : '[대기이동]')
+                : registrar;
+
+            const row = {
+                match_id: currentMatchId,
+                guest_type: type,
+                guest_name: name,
+                guest_birth: birth || '미입력',
+                guest_phone: phone || '미입력',
+                guest_skill: skill || '중',
+                status: '참석',
+                voted_at: new Date().toISOString(),
+                registered_by: registeredByVal
+            };
+
+            const { error } = await supabaseClient.from('match_votes').insert([row]);
+            if (error) { alert('신청 실패: ' + error.message); return; }
+
+            alert(
+                staff
+                    ? `[${type}] ${name} 님이 대기자 명단에 1차 등록되었습니다. [참석시키기] 버튼으로 참석 명단에 옮겨주세요.`
+                    : `[${type}] ${name} 님의 신청이 접수되었습니다!`
+            );
+            document.getElementById('guest-name').value = '';
+            document.getElementById('guest-birth').value = '';
+            document.getElementById('guest-phone').value = '';
+            document.getElementById('guest-skill').value = '';
+            loadMatchVotes(currentMatchId);
+        }
+
+        async function loadMatchVotes(matchId) {
+            const { data } = await supabaseClient.from('match_votes').select('*').eq('match_id', matchId).order('voted_at', { ascending: true });
+            currentMatchVotes = data || [];
+            allVotesByMatch[matchId] = currentMatchVotes;
+            renderVoteLists();
+            renderSchedule();
+        }
+
+        async function deleteVoteRecord(voteId) {
+            if (!isStaff()) {
+                alert('⚠️ 운영진만 삭제할 수 있습니다.');
+                return;
+            }
+            if (!confirm('해당 투표 및 참가 신청 내역을 정말 삭제하시겠습니까?')) return;
+
+            const { error } = await supabaseClient.from('match_votes').delete().eq('id', voteId);
+            if (error) {
+                alert('삭제 실패: ' + error.message);
+                return;
+            }
+
+            alert('삭제되었습니다.');
+            if (currentMatchId) {
+                await loadMatchVotes(currentMatchId);
+            }
+        }
+
+        function hasConfirmedTag(v) {
+            return String(v.registered_by || '').includes('[참석확정]');
+        }
+
+        function hasWaitingTag(v) {
+            const by = String(v.registered_by || '');
+            return by.includes('[대기수정]') || by.includes('[대기이동]');
+        }
+
+        function cleanRegisteredBy(raw) {
+            return String(raw || '')
+                .replace(/\s*\[대기수정\]/g, '')
+                .replace(/\s*\[대기이동\]/g, '')
+                .replace(/\s*\[참석확정\]/g, '')
+                .trim();
+        }
+
+        async function forceToggleVote(voteId, targetActionOrCurrentStatus, isCurrentlyWaitingOrTargetWait) {
+            if (!isStaff()) {
+                alert('⚠️ 운영진만 명단을 이동할 수 있습니다.');
+                return;
+            }
+
+            try {
+                const target = currentMatchVotes.find(item => String(item.id) === String(voteId));
+                const baseBy = cleanRegisteredBy(target && target.registered_by);
+
+                // targetActionOrCurrentStatus가 'to_confirmed' 또는 'to_waiting'인 경우(불참 명단 등에서 명시적 이동 요청)를 처리하고,
+                // 기존 boolean 호출(isCurrentlyWaiting)과도 호환되도록 처리합니다.
+                let moveToConfirmed = false;
+                if (targetActionOrCurrentStatus === 'to_confirmed') {
+                    moveToConfirmed = true;
+                } else if (targetActionOrCurrentStatus === 'to_waiting') {
+                    moveToConfirmed = false;
+                } else {
+                    moveToConfirmed = !!isCurrentlyWaitingOrTargetWait;
+                }
+
+                let updatePayload = {};
+                if (moveToConfirmed) {
+                    // 구분(guest_type)은 유지하고, 정원/마감과 무관하게 참석 명단에 올라가도록 [참석확정] 태그 부여
+                    const nextBy = baseBy ? `${baseBy} [참석확정]` : '[참석확정]';
+                    updatePayload = {
+                        status: '참석',
+                        registered_by: nextBy
+                    };
+                } else {
+                    // 구분(guest_type)은 유지하고, 대기자 명단으로 내려보내기 위해 [대기이동] 태그 부여
+                    const nextBy = baseBy ? `${baseBy} [대기이동]` : '[대기이동]';
+                    updatePayload = {
+                        status: '참석',
+                        registered_by: nextBy
+                    };
+                }
+
+                const { error } = await supabaseClient.from('match_votes').update(updatePayload).eq('id', voteId);
+                if (error) throw error;
+
+                alert('명단이 성공적으로 이동되었습니다.');
+                await loadMatchVotes(currentMatchId);
+            } catch (err) {
+                console.error(err);
+                alert('명단 이동 중 오류가 발생했습니다.');
+            }
+        }
+
+        let editingWaitingSnapshot = null;
+
+        function openWaitingEditModal(voteId) {
+            if (!isStaff()) {
+                alert('⚠️ 운영진만 대기자 정보를 수정할 수 있습니다.');
+                return;
+            }
+            const target = currentMatchVotes.find(item => String(item.id) === String(voteId));
+            if (!target) {
+                alert('수정할 대기자 정보를 찾지 못했습니다.');
+                return;
+            }
+
+            editingWaitingSnapshot = {
+                guest_name: target.guest_name || '',
+                guest_type: target.guest_type === '대기자' ? '용병' : (target.guest_type || '용병'),
+                guest_birth: target.guest_birth || '미입력',
+                guest_phone: target.guest_phone || '미입력',
+                guest_skill: ['상', '중', '하'].includes(target.guest_skill) ? target.guest_skill : '중'
+            };
+
+            document.getElementById('edit-wait-id').value = target.id;
+            document.getElementById('edit-wait-name').value = editingWaitingSnapshot.guest_name;
+            document.getElementById('edit-wait-type').value = editingWaitingSnapshot.guest_type;
+            document.getElementById('edit-wait-birth').value = editingWaitingSnapshot.guest_birth === '미입력' ? '' : editingWaitingSnapshot.guest_birth;
+            document.getElementById('edit-wait-phone').value = editingWaitingSnapshot.guest_phone === '미입력' ? '' : editingWaitingSnapshot.guest_phone;
+            document.getElementById('edit-wait-skill').value = editingWaitingSnapshot.guest_skill;
+
+            document.getElementById('waiting-edit-modal').classList.remove('hidden');
+        }
+
+        function closeWaitingEditModal() {
+            editingWaitingSnapshot = null;
+            document.getElementById('waiting-edit-modal').classList.add('hidden');
+        }
+
+        async function saveWaitingEdit(e) {
+            e.preventDefault();
+            if (!isStaff()) {
+                alert('⚠️ 운영진만 대기자 정보를 수정할 수 있습니다.');
+                return;
+            }
+
+            const voteId = document.getElementById('edit-wait-id').value;
+            const guestName = document.getElementById('edit-wait-name').value.trim();
+            const guestType = document.getElementById('edit-wait-type').value;
+            const rawBirth = document.getElementById('edit-wait-birth').value.trim();
+            const rawPhone = document.getElementById('edit-wait-phone').value.trim();
+            const guestSkill = document.getElementById('edit-wait-skill').value;
+
+            if (!guestName) {
+                alert('성명을 입력해주세요.');
+                return;
+            }
+
+            const prev = editingWaitingSnapshot || {};
+            const guestBirth = rawBirth ? rawBirth : (prev.guest_birth || '미입력');
+            const guestPhone = rawPhone ? rawPhone : (prev.guest_phone || '미입력');
+
+            const patch = {};
+            if (guestName !== prev.guest_name) patch.guest_name = guestName;
+            if (guestType !== prev.guest_type) patch.guest_type = guestType;
+            if (guestBirth !== prev.guest_birth) patch.guest_birth = guestBirth;
+            if (guestPhone !== prev.guest_phone) patch.guest_phone = guestPhone;
+            if (guestSkill !== prev.guest_skill) patch.guest_skill = guestSkill;
+
+            const target = currentMatchVotes.find(item => String(item.id) === String(voteId));
+            const baseBy = cleanRegisteredBy(target && target.registered_by);
+            const nextRegisteredBy = baseBy ? `${baseBy} [대기수정]` : '[대기수정]';
+            if (!target || target.registered_by !== nextRegisteredBy) {
+                patch.registered_by = nextRegisteredBy;
+            }
+
+            if (Object.keys(patch).length === 0) {
+                closeWaitingEditModal();
+                return;
+            }
+
+            const { error } = await supabaseClient
+                .from('match_votes')
+                .update(patch)
+                .eq('id', voteId);
+
+            if (error) {
+                alert('대기자 정보 수정 실패: ' + error.message);
+                return;
+            }
+
+            closeWaitingEditModal();
+            alert('대기자 정보가 수정되었습니다.');
+            if (currentMatchId) {
+                await loadMatchVotes(currentMatchId);
+            }
+        }
+
+        function voteLi(v, opts) {
+            const staff = isStaff();
+            const isRegularMember = currentUser && currentUser.role !== 'guest' && currentUser.role !== 'acquaintance';
+            const showFullName = staff || isRegularMember;
+
+            const name = esc(showFullName ? v.guest_name : maskName(v.guest_name));
+            const nameHtml = (staff && opts.isWaitingList)
+                ? `<button type="button" onclick="openWaitingEditModal('${esc(v.id)}')" class="underline decoration-amber-400/70 underline-offset-2 hover:text-amber-300 font-semibold text-left" title="클릭하여 대기자 정보 수정">${name}</button>`
+                : name;
+
+            const isGuestish = ['용병', '지인', '가입전 참가', '대기자', '정회원', '당근', '플랩', '오픈톡'].includes(v.guest_type);
+            const birth = getBirthOf(v);
+
+            const parts = [];
+            if (birth && birth !== '미입력') parts.push(`${birth}년생`);
+
+            const rawPhone = String(v.guest_phone || '').trim();
+            const digitsPhone = rawPhone.replace(/[^0-9+]/g, '');
+            if (isGuestish && rawPhone && rawPhone !== '미입력') {
+                if (staff && digitsPhone.length >= 7) {
+                    parts.push(`<a href="tel:${esc(digitsPhone)}" onclick="event.stopPropagation()" class="underline decoration-amber-400/70 underline-offset-2 hover:text-amber-200">${esc(rawPhone)}</a>`);
+                } else {
+                    parts.push(esc(staff ? rawPhone : getMaskedPhone(rawPhone)));
+                }
+            }
+            if (isGuestish && v.guest_skill) parts.push(`실력:${esc(v.guest_skill || '중')}`);
+            const detail = parts.length ? ` <span class="text-[10px] text-amber-400">(${parts.join(', ')})</span>` : '';
+
+            const tentative = opts.tentative ? ` <span class="text-[10px] font-bold text-amber-400">${opts.declined ? '(불참·미정)' : '(미정)'}</span>` : '';
+            const cleanBy = cleanRegisteredBy(v.registered_by);
+            const by = (cleanBy && cleanBy !== '비회원') ? ` <span class="text-[10px] text-violet-400">· 등록: ${esc(showFullName ? cleanBy : maskName(cleanBy))}</span>` : '';
+            const time = v.voted_at ? ` <span class="text-[10px] text-sky-400">${fmtVoteTime(v.voted_at)}</span>` : '';
+
+            let adminButtons = '';
+            if (staff) {
+                if (opts.isWaitingList) {
+                    adminButtons += ` <button onclick="forceToggleVote('${v.id}', 'to_confirmed', true)" class="ml-1 px-1.5 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold transition shrink-0" title="참석 명단으로 이동">참석시키기</button>`;
+                } else if (opts.isConfirmedList) {
+                    adminButtons += ` <button onclick="forceToggleVote('${v.id}', 'to_waiting', false)" class="ml-1 px-1.5 py-0.5 bg-amber-600 hover:bg-amber-500 text-white rounded text-[10px] font-bold transition shrink-0" title="대기자 명단으로 이동">대기자로</button>`;
+                } else if (opts.isDeclinedList) {
+                    adminButtons += ` <button onclick="forceToggleVote('${v.id}', 'to_confirmed', true)" class="ml-1 px-1.5 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold transition shrink-0" title="참석 명단으로 이동">참석시키기</button>`;
+                    adminButtons += ` <button onclick="forceToggleVote('${v.id}', 'to_waiting', false)" class="ml-1 px-1.5 py-0.5 bg-amber-600 hover:bg-amber-500 text-white rounded text-[10px] font-bold transition shrink-0" title="대기자 명단으로 이동">대기자로</button>`;
+                }
+                adminButtons += ` <button onclick="deleteVoteRecord('${v.id}')" class="ml-1 px-1.5 py-0.5 bg-rose-600/80 hover:bg-rose-600 text-white rounded text-[10px] font-bold transition shrink-0" title="삭제">✕</button>`;
+            }
+
+            return `<li class="flex justify-between items-center py-0.5"><span>${opts.prefix} ${nameHtml} (${esc(v.guest_type || '정회원')})${tentative}${detail}${by}${time}</span><div class="flex items-center shrink-0">${adminButtons}</div></li>`;
+        }
+
+        let lastLists = null;
+        let teamSource = { people: [], label: '' };
+
+        function dedupeVotes(votes) {
+            const map = new Map();
+            (votes || []).forEach(v => {
+                const key = `${v.guest_name}|${v.guest_phone || ''}|${cleanRegisteredBy(v.registered_by)}`;
+                const prev = map.get(key);
+                if (!prev || new Date(v.voted_at) >= new Date(prev.voted_at)) map.set(key, v);
+            });
+            return Array.from(map.values()).sort((a, b) => new Date(a.voted_at) - new Date(b.voted_at));
+        }
+
+        function isWaitingPoolVote(v) {
+            if (hasConfirmedTag(v)) return false;
+            return ['용병', '지인', '대기자'].includes(v.guest_type) || hasWaitingTag(v);
+        }
+
+        function computeLists(m, votes) {
+            const cap = capOf(m);
+            const afterCut = isAfterCutoff(m);
+
+            const manualConfirmed = [];
+            const regularPool = [];
+            const guestPool = [];
+            const declined = [];
+
+            dedupeVotes(votes).forEach(v => {
+                if (hasConfirmedTag(v)) {
+                    manualConfirmed.push({ v, tentative: false });
+                    return;
+                }
+
+                if (v.status === '참석') {
+                    (isWaitingPoolVote(v) ? guestPool : regularPool).push({ v, tentative: false });
+                } else if (v.status === '미정') {
+                    if (afterCut) declined.push({ v, tentative: true });
+                    else (isWaitingPoolVote(v) ? guestPool : regularPool).push({ v, tentative: true });
+                } else if (v.status === '불참') {
+                    declined.push({ v, tentative: false });
+                }
+            });
+
+            const normal = regularPool.filter(e => e.v.guest_type !== '가입전 참가');
+            const preJoin = regularPool.filter(e => e.v.guest_type === '가입전 참가');
+            const ordered = [...normal, ...preJoin];
+
+            const confirmed = [...ordered.slice(0, cap), ...manualConfirmed];
+            const waiting = [...ordered.slice(cap), ...guestPool]
+                .map((e, i) => ({ e, i }))
+                .sort((a, b) => (new Date(a.e.v.voted_at) - new Date(b.e.v.voted_at)) || (a.i - b.i))
+                .map(x => x.e);
+
+            return { cap, confirmed, waiting, declined };
+        }
+
+        // 참석 예정자(미정 포함) 평균 나이(전체 공개)·등급·점수(주관리자 전용)
+        function renderConfirmedAvg(L) {
+            const el = document.getElementById('confirmed-avg');
+            if (!el) return;
+            const list = L.confirmed.map(e => e.v);
+            if (list.length === 0) { el.classList.add('hidden'); return; }
+
+            const thisYY = new Date().getFullYear() % 100;
+            const thisYear = new Date().getFullYear();
+            const ages = list.map(getBirthOf).filter(b => b).map(b => {
+                const yy = parseInt(b, 10);
+                return thisYear - (yy <= thisYY ? 2000 + yy : 1900 + yy);
+            });
+            const avgScore = list.reduce((sum, v) => sum + scoreOf(v), 0) / list.length;
+            const nearest = Object.keys(scoreMap).reduce((best, g) => Math.abs(scoreMap[g] - avgScore) < Math.abs(scoreMap[best] - avgScore) ? g : best);
+
+            const parts = [];
+            if (ages.length) {
+                const avgAge = ages.reduce((a, b) => a + b, 0) / ages.length;
+                parts.push(`평균 나이 ${avgAge.toFixed(1)}세${ages.length < list.length ? ` (${ages.length}명 기준)` : ''}`);
+            }
+            if (TF.isAdmin(currentUser)) {
+                parts.push(`평균 등급 ${nearest}`);
+                parts.push(`평균 점수 ${avgScore.toFixed(2)}점`);
+            }
+            if (parts.length === 0) { el.classList.add('hidden'); return; }
+            el.innerText = '📊 ' + parts.join(' · ');
+            el.classList.remove('hidden');
+        }
+
+        function renderVoteLists() {
+            const m = currentMatch();
+            if (!m) return;
+            const L = computeLists(m, currentMatchVotes);
+            lastLists = L;
+
+            document.getElementById('confirmed-title').innerText = `✅ 참석 명단 (${L.confirmed.length} / 정원 ${L.cap}명)`;
+            document.getElementById('declined-title').innerText = `❌ 불참 명단 (${L.declined.length}명)`;
+            renderConfirmedAvg(L);
+
+            document.getElementById('confirmed-list').innerHTML = L.confirmed.length > 0
+                ? L.confirmed.map((e, i) => voteLi(e.v, { prefix: `${i + 1}.`, tentative: e.tentative, isConfirmedList: true })).join('')
+                : '<li>확정된 인원이 없습니다.</li>';
+
+            document.getElementById('waiting-list').innerHTML = L.waiting.length > 0
+                ? L.waiting.map((e, i) => voteLi(e.v, { prefix: `[대기 ${i + 1}번]`, tentative: e.tentative, isWaitingList: true })).join('')
+                : '<li>대기 인원이 없습니다.</li>';
+
+            document.getElementById('declined-list').innerHTML = L.declined.length > 0
+                ? L.declined.map(e => voteLi(e.v, { prefix: '-', tentative: e.tentative, declined: true, isDeclinedList: true })).join('')
+                : '<li>불참 투표가 없습니다.</li>';
+        }
+
+        function buildRosterText(m, L) {
+            const line = (e, i) => {
+                const v = e.v;
+                const b = getBirthOf(v);
+            const guestType = v.guest_type || '정회원';
+const isGuestish = guestType !== '정회원' && (['용병', '지인', '가입전 참가', '대기자', '당근', '플랩', '오픈톡'].includes(guestType) || !!v.guest_phone || !!v.registered_by);
+const parts = [`${i + 1}. ${v.guest_name}${b && b !== '미입력' ? `(${b})` : ''}`];
+if (guestType !== '정회원') parts.push(guestType);
+if (isGuestish) parts.push(`실력:${v.guest_skill || '중'}`);
+                if (e.tentative) parts.push('미정');
+                if (v.guest_phone && v.guest_phone !== '미입력') parts.push(`연락처:${v.guest_phone}`);
+                const cleanBy = cleanRegisteredBy(v.registered_by);
+                if (cleanBy && cleanBy !== '비회원') parts.push(`등록:${cleanBy}`);
+                return parts.join(' / ');
+            };
+            return `📅 ${fmtShort(new Date(m.match_date))} ${m.match_type} (정원 ${L.cap}명)\n\n` +
+                `✅ 참석 (${L.confirmed.length}명)\n` + (L.confirmed.length ? L.confirmed.map(line).join('\n') : '없음') + '\n\n' +
+                `⏳ 대기 (${L.waiting.length}명)\n` + (L.waiting.length ? L.waiting.map(line).join('\n') : '없음');
+        }
+        function copyRosterText() {
+            const m = currentMatch();
+            if (!m || !lastLists) return;
+            navigator.clipboard.writeText(buildRosterText(m, lastLists)).then(() => {
+                alert('참석/대기 명단 텍스트가 복사되었습니다.');
+            });
+        }
+        function copyPromoText() {
+            if (!isStaff()) {
+                alert('⚠️ 운영진만 사용할 수 있습니다.');
+                return;
+            }
+            const m = currentMatch();
+            if (!m) return;
+
+            const dateStr = fmtMDW(new Date(m.match_date));
+            const venueName = m.venues ? m.venues.name : '구장 미정';
+            const venueAddress = m.venues && m.venues.address ? m.venues.address : '정보 없음';
+            const venueParking = m.venues && m.venues.parking_info ? m.venues.parking_info : '정보 없음';
+            const costStr = m.cost_type === '무료' ? '무료' : (m.cost_amount || '유료');
+            const shareUrl = SHARE_BASE ? `${SHARE_BASE}?id=${m.id}` : `${window.location.origin}${window.location.pathname}?id=${m.id}`;
+
+            const promoText = `<용병모집>
+일시 : ${dateStr}
+장소 : ${venueName}
+주소 : ${venueAddress}
+주차 : ${venueParking}
+팀명 : TenFC
+방식 : 6:6:6 3파전
+평균 실력 : 플랩기준 아마 3~4 (평균 30대 중후반)
+비용 : ${costStr}
+양면조끼 (그린/레드)  있으면 지참해주시고, 상의는 가급적 검정계열 착용해 주세요.
+주차장 넓고, 잔디&조명 최근에 교체하여 쾌적합니다.
+
+운동 참여 간편 신청 URL:
+${shareUrl}
+
+위의 URL로 신청 후 1:1톡으로 신청자명 톡 한번 부탁드립니다.`;
+
+            navigator.clipboard.writeText(promoText).then(() => {
+                alert('오픈톡방 홍보용 맞춤글이 클립보드에 복사되었습니다!');
+            });
+        }
+        function goTeamBuild() {
+            if (!currentUser || currentUser.role !== 'admin') { alert('⚠️ 팀짜기는 주관리자만 가능합니다.'); return; }
+            switchTab('admin');
+            document.getElementById('team-match-select').value = String(currentMatchId);
+            runTeamFromMatch();
+        }
+
+        function scoreOf(v) {
+            const isGuestish = ['용병', '지인', '가입전 참가', '당근', '플랩', '오픈톡'].includes(v.guest_type);
+            if (isGuestish) return guestSkillScore[v.guest_skill || '중'] ?? scoreMap['C'];
+            const mem = memberOfVote(v);
+            const rating = mem ? (mem.rating || 'C') : 'C';
+            return scoreMap[rating] !== undefined ? scoreMap[rating] : 6.5;
+        }
+        function ratingOf(v) {
+            const isGuestish = ['용병', '지인', '가입전 참가', '당근', '플랩', '오픈톡'].includes(v.guest_type);
+            if (isGuestish) { const sk = v.guest_skill || '중'; return `${sk}(${skillGrade[sk] || 'C'})`; }
+            const mem = memberOfVote(v);
+            return mem ? (mem.rating || 'C') : 'C';
+        }
+        function roleRank(v) {
+            const mem = memberOfVote(v);
+            if (!mem) return 9;
+            return mem.role === 'admin' ? 0 : (mem.role === 'sub_admin' ? 1 : 9);
+        }
+        function sortTeam(key) {
+            teamDataState[key] = teamDataState[key]
+                .map((v, i) => ({ v, i }))
+                .sort((a, b) => ((a.v.pinLeader ? -1 : roleRank(a.v)) - (b.v.pinLeader ? -1 : roleRank(b.v))) || (a.i - b.i))
+                .map(x => x.v);
+        }
+
+        function getBirthOrderNum(v) {
+            const b = getBirthOf(v);
+            if (!b) return 9999;
+            const n = parseInt(b, 10);
+            if (isNaN(n)) return 9999;
+            return n >= 50 ? 1900 + n : 2000 + n;
+        }
+
+        function getNonMemberLabel(v) {
+            const mem = memberOfVote(v);
+            const role = mem ? mem.role : '';
+            const gType = String(v.guest_type || '').trim();
+            if (['admin', 'sub_admin', 'member'].includes(role)) return '';
+            if (!gType || ['정회원', '운영진', '주관리자', '부관리자'].includes(gType)) return '';
+            return gType;
+        }
+
+        function getActiveTeamCount() {
+            const total = (teamSource && Array.isArray(teamSource.people)) ? teamSource.people.length : 0;
+            if (total > 0 && total <= 12 && (!teamDataState.team3 || teamDataState.team3.length === 0)) {
+                return 2;
+            }
+            return 3;
+        }
+
+        function populateTeamMatchSelect() {
+            const sel = document.getElementById('team-match-select');
+            if (!matchesList.length) { sel.innerHTML = '<option value="">등록된 일정 없음</option>'; return; }
+            const items = matchesList.map(m => [m.id, esc(`${fmtShort(new Date(m.match_date))} ${m.match_type}${m.venues ? ' · ' + m.venues.name : ''}`)]);
+            fillSel('team-match-select', items, currentMatchId || items[0][0]);
+        }
+
+        function setTeamSource(people, label) {
+            teamSource = { people, label };
+            document.getElementById('team-source-label').innerText = label;
+            buildTeams(people);
+        }
+
+        async function runTeamFromMatch() {
+            const id = parseInt(selVal('team-match-select'), 10);
+            const m = matchesList.find(x => x.id === id);
+            if (!m) { alert('팀을 짤 일정을 선택해주세요.'); return; }
+            const { data, error } = await supabaseClient.from('match_votes').select('*').eq('match_id', id).order('voted_at', { ascending: true });
+            if (error) { alert('투표 조회 실패: ' + error.message); return; }
+            const L = computeLists(m, data || []);
+            const includeWait = document.getElementById('team-include-waiting').checked;
+            const entries = includeWait ? [...L.confirmed, ...L.waiting] : [...L.confirmed];
+            const people = entries.map(e => e.v);
+            if (people.length === 0) { alert('이 일정에는 팀을 짤 참석 인원이 없습니다.'); return; }
+            const teamModeNote = people.length <= 12 ? ' (2팀 편성)' : ' (3팀 편성)';
+            setTeamSource(people, `📌 팀짜기 기준: ${fmtShort(new Date(m.match_date))} ${m.match_type} · 총 ${people.length}명${teamModeNote}`);
+        }
+
+        const ROSTER_TYPES = ['가입전 참가', '정회원', '용병', '지인', '당근', '플랩', '오픈톡'];
+        const ITEM_PREFIX = /^(\d+\s*[.)]|[-•·]|\[대기\s*\d+번\])\s*/;
+        let pasteSeq = 0;
+
+        function parseOneEntry(text) {
+            const nm = text.match(/^([^\s(\/*,，、]+)/);
+            if (!nm) return null;
+            const birthM = text.match(/\((\d{2}|(?:19|20)\d{2})\)/);
+            return {
+                id: 'p' + (pasteSeq++),
+                guest_name: nm[1],
+                guest_birth: birthM ? birthM[1] : '',
+                guest_type: ROSTER_TYPES.find(t => text.includes(t)) || '정회원',
+                guest_skill: ((text.match(/실력\s*[:：]?\s*([하중상])/) || [])[1]) || '중',
+                status: '참석',
+                _leader: text.includes('*')
+            };
+        }
+        function parseEntries(raw) {
+            const body = raw.replace(ITEM_PREFIX, '').trim();
+            if (!body) return [];
+            if (/(정회원|용병|지인|가입전 참가|당근|플랩|오픈톡|실력)/.test(body)) { const p = parseOneEntry(body); return p ? [p] : []; }
+            const out = [];
+            body.split(/[\/,，、\s]+/).filter(Boolean).forEach(tok => {
+                const last = out[out.length - 1];
+                const bm = tok.match(/^\((\d{2}|(?:19|20)\d{2})\)(\*?)$/);
+                if (bm && last) { if (!last.guest_birth) last.guest_birth = bm[1]; if (bm[2]) last._leader = true; return; }
+                const roleM = tok.match(/^\((용병|지인|가입전 참가|당근|플랩|오픈톡)\)(\*?)$/);
+                if (roleM && last) { last.guest_type = roleM[1]; if (roleM[2]) last._leader = true; return; }
+                if (tok === '*' && last) { last._leader = true; return; }
+                const p = parseOneEntry(tok);
+                if (p) out.push(p);
+            });
+            return out;
+        }
+        function teamHeaderNo(line) {
+            const m = line.replace(/^[^0-9A-Za-z가-힣]+/, '').match(/^(\d+)\s*팀/);
+            return m ? parseInt(m[1], 10) : null;
+        }
+
+        function parseRosterText(text, includeWait) {
+            const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+
+            if (lines.some(l => teamHeaderNo(l) !== null)) {
+                const teams = { 1: [], 2: [], 3: [] };
+                let cur = null, extra = false;
+                lines.forEach(line => {
+                    const no = teamHeaderNo(line);
+                    if (no !== null) {
+                        if (no >= 1 && no <= 3) cur = no; else { cur = null; extra = true; }
+                        const rest = line.replace(/^[^0-9A-Za-z가-힣]*\d+\s*팀\s*[:：\-]?\s*/, '');
+                        if (cur && rest) teams[cur].push(...parseEntries(rest));
+                        return;
+                    }
+                    if (cur) teams[cur].push(...parseEntries(line));
+                });
+                return { mode: 'teams', teams, extra };
+            }
+
+            let section = 'att', sawHeader = false;
+            const att = [], wait = [];
+            lines.forEach(line => {
+                if (!ITEM_PREFIX.test(line)) {
+                    if (/^📅/.test(line)) return;
+                    if (/불참/.test(line)) { section = 'out'; sawHeader = true; return; }
+                    if (/대기/.test(line)) { section = 'wait'; sawHeader = true; return; }
+                    if (/참석/.test(line)) { section = 'att'; sawHeader = true; return; }
+                    if (sawHeader) return;
+                }
+                if (section === 'out') return;
+                (section === 'wait' ? wait : att).push(...parseEntries(line));
+            });
+            const people = includeWait ? [...att, ...wait] : att;
+            return { mode: 'list', people, att: att.length, wait: wait.length };
+        }
+
+        function runTeamFromText() {
+            const text = document.getElementById('team-paste').value.trim();
+            if (!text) { alert('붙여넣은 내용이 없습니다.'); return; }
+            const includeWait = document.getElementById('team-include-waiting').checked;
+            const r = parseRosterText(text, includeWait);
+
+            if (r.mode === 'teams') {
+                teamDataState = { team1: [], team2: [], team3: [] };
+                const flat = [];
+                [1, 2, 3].forEach(n => {
+                    const arr = r.teams[n];
+                    if (!arr.length) return;
+                    let li = arr.findIndex(p => p._leader);
+                    if (li < 0) li = 0;
+                    arr.forEach((p, i) => { p.pinLeader = (i === li); delete p._leader; });
+                    arr.unshift(arr.splice(li, 1)[0]);
+                    teamDataState['team' + n] = arr;
+                    flat.push(...arr);
+                });
+                if (flat.length === 0) { alert('팀 편성에서 인원을 찾지 못했습니다.'); return; }
+                teamSource = { people: flat, label: `📌 팀짜기 기준: 붙여넣은 팀 편성 · 총 ${flat.length}명` };
+                document.getElementById('team-source-label').innerText = teamSource.label;
+                renderAllTeams();
+                return;
+            }
+
+            if (r.people.length === 0) { alert('명단에서 인원을 찾지 못했습니다.'); return; }
+            const teamModeNote = r.people.length <= 12 ? ' (2팀 편성)' : ' (3팀 편성)';
+            setTeamSource(r.people, `📌 팀짜기 기준: 붙여넣은 명단 · 총 ${r.people.length}명${teamModeNote}`);
+        }
+
+        function runAutoBalance() {
+            if (!teamSource.people.length) { alert('먼저 팀을 짤 일정을 선택하거나 명단을 붙여넣어 주세요.'); return; }
+            buildTeams(teamSource.people);
+        }
+
+        function buildTeams(attending) {
+            const teamCount = attending.length <= 12 ? 2 : 3;
+            const keys = teamCount === 2 ? ['team1', 'team2'] : ['team1', 'team2', 'team3'];
+            teamDataState = { team1: [], team2: [], team3: [] };
+
+            const total = k => teamDataState[k].reduce((s, v) => s + scoreOf(v), 0);
+            const pushGreedy = v => {
+                let best = keys[0];
+                keys.forEach(k => {
+                    const a = teamDataState[k], b = teamDataState[best];
+                    if (a.length < b.length || (a.length === b.length && total(k) < total(best))) best = k;
+                });
+                teamDataState[best].push(v);
+            };
+
+            const staff = attending.filter(isStaffVote).sort((a, b) => roleRank(a) - roleRank(b));
+            const others = attending.filter(v => !isStaffVote(v)).sort((a, b) => scoreOf(b) - scoreOf(a));
+            staff.forEach((v, i) => { if (i < teamCount) teamDataState[keys[i]].push(v); else pushGreedy(v); });
+            others.forEach(pushGreedy);
+            keys.forEach(sortTeam);
+            renderAllTeams();
+        }
+
+        function renderAllTeams() {
+            const teamCount = getActiveTeamCount();
+            const wrapper = document.getElementById('teams-grid-wrapper');
+            const team3Card = document.getElementById('team3-card');
+            if (wrapper && team3Card) {
+                if (teamCount === 2) {
+                    wrapper.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
+                    team3Card.classList.add('hidden');
+                } else {
+                    wrapper.className = 'grid grid-cols-1 md:grid-cols-3 gap-4';
+                    team3Card.classList.remove('hidden');
+                }
+            }
+
+            renderTeamContainer('team1', 'team1-dropzone', 'score-team1', 'avg-team1', teamCount);
+            renderTeamContainer('team2', 'team2-dropzone', 'score-team2', 'avg-team2', teamCount);
+            renderTeamContainer('team3', 'team3-dropzone', 'score-team3', 'avg-team3', teamCount);
+            updateKakaoPreview();
+        }
+
+        function renderTeamContainer(teamKey, zoneId, scoreId, avgId, teamCount) {
+            const zone = document.getElementById(zoneId);
+            const teamArr = teamDataState[teamKey];
+            const activeKeys = teamCount === 2 ? ['team1', 'team2'] : ['team1', 'team2', 'team3'];
+
+            if (teamArr.length === 0) {
+                zone.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">인원 없음</p>`;
+                document.getElementById(scoreId).innerText = '0.0';
+                document.getElementById(avgId).innerText = '0.0';
+                return;
+            }
+
+            let totalScore = 0;
+            zone.innerHTML = teamArr.map((member, idx) => {
+                const rating = ratingOf(member);
+                const score = scoreOf(member);
+                totalScore += score;
+                const b = getBirthOf(member);
+                const birthStr = b && b !== '미입력' ? `(${b})` : '';
+                const leader = idx === 0 ? '<span class="text-[10px] px-1.5 py-0.5 bg-amber-500/20 text-amber-300 rounded font-bold mr-1">👑 팀장</span>' : '';
+                const moveBtns = activeKeys.filter(k => k !== teamKey).map(k =>
+                    `<button type="button" onclick="moveMember('${member.id}', '${teamKey}', '${k}')" class="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-[10px] text-slate-300 border border-slate-700">→${k.replace('team', '')}팀</button>`
+                ).join('');
+
+                return `
+                    <div class="draggable-item p-2 bg-slate-900 border border-slate-800 rounded-lg text-xs space-y-1 hover:border-emerald-500 transition"
+                         data-id="${esc(member.id)}" data-team="${teamKey}">
+                        <div class="flex justify-between items-center gap-2">
+                            <span><i class="fa-solid fa-grip-vertical drag-handle text-slate-500 mr-1 px-1"></i>${leader}${esc(member.guest_name)} <span class="text-[10px] text-slate-400">${birthStr} (${esc(member.guest_type || '정회원')})</span></span>
+                            <span class="text-emerald-400 font-bold whitespace-nowrap">${esc(rating)} (${score})</span>
+                        </div>
+                        <div class="flex gap-1 justify-end">${moveBtns}</div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById(scoreId).innerText = totalScore.toFixed(1);
+            document.getElementById(avgId).innerText = (totalScore / teamArr.length).toFixed(2);
+        }
+
+        let dragState = null;
+        function onDragDown(e) {
+            const card = e.target.closest('.draggable-item');
+            if (!card || e.target.closest('button')) return;
+            if (e.pointerType === 'mouse' && e.button !== 0) return;
+            if (e.pointerType !== 'mouse' && !e.target.closest('.drag-handle')) return;
+            e.preventDefault();
+            const rect = card.getBoundingClientRect();
+            dragState = { id: card.dataset.id, from: card.dataset.team, card, ghost: null, over: null,
+                          offX: e.clientX - rect.left, offY: e.clientY - rect.top, sx: e.clientX, sy: e.clientY, pid: e.pointerId, w: rect.width };
+            document.addEventListener('pointermove', onDragMove);
+            document.addEventListener('pointerup', onDragUp);
+            document.addEventListener('pointercancel', onDragUp);
+        }
+        function onDragMove(e) {
+            if (!dragState || e.pointerId !== dragState.pid) return;
+            if (!dragState.ghost) {
+                if (Math.hypot(e.clientX - dragState.sx, e.clientY - dragState.sy) < 5) return;
+                const g = dragState.card.cloneNode(true);
+                g.style.cssText = `position:fixed;width:${dragState.w}px;opacity:.85;pointer-events:none;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.5);`;
+                document.body.appendChild(g);
+                dragState.ghost = g;
+                dragState.card.style.opacity = '.35';
+            }
+            dragState.ghost.style.left = (e.clientX - dragState.offX) + 'px';
+            dragState.ghost.style.top = (e.clientY - dragState.offY) + 'px';
+            const el = document.elementFromPoint(e.clientX, e.clientY);
+            const zone = el ? el.closest('[data-zone]') : null;
+            document.querySelectorAll('[data-zone].drag-over').forEach(z => { if (z !== zone) z.classList.remove('drag-over'); });
+            if (zone) zone.classList.add('drag-over');
+            dragState.over = zone ? zone.dataset.zone : null;
+        }
+        function onDragUp(e) {
+            document.removeEventListener('pointermove', onDragMove);
+            document.removeEventListener('pointerup', onDragUp);
+            document.removeEventListener('pointercancel', onDragUp);
+            const st = dragState;
+            dragState = null;
+            document.querySelectorAll('.drag-over').forEach(z => z.classList.remove('drag-over'));
+            if (!st) return;
+            if (st.ghost) st.ghost.remove();
+            st.card.style.opacity = '';
+            if (st.ghost && st.over && st.over !== st.from && e.type !== 'pointercancel') moveMember(st.id, st.from, st.over);
+        }
+        document.addEventListener('pointerdown', onDragDown);
+
+        function moveMember(id, from, to) {
+            if (from === to) return;
+            const idx = teamDataState[from].findIndex(v => String(v.id) === String(id));
+            if (idx < 0) return;
+            const moved = teamDataState[from].splice(idx, 1)[0];
+            delete moved.pinLeader;
+            teamDataState[to].push(moved);
+            sortTeam(to);
+            renderAllTeams();
+        }
+
+        function getKakaoOrderedTeam(arr) {
+            if (!Array.isArray(arr) || arr.length === 0) return [];
+            const leader = arr[0];
+            const rest = arr
+                .slice(1)
+                .map((m, i) => ({ m, i }))
+                .sort((a, b) => (getBirthOrderNum(a.m) - getBirthOrderNum(b.m)) || (a.i - b.i))
+                .map(x => x.m);
+            return [leader, ...rest];
+        }
+
+        function kakaoName(m, idx) {
+            const b = getBirthOf(m);
+            const birthPart = b && b !== '미입력' ? `(${b})` : '';
+            const nonMemberLabel = getNonMemberLabel(m);
+            const rolePart = nonMemberLabel ? `(${nonMemberLabel})` : '';
+            return `${m.guest_name}${birthPart}${rolePart}${idx === 0 ? '*' : ''}`;
+        }
+
+        function updateKakaoPreview() {
+            const teamCount = getActiveTeamCount();
+            const block = (label, arr) => {
+                const ordered = getKakaoOrderedTeam(arr);
+                return `⚽ ${label}\n` + (ordered.length > 0 ? ordered.map((m, i) => kakaoName(m, i)).join(' / ') : '없음');
+            };
+            const blocks = [
+                block('1팀', teamDataState.team1),
+                block('2팀', teamDataState.team2)
+            ];
+            if (teamCount === 3) {
+                blocks.push(block('3팀', teamDataState.team3));
+            }
+            document.getElementById('kakao-preview').innerText = blocks.join('\n\n');
+        }
+
+        function copyKakaoFormat() {
+            const text = document.getElementById('kakao-preview').innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('카카오톡 복붙용 명단이 클립보드에 복사되었습니다!');
+            });
+        }
+    </script>
+</body>
+</html>

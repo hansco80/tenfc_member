@@ -261,6 +261,45 @@
                     </div>
                 </div>
 
+                <!-- 0.5점 이내 편차 체크 & 제안자별 불러오기 버튼 바 -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-2 border-b border-slate-900 pb-3">
+                        <div class="space-y-1">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="text-xs font-bold text-white">③ 세 팀 평균 점수 편차 조건 (최고~최저 0.5점 이내)</span>
+                                <span id="balance-status-badge" class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-800 text-slate-400">팀 편성 대기 중</span>
+                                <button type="button" onclick="autoTuneWithin05()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-300 font-bold rounded-lg text-[11px] border border-slate-700">⚖️ 0.5점 이내 자동 보정</button>
+                            </div>
+                            <p id="balance-detail-text" class="text-[11px] text-slate-400">팀을 편성하면 각 팀 평균과 최고~최저 편차가 계산됩니다.</p>
+                        </div>
+                        <div id="swap-monitor-text" class="text-[11px] text-sky-300 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
+                            기준안 미선택 (최초 제안은 제한 없이 임시등록 가능)
+                        </div>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[11px] font-bold text-amber-300">👥 제안자별 불러오기 버튼 (클릭 시 해당 안 불러오기 & 1명 교체 기준 설정)</span>
+                            <button type="button" onclick="clearBaseProposalSelection()" class="text-[11px] text-slate-400 hover:text-white underline">기준 선택 해제</button>
+                        </div>
+                        <div id="proposer-buttons-bar" class="flex flex-wrap gap-2">
+                            <span class="text-xs text-slate-500">아직 등록된 제안이 없습니다.</span>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row gap-2 pt-1">
+                        <button type="button" onclick="submitProposal('initial')" class="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-md">
+                            💾 최초 제안으로 임시등록 (0.5점 이내)
+                        </button>
+                        <button type="button" onclick="submitProposal('revision')" class="flex-1 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition shadow-md">
+                            🔁 1명 교체 수정 제안 등록 (0.5점 이내)
+                        </button>
+                    </div>
+                    <p class="text-[11px] text-slate-400 leading-relaxed">
+                        ※ <b>수정 제안</b>은 제안자 버튼으로 불러온 안을 기준으로 <b>1명 교체</b>(다른 팀으로 1명 이동 또는 두 팀 간 1쌍 맞교환) 후 세 팀 평균 차이가 <b>0.5점 이내</b>일 때 저장됩니다.
+                    </p>
+                </div>
+
                 <!-- 팀 드래그앤드롭 존 및 실시간 점수 표시 -->
                 <div id="teams-grid-wrapper" class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <!-- 1팀 -->
@@ -303,6 +342,36 @@
                         <div class="space-y-2 min-h-[220px] p-1 rounded-lg transition" id="team3-dropzone" data-zone="team3">
                             <p class="text-xs text-slate-500 text-center py-10">팀 편성을 실행해주세요.</p>
                         </div>
+                    </div>
+                </div>
+
+                <!-- ④ 최초 제안 ~ 수정 제안 흐름표 & 시점 클릭 시 명단 보기 -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-900 pb-2.5">
+                        <div>
+                            <h4 class="font-bold text-white text-xs">🧭 최초 제안 ~ 수정 제안 흐름표</h4>
+                            <p class="text-[11px] text-slate-400 mt-0.5">각 시점을 클릭하면 해당 시점의 1·2·3팀 전체 명단과 평균 점수 편차를 확인할 수 있습니다.</p>
+                        </div>
+                        <button type="button" onclick="loadProposalsForMatch(parseInt(selVal('team-match-select'), 10) || currentMatchId)" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-lg text-[11px] border border-slate-700 self-start sm:self-auto">
+                            ↻ 이력 새로고침
+                        </button>
+                    </div>
+
+                    <div id="proposal-flow-chart" class="flex flex-wrap items-center gap-2">
+                        <p class="text-xs text-slate-500">아직 등록된 제안 흐름이 없습니다.</p>
+                    </div>
+
+                    <div id="selected-proposal-viewer" class="hidden bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-3">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-2">
+                            <div>
+                                <span id="viewer-title" class="text-xs font-bold text-emerald-400">-</span>
+                                <p id="viewer-meta" class="text-[11px] text-slate-400 mt-0.5">-</p>
+                            </div>
+                            <button type="button" onclick="applySelectedProposalToWorkspace()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-lg text-[11px] transition self-start sm:self-auto">
+                                📥 이 시점 명단 불러와 수정하기
+                            </button>
+                        </div>
+                        <div id="viewer-teams-grid" class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs"></div>
                     </div>
                 </div>
 
@@ -619,6 +688,12 @@
             return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         }
         function isStaff() { return !!currentUser && STAFF_ROLES.includes(currentUser.role); }
+        function isThreeAdminUser() {
+            if (!currentUser || currentUser.role !== 'admin') return false;
+            const admins = membersData.filter(m => !TF.gone(m) && m.role === 'admin').slice(0, 3);
+            if (!admins.length) return true;
+            return admins.some(a => a.name === currentUser.name);
+        }
         function currentMatch() { return matchesList.find(m => m.id === currentMatchId); }
         function capOf(m) { return (m && m.capacity) ? m.capacity : 18; }
         function fmtMDW(d) { return `${d.getMonth() + 1}월 ${d.getDate()}일 (${WEEK[d.getDay()]}) ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
@@ -723,7 +798,7 @@
                 if (currentUser && !r.viewing) await recordLoginSession(currentUser);
 
                 TF.renderNav('match', currentUser);
-                document.getElementById('match-tabs').classList.toggle('hidden', !TF.isAdmin(currentUser));
+                document.getElementById('match-tabs').classList.toggle('hidden', !isThreeAdminUser());
                 document.getElementById('btn-login').classList.toggle('hidden', !!currentUser);
                 document.getElementById('btn-logout').classList.toggle('hidden', !currentUser);
                 document.getElementById('btn-create').classList.toggle('hidden', !isStaff());
@@ -824,11 +899,11 @@
                 document.getElementById('tab-calendar').classList.remove('hidden');
                 document.getElementById('tab-admin').classList.add('hidden');
                 document.getElementById('btn-calendar').className = 'px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs transition shadow-md';
-                if (currentUser && currentUser.role === 'admin') {
+                if (isThreeAdminUser()) {
                     document.getElementById('btn-admin').className = 'px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700';
                 }
             } else {
-                if (!currentUser || currentUser.role !== 'admin') {
+                if (!isThreeAdminUser()) {
                     alert('⚠️ 관리자 팀짜기 메뉴는 주관리자만 접근할 수 있습니다.');
                     return;
                 }
@@ -1042,7 +1117,7 @@
             document.getElementById('btn-edit-match').classList.toggle('hidden', !isStaff());
             document.getElementById('btn-copy-roster').classList.toggle('hidden', !isStaff());
             document.getElementById('btn-copy-promo').classList.toggle('hidden', !isStaff());
-            document.getElementById('btn-goto-team').classList.toggle('hidden', !(currentUser && currentUser.role === 'admin'));
+            document.getElementById('btn-goto-team').classList.toggle('hidden', !isThreeAdminUser());
 
             checkGuestSectionAvailability(match);
 
@@ -1934,7 +2009,7 @@ ${shareUrl}
             });
         }
         function goTeamBuild() {
-            if (!currentUser || currentUser.role !== 'admin') { alert('⚠️ 팀짜기는 주관리자만 가능합니다.'); return; }
+            if (!isThreeAdminUser()) { alert('⚠️ 팀짜기는 주관리자만 가능합니다.'); return; }
             switchTab('admin');
             document.getElementById('team-match-select').value = String(currentMatchId);
             runTeamFromMatch();
@@ -2016,6 +2091,8 @@ ${shareUrl}
             if (people.length === 0) { alert('이 일정에는 팀을 짤 참석 인원이 없습니다.'); return; }
             const teamModeNote = people.length <= 12 ? ' (2팀 편성)' : ' (3팀 편성)';
             setTeamSource(people, `📌 팀짜기 기준: ${fmtShort(new Date(m.match_date))} ${m.match_type} · 총 ${people.length}명${teamModeNote}`);
+            baseProposalId = null; baseProposalTeams = null; selectedViewerProposalId = null;
+            await loadProposalsForMatch(id);
         }
 
         const ROSTER_TYPES = ['가입전 참가', '정회원', '용병', '지인', '당근', '플랩', '오픈톡'];
@@ -2171,6 +2248,7 @@ ${shareUrl}
             renderTeamContainer('team2', 'team2-dropzone', 'score-team2', 'avg-team2', teamCount);
             renderTeamContainer('team3', 'team3-dropzone', 'score-team3', 'avg-team3', teamCount);
             updateKakaoPreview();
+            updateBalanceAndSwapUI();
         }
 
         function renderTeamContainer(teamKey, zoneId, scoreId, avgId, teamCount) {
@@ -2287,6 +2365,356 @@ ${shareUrl}
             const nonMemberLabel = getNonMemberLabel(m);
             const rolePart = nonMemberLabel ? `(${nonMemberLabel})` : '';
             return `${m.guest_name}${birthPart}${rolePart}${idx === 0 ? '*' : ''}`;
+        }
+
+        const PROPOSAL_DIFF_LIMIT = 0.5;
+        let matchProposals = [];
+        let baseProposalId = null;
+        let baseProposalTeams = null;
+        let selectedViewerProposalId = null;
+        let proposalsTableMissing = false;
+
+        function fmtProposalTime(iso) {
+            if (!iso) return '';
+            const d = new Date(iso);
+            return `${d.getMonth() + 1}/${d.getDate()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+        }
+        function cloneTeamsSnapshot(src) {
+            const out = { team1: [], team2: [], team3: [] };
+            ['team1', 'team2', 'team3'].forEach(k => {
+                out[k] = (src && Array.isArray(src[k])) ? src[k].map(p => ({ ...p })) : [];
+            });
+            return out;
+        }
+        function computeTeamStats(teamsObj) {
+            const stats = {};
+            const avgs = [];
+            ['team1', 'team2', 'team3'].forEach(k => {
+                const arr = (teamsObj && Array.isArray(teamsObj[k])) ? teamsObj[k] : [];
+                const total = arr.reduce((s, v) => s + scoreOf(v), 0);
+                const avg = arr.length > 0 ? total / arr.length : 0;
+                stats[k] = { count: arr.length, total, avg };
+                if (arr.length > 0) avgs.push(avg);
+            });
+            const diff = avgs.length >= 2 ? (Math.max(...avgs) - Math.min(...avgs)) : 0;
+            return { stats, diff, within05: diff <= PROPOSAL_DIFF_LIMIT + 1e-9 };
+        }
+        function personKey(p) {
+            return String(p.id ?? `${p.guest_name || ''}|${p.guest_birth || ''}|${p.guest_type || ''}`);
+        }
+        function mapPlayerTeam(teamsObj) {
+            const map = new Map();
+            ['team1', 'team2', 'team3'].forEach(k => {
+                (teamsObj[k] || []).forEach(p => map.set(personKey(p), { team: k, player: p }));
+            });
+            return map;
+        }
+        // 한 선수 이동 또는 두 선수 맞교환(3으로 안 나뉠 때 포함)을 1명 교체로 인정
+        function evaluateSingleReplacement(baseTeams, nextTeams) {
+            if (!baseTeams) return { valid: false, reason: '제안자 버튼을 눌러 기준안을 먼저 불러와 주세요.', summary: '' };
+            const mBase = mapPlayerTeam(baseTeams);
+            const mNext = mapPlayerTeam(nextTeams);
+            const changed = [];
+            mBase.forEach((bVal, key) => {
+                const nVal = mNext.get(key);
+                if (!nVal || nVal.team !== bVal.team) {
+                    changed.push({
+                        name: bVal.player.guest_name,
+                        fromTeam: bVal.team.replace('team', '') + '팀',
+                        toTeam: nVal ? (nVal.team.replace('team', '') + '팀') : '제외'
+                    });
+                }
+            });
+            if (changed.length === 0) return { valid: false, reason: '변경된 인원이 없습니다. 1명을 교체해 주세요.', summary: '' };
+            if (changed.length === 1) {
+                const c = changed[0];
+                return { valid: true, summary: `${c.name} (${c.fromTeam} → ${c.toTeam}) 1명 이동` };
+            }
+            if (changed.length === 2 && changed[0].toTeam === changed[1].fromTeam && changed[1].toTeam === changed[0].fromTeam) {
+                return { valid: true, summary: `${changed[0].name}(${changed[0].fromTeam}) ↔ ${changed[1].name}(${changed[1].fromTeam}) 맞교환` };
+            }
+            return { valid: false, reason: `1명 교체(1명 이동 또는 1쌍 맞교환)만 가능합니다. (현재 변동 ${changed.length}명)`, summary: '' };
+        }
+        function updateBalanceAndSwapUI() {
+            const badge = document.getElementById('balance-status-badge');
+            const detail = document.getElementById('balance-detail-text');
+            const swapEl = document.getElementById('swap-monitor-text');
+            if (!badge || !detail || !swapEl) return;
+
+            const teamCount = getActiveTeamCount();
+            const activeKeys = teamCount === 2 ? ['team1', 'team2'] : ['team1', 'team2', 'team3'];
+            const { stats, diff, within05 } = computeTeamStats(teamDataState);
+
+            if (!activeKeys.some(k => stats[k].count > 0)) {
+                badge.className = 'px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-800 text-slate-400';
+                badge.innerText = '팀 편성 대기 중';
+                detail.innerText = '팀을 편성하면 각 팀 평균과 최고~최저 편차가 계산됩니다.';
+            } else {
+                badge.className = within05
+                    ? 'px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    : 'px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30';
+                badge.innerText = within05 ? `✅ 편차 ${diff.toFixed(2)}점 (0.5점 이내)` : `⚠️ 편차 ${diff.toFixed(2)}점 (0.5점 초과)`;
+                const parts = activeKeys.map(k => `${k.replace('team', '')}팀 ${stats[k].avg.toFixed(2)}점(${stats[k].count}명)`);
+                detail.innerText = `${parts.join(' · ')} · 최고~최저 차이: ${diff.toFixed(2)}점`;
+            }
+
+            if (!baseProposalTeams) {
+                swapEl.innerHTML = '기준안 미선택 (최초 제안은 제한 없이 임시등록 가능)';
+            } else {
+                const check = evaluateSingleReplacement(baseProposalTeams, teamDataState);
+                const baseProp = matchProposals.find(p => String(p.id) === String(baseProposalId));
+                const baseLabel = baseProp ? `${baseProp.step_order}차 (${baseProp.author_name})` : '선택된 제안';
+                swapEl.innerHTML = check.valid
+                    ? `<span class="text-emerald-300 font-bold">기준: ${esc(baseLabel)}</span> · <span class="text-sky-300">${esc(check.summary)} (1명 교체 OK)</span>`
+                    : `<span class="text-amber-300 font-bold">기준: ${esc(baseLabel)}</span> · <span class="text-rose-300">${esc(check.reason)}</span>`;
+            }
+        }
+        function autoTuneWithin05() {
+            if (getActiveTeamCount() !== 3) { alert('3팀 편성 상태에서 사용할 수 있습니다.'); return; }
+            let best = cloneTeamsSnapshot(teamDataState);
+            let bestEval = computeTeamStats(best);
+            if (bestEval.within05) { alert(`이미 편차가 ${bestEval.diff.toFixed(2)}점으로 0.5점 이내입니다.`); return; }
+            const keys = ['team1', 'team2', 'team3'];
+            for (let iter = 0; iter < 120; iter++) {
+                let improved = false;
+                for (let a = 0; a < keys.length; a++) {
+                    for (let b = a + 1; b < keys.length; b++) {
+                        const ka = keys[a], kb = keys[b];
+                        for (let i = 0; i < best[ka].length; i++) {
+                            for (let j = 0; j < best[kb].length; j++) {
+                                const cand = cloneTeamsSnapshot(best);
+                                [cand[ka][i], cand[kb][j]] = [cand[kb][j], cand[ka][i]];
+                                const ev = computeTeamStats(cand);
+                                if (ev.diff < bestEval.diff - 1e-9) { best = cand; bestEval = ev; improved = true; }
+                            }
+                        }
+                    }
+                }
+                if (bestEval.within05 || !improved) break;
+            }
+            teamDataState = best;
+            ['team1', 'team2', 'team3'].forEach(sortTeam);
+            renderAllTeams();
+            alert(bestEval.within05 ? `자동 보정 완료! 편차 ${bestEval.diff.toFixed(2)}점` : `최적 편차 ${bestEval.diff.toFixed(2)}점입니다. 1명 교체로 미세 조정해 보세요.`);
+        }
+        function localProposalKey(matchId) { return `tenfc_match_proposals_v1_${matchId}`; }
+        function readLocalProposals(matchId) {
+            try { const r = JSON.parse(localStorage.getItem(localProposalKey(matchId)) || '[]'); return Array.isArray(r) ? r : []; } catch (e) { return []; }
+        }
+        function writeLocalProposals(matchId, list) {
+            try { localStorage.setItem(localProposalKey(matchId), JSON.stringify(list)); } catch (e) {}
+        }
+        async function loadProposalsForMatch(matchId) {
+            if (!matchId) return;
+            try {
+                const { data, error } = await supabaseClient
+                    .from('match_team_proposals')
+                    .select('*')
+                    .eq('match_id', matchId)
+                    .order('step_order', { ascending: true })
+                    .order('created_at', { ascending: true });
+                if (error) {
+                    proposalsTableMissing = true;
+                    matchProposals = readLocalProposals(matchId);
+                } else {
+                    proposalsTableMissing = false;
+                    const dbList = data || [];
+                    const localList = readLocalProposals(matchId);
+                    matchProposals = dbList.length >= localList.length ? dbList : (dbList.length ? dbList : localList);
+                    writeLocalProposals(matchId, matchProposals);
+                }
+            } catch (e) {
+                proposalsTableMissing = true;
+                matchProposals = readLocalProposals(matchId);
+            }
+            if (matchProposals.length > 0 && !selectedViewerProposalId) {
+                selectedViewerProposalId = matchProposals[matchProposals.length - 1].id;
+            }
+            renderProposerButtons();
+            renderProposalFlowChart();
+            renderSelectedProposalViewer();
+            updateBalanceAndSwapUI();
+        }
+        function clearBaseProposalSelection() {
+            baseProposalId = null;
+            baseProposalTeams = null;
+            renderProposerButtons();
+            updateBalanceAndSwapUI();
+        }
+        function loadProposalById(proposalId, showToast = true) {
+            const prop = matchProposals.find(p => String(p.id) === String(proposalId));
+            if (!prop || !prop.teams_json) return;
+            const snapshot = cloneTeamsSnapshot(prop.teams_json);
+            const flat = [...snapshot.team1, ...snapshot.team2, ...snapshot.team3];
+            if (flat.length > 0) {
+                teamSource = { people: flat, label: `📌 팀짜기 기준: ${prop.step_order}차 ${prop.author_name} 제안 불러옴 · 총 ${flat.length}명` };
+                document.getElementById('team-source-label').innerText = teamSource.label;
+            }
+            teamDataState = snapshot;
+            baseProposalId = prop.id;
+            baseProposalTeams = cloneTeamsSnapshot(snapshot);
+            selectedViewerProposalId = prop.id;
+            renderAllTeams();
+            renderProposerButtons();
+            renderProposalFlowChart();
+            renderSelectedProposalViewer();
+            if (showToast) alert(`${prop.step_order}차 (${prop.author_name}) 제안을 불러왔습니다. 1명을 교체한 뒤 수정 제안을 등록해 주세요.`);
+        }
+        function renderProposerButtons() {
+            const bar = document.getElementById('proposer-buttons-bar');
+            if (!bar) return;
+            if (!matchProposals.length) {
+                bar.innerHTML = '<span class="text-xs text-slate-500">임시등록된 제안이 없습니다. 최초 제안을 먼저 등록해 주세요.</span>';
+                return;
+            }
+            const latestByAuthor = new Map();
+            matchProposals.forEach(p => latestByAuthor.set(p.author_name, p));
+            bar.innerHTML = Array.from(latestByAuthor.values()).map(p => {
+                const isBase = String(baseProposalId) === String(p.id);
+                const cls = isBase
+                    ? 'bg-amber-500 text-slate-950 border-amber-300 ring-2 ring-amber-300/60'
+                    : 'bg-slate-900 hover:bg-slate-800 text-amber-300 border-slate-700';
+                return `<button type="button" onclick="loadProposalById('${esc(p.id)}')" class="px-3 py-1.5 rounded-xl text-xs font-bold border transition ${cls}">
+                    📌 ${esc(p.author_name)} 제안 (${p.step_order}차 · 편차 ${Number(p.avg_diff || 0).toFixed(2)}점)
+                </button>`;
+            }).join('');
+        }
+        async function submitProposal(type) {
+            if (!isThreeAdminUser()) { alert('⚠️ 지정된 주관리자(admin) 3인만 제안할 수 있습니다.'); return; }
+            const matchId = parseInt(selVal('team-match-select'), 10) || currentMatchId;
+            if (!matchId) { alert('먼저 일정을 선택해 주세요.'); return; }
+            const totalPeople = teamDataState.team1.length + teamDataState.team2.length + teamDataState.team3.length;
+            if (totalPeople === 0) { alert('편성된 팀 명단이 없습니다.'); return; }
+
+            const teamCount = getActiveTeamCount();
+            const { diff, within05 } = computeTeamStats(teamDataState);
+            if (teamCount === 3 && !within05) {
+                if (!confirm(`⚠️ 현재 세 팀 평균 차이가 ${diff.toFixed(2)}점으로 0.5점 이내 조건을 초과했습니다. 강제로 등록할까요?`)) return;
+            }
+
+            let swapSummary = '최초 팀 편성 임시등록';
+            let parentId = null;
+            if (type === 'revision') {
+                const check = evaluateSingleReplacement(baseProposalTeams, teamDataState);
+                if (!check.valid) { alert(`⚠️ 수정 제안 조건 불충족:\n${check.reason}`); return; }
+                swapSummary = check.summary;
+                parentId = baseProposalId || null;
+            }
+
+            const nextStep = matchProposals.length > 0 ? Math.max(...matchProposals.map(p => Number(p.step_order) || 0)) + 1 : 1;
+            const record = {
+                match_id: matchId,
+                author_name: currentUser.name,
+                step_order: nextStep,
+                proposal_type: type,
+                parent_proposal_id: parentId,
+                swap_summary: swapSummary,
+                avg_diff: Number(diff.toFixed(2)),
+                is_within_0_5: teamCount === 3 ? within05 : true,
+                teams_json: cloneTeamsSnapshot(teamDataState),
+                created_at: new Date().toISOString()
+            };
+            let savedRecord = { ...record, id: 'local_' + Date.now() + '_' + nextStep };
+
+            if (!proposalsTableMissing) {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('match_team_proposals')
+                        .insert([{
+                            match_id: record.match_id,
+                            author_name: record.author_name,
+                            step_order: record.step_order,
+                            proposal_type: record.proposal_type,
+                            parent_proposal_id: typeof record.parent_proposal_id === 'number' ? record.parent_proposal_id : null,
+                            swap_summary: record.swap_summary,
+                            avg_diff: record.avg_diff,
+                            is_within_0_5: record.is_within_0_5,
+                            teams_json: record.teams_json
+                        }])
+                        .select()
+                        .single();
+                    if (!error && data) savedRecord = data;
+                } catch (e) {}
+            }
+
+            matchProposals = [...matchProposals, savedRecord];
+            writeLocalProposals(matchId, matchProposals);
+            baseProposalId = savedRecord.id;
+            baseProposalTeams = cloneTeamsSnapshot(teamDataState);
+            selectedViewerProposalId = savedRecord.id;
+            renderProposerButtons();
+            renderProposalFlowChart();
+            renderSelectedProposalViewer();
+            updateBalanceAndSwapUI();
+            alert(`✅ ${nextStep}차 ${type === 'initial' ? '최초 제안' : '수정 제안'}(${currentUser.name})이 등록되었습니다!`);
+        }
+        function renderProposalFlowChart() {
+            const container = document.getElementById('proposal-flow-chart');
+            if (!container) return;
+            if (!matchProposals.length) {
+                container.innerHTML = '<p class="text-xs text-slate-500">아직 등록된 제안 흐름이 없습니다.</p>';
+                return;
+            }
+            container.innerHTML = matchProposals.map((p, idx) => {
+                const isSelected = String(selectedViewerProposalId) === String(p.id);
+                const isInit = p.proposal_type === 'initial' || idx === 0;
+                const diffVal = Number(p.avg_diff || 0).toFixed(2);
+                const arrow = idx < matchProposals.length - 1 ? '<span class="text-slate-600 font-black px-0.5"><i class="fa-solid fa-arrow-right"></i></span>' : '';
+                const cardCls = isSelected ? 'bg-emerald-950/60 border-emerald-400 ring-2 ring-emerald-400/40' : 'bg-slate-900 hover:bg-slate-800/90 border-slate-800';
+                return `
+                    <button type="button" onclick="selectViewerProposal('${esc(p.id)}')" class="text-left p-2.5 rounded-xl border transition min-w-[175px] ${cardCls}">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-[11px] font-black ${isInit ? 'text-emerald-300' : 'text-indigo-300'}">${p.step_order}차 ${isInit ? '최초 제안' : '수정 제안'}</span>
+                            <span class="text-[10px] text-slate-400">${fmtProposalTime(p.created_at)}</span>
+                        </div>
+                        <div class="text-xs font-bold text-white mt-0.5">제안자: ${esc(p.author_name)}</div>
+                        <div class="text-[10px] text-slate-300 truncate mt-0.5">${esc(p.swap_summary || '-')}</div>
+                        <div class="text-[10px] ${Number(diffVal) <= 0.5 ? 'text-emerald-400' : 'text-amber-400'} mt-1 font-semibold">편차 ${diffVal}점</div>
+                    </button>${arrow}`;
+            }).join('');
+        }
+        function selectViewerProposal(proposalId) {
+            selectedViewerProposalId = proposalId;
+            renderProposalFlowChart();
+            renderSelectedProposalViewer();
+        }
+        function renderSelectedProposalViewer() {
+            const viewer = document.getElementById('selected-proposal-viewer');
+            const titleEl = document.getElementById('viewer-title');
+            const metaEl = document.getElementById('viewer-meta');
+            const gridEl = document.getElementById('viewer-teams-grid');
+            if (!viewer || !titleEl || !metaEl || !gridEl) return;
+            const prop = matchProposals.find(p => String(p.id) === String(selectedViewerProposalId)) || matchProposals[matchProposals.length - 1];
+            if (!prop || !prop.teams_json) { viewer.classList.add('hidden'); return; }
+            viewer.classList.remove('hidden');
+            titleEl.innerText = `📋 [${prop.step_order}차 ${prop.proposal_type === 'initial' ? '최초 제안' : '수정 제안'}] ${prop.author_name} 님 명단`;
+            metaEl.innerText = `등록시각: ${fmtProposalTime(prop.created_at)} · 교체내용: ${prop.swap_summary || '-'} · 세 팀 평균 편차: ${Number(prop.avg_diff || 0).toFixed(2)}점`;
+            const tJson = prop.teams_json;
+            gridEl.innerHTML = [
+                { key: 'team1', label: '⚽ 1팀', color: 'text-emerald-400' },
+                { key: 'team2', label: '⚽ 2팀', color: 'text-indigo-400' },
+                { key: 'team3', label: '⚽ 3팀', color: 'text-amber-400' }
+            ].map(td => {
+                const arr = Array.isArray(tJson[td.key]) ? tJson[td.key] : [];
+                const avg = arr.length ? (arr.reduce((acc, v) => acc + scoreOf(v), 0) / arr.length).toFixed(2) : '0.00';
+                return `
+                    <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-2">
+                        <div class="flex justify-between items-center border-b border-slate-900 pb-1.5">
+                            <span class="font-bold ${td.color}">${td.label} (${arr.length}명)</span>
+                            <span class="text-[11px] text-slate-300">평균 <b>${avg}</b>점</span>
+                        </div>
+                        <ul class="space-y-1">${arr.length ? arr.map((m, idx) => {
+                            const b = getBirthOf(m);
+                            return `<li class="flex justify-between py-0.5 border-b border-slate-800/70 last:border-none">
+                                <span>${idx === 0 ? '👑 ' : `${idx + 1}. `}${esc(m.guest_name)} <span class="text-[10px] text-slate-400">${b && b !== '미입력' ? `(${b})` : ''}</span></span>
+                                <span class="text-[11px] text-slate-300 font-mono">${scoreOf(m).toFixed(1)}</span>
+                            </li>`;
+                        }).join('') : '<li class="text-slate-500 py-2">인원 없음</li>'}</ul>
+                    </div>`;
+            }).join('');
+        }
+        function applySelectedProposalToWorkspace() {
+            if (selectedViewerProposalId) loadProposalById(selectedViewerProposalId, true);
         }
 
         function updateKakaoPreview() {

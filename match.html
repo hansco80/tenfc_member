@@ -279,7 +279,7 @@
 
                     <div class="space-y-1.5">
                         <div class="flex items-center justify-between">
-                            <span class="text-[11px] font-bold text-amber-300">👥 제안자별 불러오기 버튼 (클릭 시 해당 안 불러오기 & 1명 교체 기준 설정)</span>
+                            <span class="text-[11px] font-bold text-amber-300">👥 제안자별 불러오기 버튼 (클릭 시 해당 안 불러오기 & 최대 3명 교체 기준 설정)</span>
                             <button type="button" onclick="clearBaseProposalSelection()" class="text-[11px] text-slate-400 hover:text-white underline">기준 선택 해제</button>
                         </div>
                         <div id="proposer-buttons-bar" class="flex flex-wrap gap-2">
@@ -288,15 +288,15 @@
                     </div>
 
                     <div class="flex flex-col sm:flex-row gap-2 pt-1">
-                        <button type="button" onclick="submitProposal('initial')" class="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-md">
+                        <button type="button" id="btn-submit-initial" onclick="submitProposal('initial')" class="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-md">
                             💾 최초 제안으로 임시등록 (0.5점 이내)
                         </button>
                         <button type="button" onclick="submitProposal('revision')" class="flex-1 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition shadow-md">
-                            🔁 1명 교체 수정 제안 등록 (0.5점 이내)
+                            🔁 수정 제안 등록 (최대 3명 교체 · 0.5점 이내)
                         </button>
                     </div>
                     <p class="text-[11px] text-slate-400 leading-relaxed">
-                        ※ <b>수정 제안</b>은 제안자 버튼으로 불러온 안을 기준으로 <b>1명 교체</b>(다른 팀으로 1명 이동 또는 두 팀 간 1쌍 맞교환) 후 세 팀 평균 차이가 <b>0.5점 이내</b>일 때 저장됩니다.
+                        ※ <b>수정 제안</b>은 제안자 버튼으로 불러온 안을 기준으로 <b>최대 3명 교체</b>(팀 이동·맞교환 포함, 기준안 대비 팀이 바뀐 인원 1~3명) 후 세 팀 평균 차이가 <b>0.5점 이내</b>일 때 저장됩니다.
                     </p>
                 </div>
 
@@ -2368,6 +2368,7 @@ ${shareUrl}
         }
 
         const PROPOSAL_DIFF_LIMIT = 0.5;
+        const PROPOSAL_MAX_CHANGES = 3; // 수정 제안에서 변경 가능한 최대 인원
         let matchProposals = [];
         let baseProposalId = null;
         let baseProposalTeams = null;
@@ -2409,7 +2410,7 @@ ${shareUrl}
             });
             return map;
         }
-        // 한 선수 이동 또는 두 선수 맞교환(3으로 안 나뉠 때 포함)을 1명 교체로 인정
+        // 기준안 대비 최대 PROPOSAL_MAX_CHANGES명까지 팀이 바뀐 경우를 수정 제안으로 인정
         function evaluateSingleReplacement(baseTeams, nextTeams) {
             if (!baseTeams) return { valid: false, reason: '제안자 버튼을 눌러 기준안을 먼저 불러와 주세요.', summary: '' };
             const mBase = mapPlayerTeam(baseTeams);
@@ -2425,15 +2426,12 @@ ${shareUrl}
                     });
                 }
             });
-            if (changed.length === 0) return { valid: false, reason: '변경된 인원이 없습니다. 1명을 교체해 주세요.', summary: '' };
-            if (changed.length === 1) {
-                const c = changed[0];
-                return { valid: true, summary: `${c.name} (${c.fromTeam} → ${c.toTeam}) 1명 이동` };
+            if (changed.length === 0) return { valid: false, reason: `변경된 인원이 없습니다. 1~${PROPOSAL_MAX_CHANGES}명을 교체해 주세요.`, summary: '' };
+            if (changed.length > PROPOSAL_MAX_CHANGES) {
+                return { valid: false, reason: `최대 ${PROPOSAL_MAX_CHANGES}명까지만 교체할 수 있습니다. (현재 변동 ${changed.length}명)`, summary: '' };
             }
-            if (changed.length === 2 && changed[0].toTeam === changed[1].fromTeam && changed[1].toTeam === changed[0].fromTeam) {
-                return { valid: true, summary: `${changed[0].name}(${changed[0].fromTeam}) ↔ ${changed[1].name}(${changed[1].fromTeam}) 맞교환` };
-            }
-            return { valid: false, reason: `1명 교체(1명 이동 또는 1쌍 맞교환)만 가능합니다. (현재 변동 ${changed.length}명)`, summary: '' };
+            const detail = changed.map(c => `${c.name}(${c.fromTeam}→${c.toTeam})`).join(', ');
+            return { valid: true, summary: `${changed.length}명 변경: ${detail}` };
         }
         function updateBalanceAndSwapUI() {
             const badge = document.getElementById('balance-status-badge');
@@ -2465,7 +2463,7 @@ ${shareUrl}
                 const baseProp = matchProposals.find(p => String(p.id) === String(baseProposalId));
                 const baseLabel = baseProp ? `${baseProp.step_order}차 (${baseProp.author_name})` : '선택된 제안';
                 swapEl.innerHTML = check.valid
-                    ? `<span class="text-emerald-300 font-bold">기준: ${esc(baseLabel)}</span> · <span class="text-sky-300">${esc(check.summary)} (1명 교체 OK)</span>`
+                    ? `<span class="text-emerald-300 font-bold">기준: ${esc(baseLabel)}</span> · <span class="text-sky-300">${esc(check.summary)} (변경 OK)</span>`
                     : `<span class="text-amber-300 font-bold">기준: ${esc(baseLabel)}</span> · <span class="text-rose-300">${esc(check.reason)}</span>`;
             }
         }
@@ -2495,7 +2493,7 @@ ${shareUrl}
             teamDataState = best;
             ['team1', 'team2', 'team3'].forEach(sortTeam);
             renderAllTeams();
-            alert(bestEval.within05 ? `자동 보정 완료! 편차 ${bestEval.diff.toFixed(2)}점` : `최적 편차 ${bestEval.diff.toFixed(2)}점입니다. 1명 교체로 미세 조정해 보세요.`);
+            alert(bestEval.within05 ? `자동 보정 완료! 편차 ${bestEval.diff.toFixed(2)}점` : `최적 편차 ${bestEval.diff.toFixed(2)}점입니다. 최대 3명 교체로 미세 조정해 보세요.`);
         }
         function localProposalKey(matchId) { return `tenfc_match_proposals_v1_${matchId}`; }
         function readLocalProposals(matchId) {
@@ -2558,9 +2556,11 @@ ${shareUrl}
             renderProposerButtons();
             renderProposalFlowChart();
             renderSelectedProposalViewer();
-            if (showToast) alert(`${prop.step_order}차 (${prop.author_name}) 제안을 불러왔습니다. 1명을 교체한 뒤 수정 제안을 등록해 주세요.`);
+            if (showToast) alert(`${prop.step_order}차 (${prop.author_name}) 제안을 불러왔습니다. 최대 3명을 교체한 뒤 수정 제안을 등록해 주세요.`);
         }
         function renderProposerButtons() {
+            const initBtn = document.getElementById('btn-submit-initial');
+            if (initBtn) initBtn.classList.toggle('hidden', matchProposals.length > 0);
             const bar = document.getElementById('proposer-buttons-bar');
             if (!bar) return;
             if (!matchProposals.length) {
@@ -2583,6 +2583,7 @@ ${shareUrl}
             if (!isThreeAdminUser()) { alert('⚠️ 지정된 주관리자(admin) 3인만 제안할 수 있습니다.'); return; }
             const matchId = parseInt(selVal('team-match-select'), 10) || currentMatchId;
             if (!matchId) { alert('먼저 일정을 선택해 주세요.'); return; }
+            if (type === 'initial' && matchProposals.length > 0) { alert('이미 최초 제안이 등록되어 있습니다. 제안자 버튼으로 불러와 수정 제안을 등록해 주세요.'); return; }
             const totalPeople = teamDataState.team1.length + teamDataState.team2.length + teamDataState.team3.length;
             if (totalPeople === 0) { alert('편성된 팀 명단이 없습니다.'); return; }
 

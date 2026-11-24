@@ -2525,9 +2525,12 @@ ${shareUrl}
                     matchProposals = readLocalProposals(matchId);
                 } else {
                     proposalsTableMissing = false;
+                    // DB 조회가 성공하면 DB를 기준으로 삼고, DB 저장에 실패해 로컬에만 있는 제안(local_)만 합친다
                     const dbList = data || [];
-                    const localList = readLocalProposals(matchId);
-                    matchProposals = dbList.length >= localList.length ? dbList : (dbList.length ? dbList : localList);
+                    const localOnly = readLocalProposals(matchId).filter(p => String(p.id).startsWith('local_'));
+                    matchProposals = [...dbList, ...localOnly].sort((a, b) =>
+                        (Number(a.step_order) || 0) - (Number(b.step_order) || 0) ||
+                        String(a.created_at || '').localeCompare(String(b.created_at || '')));
                     writeLocalProposals(matchId, matchProposals);
                 }
             } catch (e) {
@@ -2738,7 +2741,12 @@ ${shareUrl}
             if (!proposalsTableMissing && !String(prop.id).startsWith('local_')) {
                 try {
                     const { data, error } = await supabaseClient.from('match_team_proposals').delete().eq('id', prop.id).select();
-                    if (error || !data || !data.length) { alert('⚠️ 삭제에 실패했습니다.' + (error ? '\n' + error.message : '\n(권한을 확인해 주세요)')); return; }
+                    if (error) { alert('⚠️ 삭제에 실패했습니다.\n' + error.message); return; }
+                    if (!data || !data.length) {
+                        // 삭제된 행이 없음: DB에 이미 없는 값(캐시 잔여)이면 화면에서만 정리, 아직 있으면 권한 문제
+                        const chk = await supabaseClient.from('match_team_proposals').select('id').eq('id', prop.id);
+                        if (chk.error || (chk.data && chk.data.length)) { alert('⚠️ 삭제에 실패했습니다.\n(권한을 확인해 주세요)'); return; }
+                    }
                 } catch (e) { alert('⚠️ 삭제 중 오류가 발생했습니다.'); return; }
             }
             matchProposals = matchProposals.filter(p => String(p.id) !== String(prop.id));

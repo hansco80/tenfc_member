@@ -287,6 +287,14 @@
                         </div>
                     </div>
 
+                    <div id="initial-owner-actions" class="hidden bg-slate-900 p-3 rounded-xl border border-amber-500/30 space-y-2">
+                        <p class="text-[11px] text-amber-300 font-bold">🔒 내가 등록한 최초 제안 관리 (다른 분의 수정 제안이 등록되기 전까지만 가능)</p>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <button type="button" onclick="editInitialProposal()" class="flex-1 py-2 px-4 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs transition">✏️ 현재 편성으로 최초 제안 수정(덮어쓰기)</button>
+                            <button type="button" onclick="deleteInitialProposal()" class="flex-1 py-2 px-4 bg-rose-700 hover:bg-rose-600 text-white font-bold rounded-xl text-xs transition">🗑️ 최초 제안 삭제</button>
+                        </div>
+                    </div>
+
                     <div class="flex flex-col sm:flex-row gap-2 pt-1">
                         <button type="button" id="btn-submit-initial" onclick="submitProposal('initial')" class="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-md">
                             💾 최초 제안으로 임시등록 (0.5점 이내)
@@ -2561,6 +2569,8 @@ ${shareUrl}
         function renderProposerButtons() {
             const initBtn = document.getElementById('btn-submit-initial');
             if (initBtn) initBtn.classList.toggle('hidden', matchProposals.length > 0);
+            const ownerBox = document.getElementById('initial-owner-actions');
+            if (ownerBox) ownerBox.classList.toggle('hidden', !getEditableInitialProposal());
             const bar = document.getElementById('proposer-buttons-bar');
             if (!bar) return;
             if (!matchProposals.length) {
@@ -2648,6 +2658,74 @@ ${shareUrl}
             renderSelectedProposalViewer();
             updateBalanceAndSwapUI();
             alert(`✅ ${nextStep}차 ${type === 'initial' ? '최초 제안' : '수정 제안'}(${currentUser.name})이 등록되었습니다!`);
+        }
+        // 최초 제안자 본인이고, 아직 수정 제안이 하나도 없을 때만 수정/삭제 가능
+        function getEditableInitialProposal() {
+            if (!currentUser || !isThreeAdminUser()) return null;
+            if (matchProposals.length !== 1) return null;
+            const p = matchProposals[0];
+            if (p.proposal_type !== 'initial') return null;
+            return p.author_name === currentUser.name ? p : null;
+        }
+        async function editInitialProposal() {
+            const matchId = parseInt(selVal('team-match-select'), 10) || currentMatchId;
+            if (!matchId) { alert('먼저 일정을 선택해 주세요.'); return; }
+            await loadProposalsForMatch(matchId); // 그 사이 수정 제안이 올라왔는지 최신 상태 재확인
+            const prop = getEditableInitialProposal();
+            if (!prop) { alert('⚠️ 이미 수정 제안이 등록되었거나 본인 제안이 아니어서 수정할 수 없습니다.'); return; }
+            const totalPeople = teamDataState.team1.length + teamDataState.team2.length + teamDataState.team3.length;
+            if (totalPeople === 0) { alert('편성된 팀 명단이 없습니다.'); return; }
+            const teamCount = getActiveTeamCount();
+            const { diff, within05 } = computeTeamStats(teamDataState);
+            if (teamCount === 3 && !within05) {
+                if (!confirm(`⚠️ 현재 세 팀 평균 차이가 ${diff.toFixed(2)}점으로 0.5점 이내 조건을 초과했습니다. 그래도 덮어쓸까요?`)) return;
+            }
+            if (!confirm('내 최초 제안을 지금 화면의 팀 편성으로 덮어쓸까요?')) return;
+            const updates = {
+                avg_diff: Number(diff.toFixed(2)),
+                is_within_0_5: teamCount === 3 ? within05 : true,
+                teams_json: cloneTeamsSnapshot(teamDataState)
+            };
+            if (!proposalsTableMissing && !String(prop.id).startsWith('local_')) {
+                try {
+                    const { data, error } = await supabaseClient.from('match_team_proposals').update(updates).eq('id', prop.id).select();
+                    if (error || !data || !data.length) { alert('⚠️ 수정에 실패했습니다.' + (error ? '\n' + error.message : '\n(권한을 확인해 주세요)')); return; }
+                } catch (e) { alert('⚠️ 수정 중 오류가 발생했습니다.'); return; }
+            }
+            matchProposals = matchProposals.map(p => String(p.id) === String(prop.id) ? { ...p, ...updates } : p);
+            writeLocalProposals(matchId, matchProposals);
+            baseProposalId = prop.id;
+            baseProposalTeams = cloneTeamsSnapshot(teamDataState);
+            selectedViewerProposalId = prop.id;
+            renderProposerButtons();
+            renderProposalFlowChart();
+            renderSelectedProposalViewer();
+            updateBalanceAndSwapUI();
+            alert('✅ 최초 제안이 수정되었습니다.');
+        }
+        async function deleteInitialProposal() {
+            const matchId = parseInt(selVal('team-match-select'), 10) || currentMatchId;
+            if (!matchId) { alert('먼저 일정을 선택해 주세요.'); return; }
+            await loadProposalsForMatch(matchId);
+            const prop = getEditableInitialProposal();
+            if (!prop) { alert('⚠️ 이미 수정 제안이 등록되었거나 본인 제안이 아니어서 삭제할 수 없습니다.'); return; }
+            if (!confirm('내 최초 제안을 삭제할까요? (삭제 후 다시 최초 제안을 등록할 수 있습니다)')) return;
+            if (!proposalsTableMissing && !String(prop.id).startsWith('local_')) {
+                try {
+                    const { data, error } = await supabaseClient.from('match_team_proposals').delete().eq('id', prop.id).select();
+                    if (error || !data || !data.length) { alert('⚠️ 삭제에 실패했습니다.' + (error ? '\n' + error.message : '\n(권한을 확인해 주세요)')); return; }
+                } catch (e) { alert('⚠️ 삭제 중 오류가 발생했습니다.'); return; }
+            }
+            matchProposals = [];
+            writeLocalProposals(matchId, []);
+            baseProposalId = null;
+            baseProposalTeams = null;
+            selectedViewerProposalId = null;
+            renderProposerButtons();
+            renderProposalFlowChart();
+            renderSelectedProposalViewer();
+            updateBalanceAndSwapUI();
+            alert('🗑️ 최초 제안이 삭제되었습니다.');
         }
         function renderProposalFlowChart() {
             const container = document.getElementById('proposal-flow-chart');

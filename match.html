@@ -271,6 +271,7 @@
                                 <button type="button" onclick="autoTuneWithin05()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-300 font-bold rounded-lg text-[11px] border border-slate-700">⚖️ 0.5점 이내 자동 보정</button>
                             </div>
                             <p id="balance-detail-text" class="text-[11px] text-slate-400">팀을 편성하면 각 팀 평균과 최고~최저 편차가 계산됩니다.</p>
+                            <p id="friend-link-note" class="text-[11px]"></p>
                         </div>
                         <div id="swap-monitor-text" class="text-[11px] text-sky-300 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
                             기준안 미선택 (최초 제안은 제한 없이 임시등록 가능)
@@ -285,10 +286,14 @@
                         <div id="proposer-buttons-bar" class="flex flex-wrap gap-2">
                             <span class="text-xs text-slate-500">아직 등록된 제안이 없습니다.</span>
                         </div>
+                        <div class="flex flex-wrap items-center gap-2 pt-1">
+                            <button type="button" onclick="syncRosterToBase()" class="px-3 py-1.5 bg-sky-700 hover:bg-sky-600 text-white font-bold rounded-lg text-[11px] border border-sky-500/40">🔄 명단 변동 반영 (기존 편성 유지 + 신규 인원만 배치)</button>
+                            <span class="text-[10px] text-slate-500">일정 참석 명단이 바뀐 뒤 사용 · 추가 인원은 교체 한도(3명)에 포함되지 않습니다.</span>
+                        </div>
                     </div>
 
                     <div id="initial-owner-actions" class="hidden bg-slate-900 p-3 rounded-xl border border-amber-500/30 space-y-2">
-                        <p class="text-[11px] text-amber-300 font-bold">🔒 내가 등록한 마지막 제안 관리 (뒤에 다른 분의 제안이 없고, 등록 후 10분 이내만 가능) <span id="owner-edit-timer" class="text-slate-300 font-normal"></span></p>
+                        <p class="text-[11px] text-amber-300 font-bold">🔒 내가 등록한 마지막 제안 관리 (뒤에 다른 분의 제안이 없을 때만 가능 · 수정 제안은 등록 후 10분 이내, 최초 제안은 시간 제한 없음) <span id="owner-edit-timer" class="text-slate-300 font-normal"></span></p>
                         <div class="flex flex-col sm:flex-row gap-2">
                             <button type="button" onclick="editOwnProposal()" class="flex-1 py-2 px-4 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs transition">✏️ 현재 편성으로 내 제안 수정(덮어쓰기)</button>
                             <button type="button" onclick="deleteOwnProposal()" class="flex-1 py-2 px-4 bg-rose-700 hover:bg-rose-600 text-white font-bold rounded-xl text-xs transition">🗑️ 내 제안 삭제</button>
@@ -2215,25 +2220,123 @@ ${shareUrl}
             buildTeams(teamSource.people);
         }
 
+        // 팀 자동 배정 최적화: ① 최고~최저 평균 0.5점 이내 ② 지인은 등록자와 같은 팀 우선 ③ 인원수 균형
+        // fixedMap: Map(선수객체 → 팀인덱스) 로 고정할 인원 지정 (나머지만 이동 가능)
+        function findRegistrarIndex(people, i) {
+            const v = people[i];
+            if (!v || v.guest_type !== '지인') return -1;
+            const by = cleanRegisteredBy(v.registered_by);
+            if (!by) return -1;
+            return people.findIndex((a, j) => j !== i && a.guest_name === by);
+        }
+        function assignTeamsOptimized(people, teamCount, fixedMap) {
+            const n = people.length;
+            const LIMIT = 0.5;
+            const scores = people.map(scoreOf);
+            const link = people.map((_, i) => findRegistrarIndex(people, i));
+            const fixedIdx = people.map(v => (fixedMap && fixedMap.has(v)) ? fixedMap.get(v) : -1);
+            const free = [];
+            for (let i = 0; i < n; i++) if (fixedIdx[i] < 0) free.push(i);
+
+            // 등록자+지인을 묶음(unit)으로 처리 (둘 다 이동 가능한 경우)
+            const parent = people.map((_, i) => i);
+            const find = x => { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
+            for (let i = 0; i < n; i++) {
+                if (link[i] >= 0 && fixedIdx[i] < 0 && fixedIdx[link[i]] < 0) parent[find(i)] = find(link[i]);
+            }
+            const unitMap = new Map();
+            free.forEach(i => { const r = find(i); if (!unitMap.has(r)) unitMap.set(r, []); unitMap.get(r).push(i); });
+            const units = Array.from(unitMap.values());
+            const multiUnits = units.filter(u => u.length > 1);
+
+            const cost = team => {
+                const cnt = Array(teamCount).fill(0), sum = Array(teamCount).fill(0);
+                for (let i = 0; i < n; i++) { cnt[team[i]]++; sum[team[i]] += scores[i]; }
+                const avgs = [];
+                for (let t = 0; t < teamCount; t++) if (cnt[t] > 0) avgs.push(sum[t] / cnt[t]);
+                const diff = avgs.length >= 2 ? Math.max(...avgs) - Math.min(...avgs) : 0;
+                const sv = Math.max(0, Math.max(...cnt) - Math.min(...cnt) - 1);
+                let splits = 0;
+                for (let i = 0; i < n; i++) if (link[i] >= 0 && team[i] !== team[link[i]]) splits++;
+                const c = sv * 10000 + (diff > LIMIT + 1e-9 ? 1000 + diff * 100 : diff * 0.01) + splits * 10;
+                return { c, diff, splits };
+            };
+            const unitTeam = (team, u) => { const t0 = team[u[0]]; return u.every(i => team[i] === t0) ? t0 : -1; };
+
+            const climb = start => {
+                let team = start;
+                let cur = cost(team);
+                for (let iter = 0; iter < 300; iter++) {
+                    let best = null;
+                    const tryCand = cand => {
+                        const r = cost(cand);
+                        if (r.c < (best ? best.r.c : cur.c) - 1e-9) best = { team: cand, r };
+                    };
+                    free.forEach(i => { for (let t = 0; t < teamCount; t++) if (t !== team[i]) { const c = team.slice(); c[i] = t; tryCand(c); } });
+                    for (let x = 0; x < free.length; x++) for (let y = x + 1; y < free.length; y++) {
+                        const a = free[x], b = free[y];
+                        if (team[a] !== team[b]) { const c = team.slice(); c[a] = team[b]; c[b] = team[a]; tryCand(c); }
+                    }
+                    multiUnits.forEach(u => {
+                        const t0 = unitTeam(team, u);
+                        if (t0 < 0) return;
+                        for (let t = 0; t < teamCount; t++) if (t !== t0) { const c = team.slice(); u.forEach(i => { c[i] = t; }); tryCand(c); }
+                    });
+                    for (let x = 0; x < units.length; x++) for (let y = x + 1; y < units.length; y++) {
+                        const tx = unitTeam(team, units[x]), ty = unitTeam(team, units[y]);
+                        if (tx < 0 || ty < 0 || tx === ty) continue;
+                        const c = team.slice();
+                        units[x].forEach(i => { c[i] = ty; });
+                        units[y].forEach(i => { c[i] = tx; });
+                        tryCand(c);
+                    }
+                    if (!best) break;
+                    team = best.team; cur = best.r;
+                }
+                return { team, r: cur };
+            };
+
+            const initial = random => {
+                const team = Array(n).fill(0);
+                const cnt = Array(teamCount).fill(0), sum = Array(teamCount).fill(0);
+                for (let i = 0; i < n; i++) if (fixedIdx[i] >= 0) { team[i] = fixedIdx[i]; cnt[fixedIdx[i]]++; sum[fixedIdx[i]] += scores[i]; }
+                const order = units.slice();
+                if (random) { for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; } }
+                else order.sort((a, b) => b.reduce((s, i) => s + scores[i], 0) - a.reduce((s, i) => s + scores[i], 0));
+                order.forEach(u => {
+                    let t = 0;
+                    if (random) t = Math.floor(Math.random() * teamCount);
+                    else {
+                        const fl = u.map(i => link[i]).find(l => l >= 0 && fixedIdx[l] >= 0);
+                        if (fl !== undefined) t = fixedIdx[fl];
+                        else for (let k = 1; k < teamCount; k++) if (cnt[k] < cnt[t] || (cnt[k] === cnt[t] && sum[k] < sum[t])) t = k;
+                    }
+                    u.forEach(i => { team[i] = t; cnt[t]++; sum[t] += scores[i]; });
+                });
+                return team;
+            };
+
+            let best = climb(initial(false));
+            for (let r = 0; r < 60 && !(best.r.splits === 0 && best.r.diff <= LIMIT + 1e-9 && best.r.c < 1000); r++) {
+                const cand = climb(initial(true));
+                if (cand.r.c < best.r.c - 1e-9) best = cand;
+            }
+            return { team: best.team, diff: best.r.diff, splits: best.r.splits };
+        }
+
         function buildTeams(attending) {
             const teamCount = attending.length <= 12 ? 2 : 3;
             const keys = teamCount === 2 ? ['team1', 'team2'] : ['team1', 'team2', 'team3'];
             teamDataState = { team1: [], team2: [], team3: [] };
-
-            const total = k => teamDataState[k].reduce((s, v) => s + scoreOf(v), 0);
-            const pushGreedy = v => {
-                let best = keys[0];
-                keys.forEach(k => {
-                    const a = teamDataState[k], b = teamDataState[best];
-                    if (a.length < b.length || (a.length === b.length && total(k) < total(best))) best = k;
-                });
-                teamDataState[best].push(v);
-            };
+            rosterSyncExcluded.clear();
 
             const staff = attending.filter(isStaffVote).sort((a, b) => roleRank(a) - roleRank(b));
             const others = attending.filter(v => !isStaffVote(v)).sort((a, b) => scoreOf(b) - scoreOf(a));
-            staff.forEach((v, i) => { if (i < teamCount) teamDataState[keys[i]].push(v); else pushGreedy(v); });
-            others.forEach(pushGreedy);
+            const ordered = [...staff, ...others];
+            const fixed = new Map();
+            staff.slice(0, teamCount).forEach((v, i) => fixed.set(v, i)); // 팀장(운영진)은 팀마다 1명씩 고정
+            const res = assignTeamsOptimized(ordered, teamCount, fixed);
+            ordered.forEach((v, i) => teamDataState[keys[res.team[i]]].push(v));
             keys.forEach(sortTeam);
             renderAllTeams();
         }
@@ -2383,6 +2486,7 @@ ${shareUrl}
         let baseProposalTeams = null;
         let selectedViewerProposalId = null;
         let proposalsTableMissing = false;
+        let rosterSyncExcluded = new Set(); // 명단 변동으로 빠진 인원(교체 한도에서 제외)
 
         function fmtProposalTime(iso) {
             if (!iso) return '';
@@ -2420,33 +2524,61 @@ ${shareUrl}
             return map;
         }
         // 기준안 대비 최대 PROPOSAL_MAX_CHANGES명까지 팀이 바뀐 경우를 수정 제안으로 인정
+        // (신규 추가 인원 / 명단 변동으로 빠진 인원은 교체 한도에서 제외)
         function evaluateSingleReplacement(baseTeams, nextTeams) {
             if (!baseTeams) return { valid: false, reason: '제안자 버튼을 눌러 기준안을 먼저 불러와 주세요.', summary: '' };
             const mBase = mapPlayerTeam(baseTeams);
             const mNext = mapPlayerTeam(nextTeams);
             const changed = [];
+            const removedAuto = [];
+            const added = [];
             mBase.forEach((bVal, key) => {
                 const nVal = mNext.get(key);
-                if (!nVal || nVal.team !== bVal.team) {
-                    changed.push({
-                        name: bVal.player.guest_name,
-                        fromTeam: bVal.team.replace('team', '') + '팀',
-                        toTeam: nVal ? (nVal.team.replace('team', '') + '팀') : '제외'
-                    });
+                if (!nVal) {
+                    if (rosterSyncExcluded.has(key)) { removedAuto.push(bVal.player.guest_name); return; }
+                    changed.push({ name: bVal.player.guest_name, fromTeam: bVal.team.replace('team', '') + '팀', toTeam: '제외' });
+                } else if (nVal.team !== bVal.team) {
+                    changed.push({ name: bVal.player.guest_name, fromTeam: bVal.team.replace('team', '') + '팀', toTeam: nVal.team.replace('team', '') + '팀' });
                 }
             });
-            if (changed.length === 0) return { valid: false, reason: `변경된 인원이 없습니다. 1~${PROPOSAL_MAX_CHANGES}명을 교체해 주세요.`, summary: '' };
+            mNext.forEach((nVal, key) => { if (!mBase.has(key)) added.push(nVal.player.guest_name); });
+
+            if (!changed.length && !added.length && !removedAuto.length) {
+                return { valid: false, reason: `변경된 인원이 없습니다. 1~${PROPOSAL_MAX_CHANGES}명을 교체해 주세요.`, summary: '' };
+            }
             if (changed.length > PROPOSAL_MAX_CHANGES) {
                 return { valid: false, reason: `최대 ${PROPOSAL_MAX_CHANGES}명까지만 교체할 수 있습니다. (현재 변동 ${changed.length}명)`, summary: '' };
             }
-            const detail = changed.map(c => `${c.name}(${c.fromTeam}→${c.toTeam})`).join(', ');
-            return { valid: true, summary: `${changed.length}명 변경: ${detail}` };
+            const parts = [];
+            if (added.length) parts.push(`신규 ${added.length}명 추가(${added.join(', ')})`);
+            if (removedAuto.length) parts.push(`명단 변동으로 ${removedAuto.length}명 제외(${removedAuto.join(', ')})`);
+            if (changed.length) parts.push(`${changed.length}명 변경: ${changed.map(c => `${c.name}(${c.fromTeam}→${c.toTeam})`).join(', ')}`);
+            return { valid: true, summary: parts.join(' / ') };
+        }
+        // 지인과 등록자가 다른 팀에 있는 경우 목록
+        function computeFriendSplits(teamsObj) {
+            const all = [];
+            ['team1', 'team2', 'team3'].forEach(k => ((teamsObj && teamsObj[k]) || []).forEach(p => all.push({ p, k })));
+            const out = [];
+            all.forEach(({ p, k }) => {
+                if (p.guest_type !== '지인') return;
+                const by = cleanRegisteredBy(p.registered_by);
+                if (!by) return;
+                const reg = all.find(x => x.p !== p && x.p.guest_name === by);
+                if (reg && reg.k !== k) out.push(`${p.guest_name}(지인)↔${reg.p.guest_name}(등록자)`);
+            });
+            return out;
         }
         function updateBalanceAndSwapUI() {
             const badge = document.getElementById('balance-status-badge');
             const detail = document.getElementById('balance-detail-text');
             const swapEl = document.getElementById('swap-monitor-text');
             if (!badge || !detail || !swapEl) return;
+            const friendNote = document.getElementById('friend-link-note');
+            if (friendNote) {
+                const sp = computeFriendSplits(teamDataState);
+                friendNote.innerHTML = sp.length ? `<span class="text-amber-300">⚠️ 지인과 등록자가 다른 팀: ${esc(sp.join(', '))}</span>` : '';
+            }
 
             const teamCount = getActiveTeamCount();
             const activeKeys = teamCount === 2 ? ['team1', 'team2'] : ['team1', 'team2', 'team3'];
@@ -2561,6 +2693,7 @@ ${shareUrl}
                 document.getElementById('team-source-label').innerText = teamSource.label;
             }
             teamDataState = snapshot;
+            rosterSyncExcluded.clear();
             baseProposalId = prop.id;
             baseProposalTeams = cloneTeamsSnapshot(snapshot);
             selectedViewerProposalId = prop.id;
@@ -2577,7 +2710,9 @@ ${shareUrl}
             const ownP = getEditableOwnProposal();
             if (ownerBox) ownerBox.classList.toggle('hidden', !ownP);
             const timerEl = document.getElementById('owner-edit-timer');
-            if (timerEl) timerEl.innerText = ownP ? `· 남은 시간 약 ${Math.max(1, Math.ceil(proposalEditRemainingMs(ownP) / 60000))}분` : '';
+            if (timerEl) timerEl.innerText = ownP
+                ? (ownP.proposal_type === 'initial' ? '· 최초 제안은 시간 제한 없음' : `· 남은 시간 약 ${Math.max(1, Math.ceil(proposalEditRemainingMs(ownP) / 60000))}분`)
+                : '';
             const bar = document.getElementById('proposer-buttons-bar');
             if (!bar) return;
             if (!matchProposals.length) {
@@ -2655,6 +2790,7 @@ ${shareUrl}
                 } catch (e) {}
             }
 
+            rosterSyncExcluded.clear();
             matchProposals = [...matchProposals, savedRecord];
             writeLocalProposals(matchId, matchProposals);
             baseProposalId = savedRecord.id;
@@ -2667,6 +2803,7 @@ ${shareUrl}
             alert(`✅ ${nextStep}차 ${type === 'initial' ? '최초 제안' : '수정 제안'}(${currentUser.name})이 등록되었습니다!`);
         }
         function proposalEditRemainingMs(p) {
+            if (p.proposal_type === 'initial') return Infinity; // 최초 제안은 시간 제한 없음
             const t = new Date(p.created_at).getTime();
             if (!t || isNaN(t)) return 0;
             return PROPOSAL_EDIT_WINDOW_MS - (Date.now() - t);
@@ -2681,7 +2818,7 @@ ${shareUrl}
             return last;
         }
         function ownProposalDeniedMessage(action) {
-            return `⚠️ ${action}할 수 없습니다.\n(본인이 등록한 마지막 제안이면서, 등록 후 10분 이내여야 합니다.)`;
+            return `⚠️ ${action}할 수 없습니다.\n(본인이 등록한 마지막 제안이어야 하며, 수정 제안은 등록 후 10분 이내여야 합니다.)`;
         }
         async function editOwnProposal() {
             const matchId = parseInt(selVal('team-match-select'), 10) || currentMatchId;
@@ -2720,6 +2857,7 @@ ${shareUrl}
                     if (error || !data || !data.length) { alert('⚠️ 수정에 실패했습니다.' + (error ? '\n' + error.message : '\n(권한을 확인해 주세요)')); return; }
                 } catch (e) { alert('⚠️ 수정 중 오류가 발생했습니다.'); return; }
             }
+            rosterSyncExcluded.clear();
             matchProposals = matchProposals.map(p => String(p.id) === String(prop.id) ? { ...p, ...updates } : p);
             writeLocalProposals(matchId, matchProposals);
             baseProposalId = prop.id;
@@ -2758,6 +2896,86 @@ ${shareUrl}
             renderSelectedProposalViewer();
             updateBalanceAndSwapUI();
             alert('🗑️ 제안이 삭제되었습니다.');
+        }
+        // 일정 명단이 바뀐 경우: 기준 제안 편성은 그대로 두고, 빠진 인원은 제외 / 새 인원만 배치
+        async function syncRosterToBase() {
+            if (!isThreeAdminUser()) { alert('⚠️ 지정된 주관리자(admin) 3인만 사용할 수 있습니다.'); return; }
+            const matchId = parseInt(selVal('team-match-select'), 10) || currentMatchId;
+            const m = matchesList.find(x => x.id === matchId);
+            if (!m) { alert('먼저 일정을 선택해 주세요.'); return; }
+            await loadProposalsForMatch(matchId);
+            if (!matchProposals.length) { alert('등록된 제안이 없습니다. 먼저 "이 일정으로 팀짜기" 후 최초 제안을 등록해 주세요.'); return; }
+            const baseProp = matchProposals.find(p => String(p.id) === String(baseProposalId)) || matchProposals[matchProposals.length - 1];
+            if (!baseProp || !baseProp.teams_json) { alert('기준이 될 제안을 찾지 못했습니다.'); return; }
+            if (!confirm(`${baseProp.step_order}차 (${baseProp.author_name}) 제안의 편성을 그대로 두고, 현재 일정 명단의 변동분(추가/제외)만 반영할까요?\n※ 지금 화면에서 편집 중인 내용은 사라집니다.`)) return;
+
+            const { data, error } = await supabaseClient.from('match_votes').select('*').eq('match_id', matchId).order('voted_at', { ascending: true });
+            if (error) { alert('투표 조회 실패: ' + error.message); return; }
+            const L = computeLists(m, data || []);
+            const includeWait = document.getElementById('team-include-waiting').checked;
+            const entries = includeWait ? [...L.confirmed, ...L.waiting] : [...L.confirmed];
+            const people = entries.map(e => e.v);
+            if (!people.length) { alert('현재 일정에 참석 인원이 없습니다.'); return; }
+
+            const snap = cloneTeamsSnapshot(baseProp.teams_json);
+            const baseTeamCount = snap.team3.length === 0 ? 2 : 3;
+            if (baseTeamCount === 2 && people.length > 12) {
+                alert(`⚠️ 인원이 ${people.length}명이 되어 2팀 → 3팀 편성으로 바뀌어야 합니다.\n기존 편성을 유지할 수 없으니 "이 일정으로 팀짜기"로 다시 편성해 주세요.\n(내 최초 제안이 마지막이라면 삭제 후 다시 등록할 수 있습니다)`);
+                return;
+            }
+
+            // 기존 편성 인원과 현재 명단 매칭 (id 우선, 없으면 이름+생년)
+            const nameKey = v => `${v.guest_name}|${getBirthOf(v)}`;
+            const used = new Set();
+            const curByKey = new Map(people.map(v => [personKey(v), v]));
+            const nextTeams = { team1: [], team2: [], team3: [] };
+            const excluded = new Set();
+            const removedNames = [];
+            const bases = [];
+            ['team1', 'team2', 'team3'].forEach(k => snap[k].forEach(b => bases.push({ b, k })));
+            const unmatched = [];
+            bases.forEach(({ b, k }) => {
+                const cur = curByKey.get(personKey(b));
+                if (cur && !used.has(cur)) { used.add(cur); const mg = { ...cur, id: b.id }; if (b.pinLeader) mg.pinLeader = true; nextTeams[k].push(mg); }
+                else unmatched.push({ b, k });
+            });
+            unmatched.forEach(({ b, k }) => {
+                const cur = people.find(v => !used.has(v) && nameKey(v) === nameKey(b));
+                if (cur) { used.add(cur); const mg = { ...cur, id: b.id }; if (b.pinLeader) mg.pinLeader = true; nextTeams[k].push(mg); }
+                else { excluded.add(personKey(b)); removedNames.push(b.guest_name); }
+            });
+            const added = people.filter(v => !used.has(v));
+            if (!added.length && !removedNames.length) { alert('명단 변동이 없습니다. (기준 제안과 현재 참석 명단이 같습니다)'); return; }
+
+            // 기존 인원은 고정, 신규 인원만 0.5점 이내 + 지인-등록자 같은 팀 우선으로 배치
+            const keys = ['team1', 'team2', 'team3'].slice(0, baseTeamCount);
+            const existing = [];
+            const fixed = new Map();
+            keys.forEach((k, ti) => nextTeams[k].forEach(v => { existing.push(v); fixed.set(v, ti); }));
+            const newPeople = added.map(v => ({ ...v }));
+            const res = assignTeamsOptimized([...existing, ...newPeople], baseTeamCount, fixed);
+            newPeople.forEach((v, j) => nextTeams[keys[res.team[existing.length + j]]].push(v));
+
+            teamDataState = nextTeams;
+            keys.forEach(sortTeam);
+            teamSource = { people: [...keys.flatMap(k => nextTeams[k])], label: `📌 팀짜기 기준: ${baseProp.step_order}차 ${baseProp.author_name} 제안 + 명단 변동 반영 · 총 ${people.length}명` };
+            document.getElementById('team-source-label').innerText = teamSource.label;
+            baseProposalId = baseProp.id;
+            baseProposalTeams = cloneTeamsSnapshot(snap);
+            rosterSyncExcluded = excluded;
+            selectedViewerProposalId = baseProp.id;
+            renderAllTeams();
+            renderProposerButtons();
+            renderProposalFlowChart();
+            renderSelectedProposalViewer();
+            updateBalanceAndSwapUI();
+
+            const lines = [];
+            if (added.length) lines.push(`➕ 추가 ${added.length}명 배치: ${added.map(v => v.guest_name).join(', ')}`);
+            if (removedNames.length) lines.push(`➖ 제외 ${removedNames.length}명: ${removedNames.join(', ')}`);
+            lines.push(`세 팀 평균 편차 ${res.diff.toFixed(2)}점` + (res.diff <= PROPOSAL_DIFF_LIMIT + 1e-9 ? ' (0.5점 이내)' : ' (0.5점 초과 - 최대 3명 교체로 미세 조정해 보세요)'));
+            lines.push('확인 후 "수정 제안 등록"으로 저장해 주세요.');
+            alert(lines.join('\n'));
         }
         // 10분 경과 시 버튼이 자동으로 사라지도록 주기적으로 갱신
         setInterval(() => { try { renderProposerButtons(); } catch (e) {} }, 30000);

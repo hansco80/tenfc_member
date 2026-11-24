@@ -2103,9 +2103,31 @@ ${shareUrl}
             const people = entries.map(e => e.v);
             if (people.length === 0) { alert('이 일정에는 팀을 짤 참석 인원이 없습니다.'); return; }
             const teamModeNote = people.length <= 12 ? ' (2팀 편성)' : ' (3팀 편성)';
-            setTeamSource(people, `📌 팀짜기 기준: ${fmtShort(new Date(m.match_date))} ${m.match_type} · 총 ${people.length}명${teamModeNote}`);
             baseProposalId = null; baseProposalTeams = null; selectedViewerProposalId = null;
+            rosterSyncExcluded.clear();
             await loadProposalsForMatch(id);
+
+            // 이미 등록된 제안이 있으면 가장 최근 제안을 불러오고, 없으면 추천 편성을 생성
+            if (matchProposals.length > 0) {
+                const latest = matchProposals[matchProposals.length - 1];
+                loadProposalById(latest.id, false);
+                const snap = cloneTeamsSnapshot(latest.teams_json);
+                const snapPeople = [...snap.team1, ...snap.team2, ...snap.team3];
+                const nameKey = v => `${v.guest_name}|${getBirthOf(v)}`;
+                const snapKeys = new Set(snapPeople.map(personKey));
+                const snapNames = new Set(snapPeople.map(nameKey));
+                const curKeys = new Set(people.map(personKey));
+                const curNames = new Set(people.map(nameKey));
+                const addedCnt = people.filter(v => !snapKeys.has(personKey(v)) && !snapNames.has(nameKey(v))).length;
+                const removedCnt = snapPeople.filter(v => !curKeys.has(personKey(v)) && !curNames.has(nameKey(v))).length;
+                if (addedCnt || removedCnt) {
+                    const labelEl = document.getElementById('team-source-label');
+                    labelEl.innerText = `${teamSource.label} · ⚠️ 명단 변동(추가 ${addedCnt}명, 제외 ${removedCnt}명) → "🔄 명단 변동 반영" 버튼으로 반영하세요`;
+                    alert(`${latest.step_order}차 (${latest.author_name}) 제안을 불러왔습니다.\n현재 일정 명단과 비교하면 추가 ${addedCnt}명, 제외 ${removedCnt}명 차이가 있습니다.\n"🔄 명단 변동 반영" 버튼으로 기존 편성은 유지하고 변동분만 반영할 수 있습니다.`);
+                }
+                return;
+            }
+            setTeamSource(people, `📌 팀짜기 기준: ${fmtShort(new Date(m.match_date))} ${m.match_type} · 총 ${people.length}명${teamModeNote}`);
         }
 
         const ROSTER_TYPES = ['가입전 참가', '정회원', '용병', '지인', '당근', '플랩', '오픈톡'];

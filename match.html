@@ -66,7 +66,7 @@
         <!-- [탭 1] 일정 달력 및 투표 메인 페이지 -->
         <main id="tab-calendar" class="space-y-6">
 
-            <!-- 신규회원 모집 안내 (비회원 전용 · RECRUIT.endDate 이후 자동 숨김) -->
+            <!-- 신규회원 모집 안내 (전체 공개 · RECRUIT.endDate 이후 자동 숨김) -->
             <details id="recruit-banner" class="hidden bg-emerald-950/30 border border-emerald-500/30 rounded-2xl">
                 <summary class="p-4 flex justify-between items-center gap-3">
                     <span class="text-xs font-bold text-emerald-300">🎉 TenFC 신규회원 모집 · 연회비 5만원 (월회비 X) · 10회 참여하면 본전!</span>
@@ -238,7 +238,7 @@
                     <button id="btn-copy-promo" onclick="copyPromoText()" class="hidden px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-md">📢 오픈톡방 홍보용 맞춤글</button>
                 </div>
 
-                <!-- 신규회원 모집 카드 (비회원 전용 · 모집 기간 중에는 아래 기존 당근 박스 대신 표시) -->
+                <!-- 신규회원 모집 카드 (전체 공개 · 모집 기간 중에는 아래 기존 당근 박스 대신 표시) -->
                 <div id="recruit-bottom" class="hidden bg-emerald-950/30 border border-emerald-500/40 p-4 rounded-xl space-y-3">
                     <p class="text-sm font-bold text-emerald-300">🎉 TenFC 신규회원 모집 중</p>
                     <ul class="text-xs text-slate-300 space-y-1 leading-relaxed">
@@ -253,7 +253,7 @@
                         </div>
                 </div>
 
-                <!-- 비회원 안내 및 당근 카페 링크 (모집 기간이 끝나거나 정회원일 때 표시) -->
+                <!-- 비회원 안내 및 당근 카페 링크 (모집 기간이 끝나면 다시 표시) -->
                 <div id="nonmember-info-box" class="bg-emerald-950/20 border border-emerald-500/20 p-4 rounded-xl flex flex-col md:flex-row justify-between items-center gap-3">
                     <p class="text-xs text-emerald-300">💡 비회원 방문자이신가요? 정회원 가입 또는 기타 문의 사항은 당근카페를 확인 해주세요~</p>
                     <a href="https://cafe.daangn.com/2050-dongbaegpu" target="_blank" rel="noopener noreferrer" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition whitespace-nowrap shadow">
@@ -1636,12 +1636,12 @@
             }
         }
 
-        /* ===== 신규회원 모집 안내 (비회원 전용) =====
+        /* ===== 신규회원 모집 안내 (전체 공개) =====
            - 이 RECRUIT 값만 바꾸면 3곳(상단 배너 / 신청 완료 창 / 하단 카드)에 모두 반영됩니다.
            - endDate(한국시간) 다음 날부터 자동으로 숨겨지고, 기존 당근 카페 박스만 남습니다.
-           - 관리자는 주소 뒤에 ?view=테스트 를 붙이면 비회원 화면을 미리 볼 수 있습니다. */
+           - 운영진이 신청을 등록할 때는 기존 알림창이 뜹니다. */
         const RECRUIT = {
-            endDate: '2026-12-23',
+            endDate: '2026-12-31',
             members: '35',
             cap: '50',
             kakao: 'https://open.kakao.com/o/sx4VYaSh',
@@ -1649,7 +1649,7 @@
             demo: 'https://url.kr/fao33z'
         };
         function isRecruitActive() { return kstDateStr(new Date()) <= RECRUIT.endDate; }
-        function isRecruitTarget() { return isRecruitActive() && !TF.isMember(currentUser); }
+        function isRecruitTarget() { return isRecruitActive(); }  // 접속자 누구나 대상 (비회원만 보이게 하려면: isRecruitActive() && !TF.isMember(currentUser))
         function fillRecruitFields() {
             document.querySelectorAll('[data-rc]').forEach(el => { el.textContent = RECRUIT[el.dataset.rc] || ''; });
             document.querySelectorAll('[data-rc-href]').forEach(el => { el.href = RECRUIT[el.dataset.rcHref] || '#'; });

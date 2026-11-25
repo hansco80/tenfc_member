@@ -239,7 +239,7 @@
                         <div class="flex flex-col md:flex-row gap-2 md:items-center">
                             <select id="team-match-select" class="flex-1 bg-slate-900 border border-slate-800 p-2.5 rounded-lg text-xs text-white"></select>
                             <label class="flex items-center gap-1.5 text-xs text-slate-300 whitespace-nowrap">
-                                <input type="checkbox" id="team-include-waiting" checked> 대기자(용병/지인 등)도 포함
+                                <input type="checkbox" id="team-include-waiting" checked onchange="populateTeamMatchSelect()"> 대기자(용병/지인 등)도 포함
                             </label>
                             <button onclick="runTeamFromMatch()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs transition shadow-md whitespace-nowrap">⚡ 이 일정으로 팀 짜기</button>
                         </div>
@@ -2023,6 +2023,11 @@ ${shareUrl}
         }
         function goTeamBuild() {
             if (!isThreeAdminUser()) { alert('⚠️ 팀짜기는 주관리자만 가능합니다.'); return; }
+            const curMatch = matchesList.find(x => x.id === currentMatchId);
+            if (curMatch && teamCandidateCount(curMatch) < TEAM_MIN_PARTICIPANTS) {
+                alert(`⚠️ 참여 인원이 ${TEAM_MIN_PARTICIPANTS}명 미만인 일정은 팀짜기를 할 수 없습니다.`);
+                return;
+            }
             switchTab('admin');
             document.getElementById('team-match-select').value = String(currentMatchId);
             runTeamFromMatch();
@@ -2078,11 +2083,23 @@ ${shareUrl}
             return 3;
         }
 
+        // 팀짜기 일정 목록에는 참여 인원이 이 값 이상인 일정만 표시
+        const TEAM_MIN_PARTICIPANTS = 5;
+        function teamCandidateCount(m) {
+            const L = computeLists(m, allVotesByMatch[m.id] || []);
+            const includeWait = document.getElementById('team-include-waiting').checked;
+            return L.confirmed.length + (includeWait ? L.waiting.length : 0);
+        }
         function populateTeamMatchSelect() {
             const sel = document.getElementById('team-match-select');
             if (!matchesList.length) { sel.innerHTML = '<option value="">등록된 일정 없음</option>'; return; }
-            const items = matchesList.map(m => [m.id, esc(`${fmtShort(new Date(m.match_date))} ${m.match_type}${m.venues ? ' · ' + m.venues.name : ''}`)]);
-            fillSel('team-match-select', items, currentMatchId || items[0][0]);
+            const prev = sel.value;
+            const list = matchesList.filter(m => teamCandidateCount(m) >= TEAM_MIN_PARTICIPANTS);
+            if (!list.length) { sel.innerHTML = `<option value="">참여 인원 ${TEAM_MIN_PARTICIPANTS}명 이상인 일정 없음</option>`; return; }
+            const items = list.map(m => [m.id, esc(`${fmtShort(new Date(m.match_date))} ${m.match_type}${m.venues ? ' · ' + m.venues.name : ''}`)]);
+            const has = id => list.some(m => String(m.id) === String(id));
+            const selected = has(prev) ? prev : (has(currentMatchId) ? currentMatchId : items[0][0]);
+            fillSel('team-match-select', items, selected);
         }
 
         function setTeamSource(people, label) {

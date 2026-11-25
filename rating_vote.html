@@ -1117,12 +1117,16 @@
             const isCompleted = currentSession.status === 'completed';
 
             let allPlayersVoted = true;
+            let urgentPendingCount = 0;
             const changes = [];
             const previewItems = [];
 
             players.forEach(p => {
                 const res = evaluatePlayerResult(p.name);
-                if (!res.isComplete) allPlayersVoted = false;
+                if (!res.isComplete) {
+                    allPlayersVoted = false;
+                    if (p.isOutdated) urgentPendingCount++;
+                }
 
                 const finalNewRating = res.isComplete ? getAdjustedRating(p.rating, res.delta) : p.rating;
                 changes.push({
@@ -1185,97 +1189,192 @@
                 approveBtn.classList.add('hidden');
                 generateKakaoAnnouncement(actualChanges);
             } else {
+                document.getElementById('kakao-result-box').classList.add('hidden');
+                statusBadge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-slate-900 border border-slate-700 text-slate-300';
                 approveBtn.classList.remove('hidden');
-                statusBadge.innerText = allPlayersVoted ? '투표 완료 · 최종 동의 대기' : '투표 진행중';
+                const readyToApply = urgentPendingCount === 0;
+                if (!readyToApply) {
+                    statusBadge.innerText = `투표 진행중 (필수평가 ${urgentPendingCount}명 대기)`;
+                } else if (approvals.length >= 2) {
+                    statusBadge.innerText = '동의 완료 · DB 반영중...';
+                } else {
+                    statusBadge.innerText = allPlayersVoted ? '투표 완료 · 최종 동의 대기' : '필수평가 완료 · 최종 동의 대기';
+                }
                 const iApproved = approvals.includes(currentUser.name);
                 approveBtn.innerText = iApproved ? '↩️ 내 최종 동의 취소하기' : `✅ 최종 결과 반영 동의하기 (${approvals.length}/2명)`;
                 approveBtn.disabled = !admins.includes(currentUser.name);
 
-                if (approvals.length >= 2) {
-                    applyRatingsToDatabase(changes, allPlayersVoted);
+                if (approvals.length >= 2 && readyToApply) {
+                    applyRatingsToDatabase(changes, readyToApply);
                 }
             }
+        }
+
+        function getUncompletedUrgentPlayers() {
+            return currentSession.parsed_players.filter(p => p.isOutdated && !evaluatePlayerResult(p.name).isComplete);
+        }
+
+        // 다른 운영진의 투표/동의가 반영되도록 세션과 투표를 최신 상태로 다시 불러온다.
+        async function refreshCurrentSession() {
+            if (!currentSession) return false;
+            const { data, error } = await supabaseClient
+                .from('rating_sessions')
+                .select('*')
+                .eq('id', currentSession.id)
+                .maybeSingle();
+            if (error || !data) return false;
+            currentSession = data;
+            const idx = sessionsList.findIndex(s => s.id === data.id);
+            if (idx !== -1) sessionsList[idx] = data;
+            await fetchSessionVotes();
+            return true;
+        }
+
+        async function readLatestApprovals() {
+            const { data, error } = await supabaseClient
+                .from('rating_sessions')
+                .select('final_approvals')
+                .eq('id', currentSession.id)
+                .maybeSingle();
+            if (error || !data) return null;
+            return Array.isArray(data.final_approvals) ? data.final_approvals : [];
         }
 
         async function toggleFinalApproval() {
             if (currentSession.status === 'completed') return;
 
-            const players = currentSession.parsed_players;
-            const uncompletedUrgent = players.filter(p => {
-                if (!p.isOutdated) return false;
-                const res = evaluatePlayerResult(p.name);
-                return !res.isComplete;
-            });
+            await refreshCurrentSession();
+            if (currentSession.status === 'completed') { renderSessionBoard(); return; }
 
+            const uncompletedUrgent = getUncompletedUrgentPlayers();
             if (uncompletedUrgent.length > 0) {
                 alert(`⚠️ 아직 평가가 완료되지 않은 필수평가(2주 경과) 대상자가 ${uncompletedUrgent.length}명 있습니다.\n\n해당 인원들의 투표와 합의를 모두 완료해야 최종 동의를 진행할 수 있습니다!`);
+                renderSessionBoard();
                 return;
             }
 
-            const approvals = [...(currentSession.final_approvals || [])];
-            const idx = approvals.indexOf(currentUser.name);
+            const wantApprove = !(currentSession.final_approvals || []).includes(currentUser.name);
 
-            if (idx === -1) {
-                if (!confirm('현재 집계된 결과로 실제 회원 평점을 업데이트하는 데 최종 동의하시겠습니까?\n(2명 이상 동의 시 즉시 DB에 반영됩니다.)')) return;
-                approvals.push(currentUser.name);
-            } else {
-                approvals.splice(idx, 1);
+            if (wantApprove) {
+                const pendingNormal = currentSession.parsed_players
+                    .filter(p => !p.isOutdated && !evaluatePlayerResult(p.name).isComplete).length;
+                const extra = pendingNormal > 0
+                    ? `\n\n※ 아직 투표가 끝나지 않은 일반 인원 ${pendingNormal}명은 이번에 반영되지 않습니다.`
+                    : '';
+                if (!confirm('현재 집계된 결과로 실제 회원 평점을 업데이트하는 데 최종 동의하시겠습니까?\n(2명 이상 동의 시 즉시 DB에 반영됩니다.)' + extra)) return;
             }
 
-            const { error } = await supabaseClient
-                .from('rating_sessions')
-                .update({ final_approvals: approvals })
-                .eq('id', currentSession.id);
+            // 화면에 남아 있던 오래된 동의 목록으로 덮어쓰지 않도록, 저장 직전에 DB의 최신 목록을 읽어 반영하고 저장 결과를 확인한다.
+            let finalApprovals = null;
+            for (let attempt = 0; attempt < 3; attempt++) {
+                const latest = await readLatestApprovals();
+                if (latest === null) {
+                    alert('동의 상태를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+                    return;
+                }
+                const next = latest.filter(n => n !== currentUser.name);
+                if (wantApprove) next.push(currentUser.name);
 
-            if (error) {
-                alert('동의 처리 실패: ' + error.message);
-                return;
-            }
+                const { error } = await supabaseClient
+                    .from('rating_sessions')
+                    .update({ final_approvals: next })
+                    .eq('id', currentSession.id);
 
-            currentSession.final_approvals = approvals;
-            renderFinalSummaryAndApproval();
-        }
-
-        async function applyRatingsToDatabase(changes, allPlayersVoted) {
-            if (currentSession.status === 'completed') return;
-            if (!allPlayersVoted) return;
-
-            currentSession.status = 'completed';
-
-            const [matchYear, matchMonth, matchDay] = currentSession.match_date.split('-');
-            const sessionDateStr = `${matchMonth}.${matchDay}`;
-
-            for (const c of changes) {
-                if (!c.isComplete) continue;
-                const member = membersData.find(m => m.name === c.name);
-                if (!member) continue;
-
-                const newScore = scoreMap[c.newRating] || 6.5;
-                let historyArr = Array.isArray(member.history) ? [...member.history] : [];
-
-                const existIdx = historyArr.findIndex(h => h.date === sessionDateStr);
-                if (existIdx !== -1) {
-                    historyArr[existIdx].score = newScore;
-                } else {
-                    historyArr.push({ date: sessionDateStr, score: newScore });
+                if (error) {
+                    alert('동의 처리 실패: ' + error.message);
+                    return;
                 }
 
-                await supabaseClient
-                    .from('members')
-                    .update({
-                        rating: c.newRating,
-                        history: historyArr
-                    })
-                    .eq('name', c.name);
+                const check = await readLatestApprovals();
+                if (check !== null && check.includes(currentUser.name) === wantApprove) {
+                    finalApprovals = check;
+                    break;
+                }
             }
 
-            await supabaseClient
-                .from('rating_sessions')
-                .update({ status: 'completed' })
-                .eq('id', currentSession.id);
+            if (finalApprovals === null) {
+                alert('동의 저장이 다른 운영진의 동시 처리와 겹쳐 확인되지 않았습니다. 현재 상태를 다시 불러옵니다.');
+                await refreshCurrentSession();
+                renderSessionBoard();
+                return;
+            }
 
-            alert(`🎉 주관리자 2명 이상 최종 동의로 금일 평가 세션 결과가 회원 DB에 성공적으로 반영되었습니다!`);
-            await loadSessionsList(currentSession.id);
+            currentSession.final_approvals = finalApprovals;
+            renderSessionBoard();
+        }
+
+        let isApplyingRatings = false;
+
+        async function applyRatingsToDatabase(changes, readyToApply) {
+            if (currentSession.status === 'completed') return;
+            if (!readyToApply) return;
+            if (isApplyingRatings) return;
+            isApplyingRatings = true;
+
+            try {
+                const [matchYear, matchMonth, matchDay] = currentSession.match_date.split('-');
+                const sessionDateStr = `${matchMonth}.${matchDay}`;
+                const failed = [];
+
+                for (const c of changes) {
+                    if (!c.isComplete) continue;
+                    const member = membersData.find(m => m.name === c.name);
+                    if (!member) continue;
+
+                    const newScore = scoreMap[c.newRating] || 6.5;
+                    let historyArr = Array.isArray(member.history) ? [...member.history] : [];
+
+                    const existIdx = historyArr.findIndex(h => h.date === sessionDateStr);
+                    if (existIdx !== -1) {
+                        historyArr[existIdx].score = newScore;
+                    } else {
+                        historyArr.push({ date: sessionDateStr, score: newScore });
+                    }
+
+                    const { data: updated, error } = await supabaseClient
+                        .from('members')
+                        .update({
+                            rating: c.newRating,
+                            history: historyArr
+                        })
+                        .eq('name', c.name)
+                        .select('name');
+
+                    if (error || !updated || updated.length === 0) {
+                        console.error('평점 반영 실패:', c.name, error);
+                        failed.push(c.name);
+                        continue;
+                    }
+                    member.rating = c.newRating;
+                    member.history = historyArr;
+                }
+
+                if (failed.length > 0) {
+                    alert(`⚠️ 일부 회원의 평점 반영에 실패해 세션을 완료 처리하지 않았습니다.\n실패: ${failed.join(', ')}\n\n페이지를 새로고침하면 다시 반영을 시도합니다.`);
+                    return;
+                }
+
+                const { error: sessionError } = await supabaseClient
+                    .from('rating_sessions')
+                    .update({ status: 'completed' })
+                    .eq('id', currentSession.id);
+
+                if (sessionError) {
+                    alert('평점은 반영했지만 세션 완료 처리에 실패했습니다: ' + sessionError.message + '\n\n페이지를 새로고침해 상태를 확인해주세요.');
+                    return;
+                }
+
+                currentSession.status = 'completed';
+                await loadSessionsList(currentSession.id);
+                generateKakaoAnnouncement(changes.filter(c => c.delta !== 0));
+
+                alert(`🎉 주관리자 2명 이상 최종 동의로 금일 평가 세션 결과가 회원 DB에 성공적으로 반영되었습니다!`);
+            } catch (e) {
+                console.error('평점 반영 중 오류:', e);
+                alert('평점 반영 중 오류가 발생했습니다: ' + (e && e.message ? e.message : e));
+            } finally {
+                isApplyingRatings = false;
+            }
         }
 
         function generateKakaoAnnouncement(changes) {
@@ -1319,6 +1418,12 @@
             }
             await loadSessionsList();
         }
+
+        document.addEventListener('visibilitychange', async () => {
+            if (document.visibilityState !== 'visible') return;
+            if (!currentSession || currentSession.status === 'completed' || isApplyingRatings) return;
+            if (await refreshCurrentSession()) renderSessionBoard();
+        });
 
         init();
     </script>

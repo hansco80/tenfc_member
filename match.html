@@ -32,6 +32,12 @@
         .tf-logout:hover { background: #e11d48; }
         .tf-primary { background: #059669; color: #fff; box-shadow: 0 4px 6px -1px rgba(0,0,0,.35); }
         .tf-primary:hover { background: #10b981; }
+        /* ----- 공통 상단 헤더 (3개 페이지 동일) : 제목 한 줄 고정, 버튼은 한 덩어리로 우측 정렬, 공간 부족 시 버튼 묶음이 통째로 아래줄로 ----- */
+        .tf-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem 1rem; }
+        .tf-header-title { flex-shrink: 0; max-width: 100%; }
+        .tf-header-title h1 { white-space: nowrap; }
+        .tf-header-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; margin-left: auto; max-width: 100%; }
+        @media (max-width: 480px) { .tf-header-title h1 { font-size: 1.25rem; line-height: 1.75rem; } }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen font-sans">
@@ -45,12 +51,12 @@
     <div class="max-w-4xl mx-auto p-4 space-y-6">
 
         <!-- 헤더 섹션 -->
-        <header class="flex flex-col md:flex-row justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-xl gap-4">
-            <div>
+        <header class="tf-header bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-xl">
+            <div class="tf-header-title">
                 <h1 class="text-2xl font-black text-emerald-400">⚽ TenFC Match Hub</h1>
                 <p class="text-xs text-slate-400">접속자: <span class="tf-user text-emerald-400 font-bold">비회원 (방문자)</span></p>
             </div>
-            <div class="flex gap-2 flex-wrap justify-center md:justify-end">
+            <div class="tf-header-actions">
                 <span class="tf-nav-slot contents"></span>
                 <button onclick="openLoginModal()" id="btn-login" class="tf-btn tf-login">🔑 로그인</button>
                 <button onclick="logoutUser()" id="btn-logout" class="tf-btn tf-logout hidden">🚪 로그아웃</button>

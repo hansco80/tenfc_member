@@ -65,6 +65,28 @@
 
         <!-- [탭 1] 일정 달력 및 투표 메인 페이지 -->
         <main id="tab-calendar" class="space-y-6">
+
+            <!-- 신규회원 모집 안내 (비회원 전용 · RECRUIT.endDate 이후 자동 숨김) -->
+            <details id="recruit-banner" class="hidden bg-emerald-950/30 border border-emerald-500/30 rounded-2xl">
+                <summary class="p-4 flex justify-between items-center gap-3">
+                    <span class="text-xs font-bold text-emerald-300">🎉 TenFC 신규회원 모집 · 연회비 5만원 (월회비 X) · 10회 참여하면 본전!</span>
+                    <span class="flex items-center gap-2 shrink-0 text-[11px] text-emerald-400"><span class="hidden sm:inline">자세히 보기</span><i class="fa-solid fa-chevron-down chev text-xs"></i></span>
+                </summary>
+                <div class="px-4 pb-4 space-y-3">
+                    <ul class="space-y-2 text-xs text-slate-300 leading-relaxed">
+                            <li>💰 <b class="text-white">연회비 5만원 · 월회비 X</b> — 양면조끼 포함 (조끼 보유 시 4.5만원). 지금 가입하면 <b class="text-emerald-300">내년 12월까지</b> 이용해요.</li>
+                            <li>🏟️ <b class="text-white">동계 시즌 실내구장 운동</b> — 12월 말~2월 말, 매주 수요일 20~22시, 총 10회<br><span class="text-slate-400">📍 OK실내구장 (기흥 지삼로114번길 14) · 동계 시즌 외에는 동백다목적구장</span></li>
+                            <li>👉 비회원은 1회 5천원 — <b class="text-emerald-300">10회만 참여해도 연회비 본전!</b></li>
+                            <li>📱 자체 사이트로 일정 확인 · 참여 신청 · 개인 평점 및 팀 결과 확인까지 한 번에 <a data-rc-href="demo" href="https://url.kr/fao33z" target="_blank" rel="noopener noreferrer" class="underline font-bold text-sky-300 hover:text-sky-200">👀 체험해보기</a></li>
+                            <li>🎁 <b class="text-white">매년 10월 창립기념행사</b> — 전원 넌슬립 풋살양말 증정 + 우승팀 전원(6인) 5만원 상품권</li>
+                            <li>👥 현재 회원 <span data-rc="members">35</span>명 / 정원 <span data-rc="cap">50</span>명 · 30대 중후반 · 아마 3~4 수준<br><span class="text-slate-400">정원이 차면 더 이상 받지 않아요.</span></li>
+                    </ul>
+                    <div class="flex flex-wrap gap-2 pt-1">
+                            <a data-rc-href="kakao" href="https://open.kakao.com/o/sx4VYaSh" target="_blank" rel="noopener noreferrer" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs transition shadow whitespace-nowrap">💬 1:1톡으로 가입 문의</a>
+                            <a data-rc-href="daangn" href="https://cafe.daangn.com/2050-dongbaegpu" target="_blank" rel="noopener noreferrer" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition shadow whitespace-nowrap">🥕 당근 카페 문의</a>
+                        </div>
+                </div>
+            </details>
             <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl space-y-4">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                     <div>
@@ -180,6 +202,7 @@
                             </select>
                         </div>
                         <button onclick="applyGuest()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg text-xs transition border border-slate-700">게스트/용병 등록 신청하기</button>
+                        <p id="guest-recruit-hint" class="hidden text-[11px] text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2.5 leading-relaxed">💡 비회원은 1회 5천원 — <b>10회만 참여해도 연회비(5만원) 본전!</b> 월회비도 없어요. <button type="button" onclick="openRecruitModal()" class="underline font-bold hover:text-emerald-200">가입 혜택 보기</button></p>
                     </div>
                 </details>
 
@@ -215,8 +238,23 @@
                     <button id="btn-copy-promo" onclick="copyPromoText()" class="hidden px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-md">📢 오픈톡방 홍보용 맞춤글</button>
                 </div>
 
-                <!-- 비회원 안내 및 당근 카페 링크 -->
-                <div class="bg-emerald-950/20 border border-emerald-500/20 p-4 rounded-xl flex flex-col md:flex-row justify-between items-center gap-3">
+                <!-- 신규회원 모집 카드 (비회원 전용 · 모집 기간 중에는 아래 기존 당근 박스 대신 표시) -->
+                <div id="recruit-bottom" class="hidden bg-emerald-950/30 border border-emerald-500/40 p-4 rounded-xl space-y-3">
+                    <p class="text-sm font-bold text-emerald-300">🎉 TenFC 신규회원 모집 중</p>
+                    <ul class="text-xs text-slate-300 space-y-1 leading-relaxed">
+                        <li>💰 연회비 5만원 (월회비 X, 양면조끼 포함) · 지금 가입하면 내년 12월까지</li>
+                        <li>🏟️ 동계 실내구장 운동 매주 수요일 10회 — 비회원 1회 5천원, <b class="text-emerald-300">10회면 연회비 본전</b></li>
+                        <li>🎁 매년 10월 창립기념행사 전원 선물 증정</li>
+                    </ul>
+                    <div class="flex flex-wrap gap-2 pt-1">
+                            <a data-rc-href="kakao" href="https://open.kakao.com/o/sx4VYaSh" target="_blank" rel="noopener noreferrer" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs transition shadow whitespace-nowrap">💬 1:1톡으로 가입 문의</a>
+                            <a data-rc-href="daangn" href="https://cafe.daangn.com/2050-dongbaegpu" target="_blank" rel="noopener noreferrer" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition shadow whitespace-nowrap">🥕 당근 카페 문의</a>
+                            <button type="button" onclick="openRecruitModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-lg text-xs transition border border-slate-700 whitespace-nowrap">전체 안내 보기</button>
+                        </div>
+                </div>
+
+                <!-- 비회원 안내 및 당근 카페 링크 (모집 기간이 끝나거나 정회원일 때 표시) -->
+                <div id="nonmember-info-box" class="bg-emerald-950/20 border border-emerald-500/20 p-4 rounded-xl flex flex-col md:flex-row justify-between items-center gap-3">
                     <p class="text-xs text-emerald-300">💡 비회원 방문자이신가요? 정회원 가입 또는 기타 문의 사항은 당근카페를 확인 해주세요~</p>
                     <a href="https://cafe.daangn.com/2050-dongbaegpu" target="_blank" rel="noopener noreferrer" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition whitespace-nowrap shadow">
                         🥕 당근 카페 문의하기
@@ -586,6 +624,32 @@
         </div>
     </div>
 
+    <!-- 신규회원 모집 안내 창 (용병/지인 신청 완료 직후 · 가입 혜택 보기) -->
+    <div id="recruit-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50" onclick="if(event.target===this)closeRecruitModal()">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-5 space-y-4 shadow-2xl">
+            <div id="recruit-modal-done" class="hidden bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3">
+                <p id="recruit-modal-done-text" class="text-sm font-bold text-emerald-300"></p>
+            </div>
+            <div>
+                <h3 class="text-base font-bold text-white">🎉 TenFC 신규회원 모집</h3>
+                <p class="text-xs text-slate-400 mt-1">비회원은 1회 5천원, 10회만 참여해도 연회비 본전이에요!</p>
+            </div>
+            <ul class="space-y-2 text-xs text-slate-300 leading-relaxed">
+                            <li>💰 <b class="text-white">연회비 5만원 · 월회비 X</b> — 양면조끼 포함 (조끼 보유 시 4.5만원). 지금 가입하면 <b class="text-emerald-300">내년 12월까지</b> 이용해요.</li>
+                            <li>🏟️ <b class="text-white">동계 시즌 실내구장 운동</b> — 12월 말~2월 말, 매주 수요일 20~22시, 총 10회<br><span class="text-slate-400">📍 OK실내구장 (기흥 지삼로114번길 14) · 동계 시즌 외에는 동백다목적구장</span></li>
+                            <li>👉 비회원은 1회 5천원 — <b class="text-emerald-300">10회만 참여해도 연회비 본전!</b></li>
+                            <li>📱 자체 사이트로 일정 확인 · 참여 신청 · 개인 평점 및 팀 결과 확인까지 한 번에 <a data-rc-href="demo" href="https://url.kr/fao33z" target="_blank" rel="noopener noreferrer" class="underline font-bold text-sky-300 hover:text-sky-200">👀 체험해보기</a></li>
+                            <li>🎁 <b class="text-white">매년 10월 창립기념행사</b> — 전원 넌슬립 풋살양말 증정 + 우승팀 전원(6인) 5만원 상품권</li>
+                            <li>👥 현재 회원 <span data-rc="members">35</span>명 / 정원 <span data-rc="cap">50</span>명 · 30대 중후반 · 아마 3~4 수준<br><span class="text-slate-400">정원이 차면 더 이상 받지 않아요.</span></li>
+            </ul>
+            <div class="flex flex-wrap gap-2 pt-1">
+                            <a data-rc-href="kakao" href="https://open.kakao.com/o/sx4VYaSh" target="_blank" rel="noopener noreferrer" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs transition shadow whitespace-nowrap">💬 1:1톡으로 가입 문의</a>
+                            <a data-rc-href="daangn" href="https://cafe.daangn.com/2050-dongbaegpu" target="_blank" rel="noopener noreferrer" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition shadow whitespace-nowrap">🥕 당근 카페 문의</a>
+                            <button type="button" onclick="closeRecruitModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg text-xs transition border border-slate-700 whitespace-nowrap">닫기</button>
+                        </div>
+        </div>
+    </div>
+
     <!-- 자바스크립트 로직 -->
     <script id="tf-kit-js">
         /* ===== TenFC 공통 등급·메뉴 규칙 (5개 페이지 동일 — 수정 시 전부 같이 바꾸세요) =====
@@ -831,6 +895,8 @@
                 updateGuestTypeOptions();
             } catch (err) {
                 console.error('회원 정보 조회 중 예외 발생:', err);
+            } finally {
+                updateRecruitUI();
             }
         }
 
@@ -1570,6 +1636,48 @@
             }
         }
 
+        /* ===== 신규회원 모집 안내 (비회원 전용) =====
+           - 이 RECRUIT 값만 바꾸면 3곳(상단 배너 / 신청 완료 창 / 하단 카드)에 모두 반영됩니다.
+           - endDate(한국시간) 다음 날부터 자동으로 숨겨지고, 기존 당근 카페 박스만 남습니다.
+           - 관리자는 주소 뒤에 ?view=테스트 를 붙이면 비회원 화면을 미리 볼 수 있습니다. */
+        const RECRUIT = {
+            endDate: '2026-12-23',
+            members: '35',
+            cap: '50',
+            kakao: 'https://open.kakao.com/o/sx4VYaSh',
+            daangn: 'https://cafe.daangn.com/2050-dongbaegpu',
+            demo: 'https://url.kr/fao33z'
+        };
+        function isRecruitActive() { return kstDateStr(new Date()) <= RECRUIT.endDate; }
+        function isRecruitTarget() { return isRecruitActive() && !TF.isMember(currentUser); }
+        function fillRecruitFields() {
+            document.querySelectorAll('[data-rc]').forEach(el => { el.textContent = RECRUIT[el.dataset.rc] || ''; });
+            document.querySelectorAll('[data-rc-href]').forEach(el => { el.href = RECRUIT[el.dataset.rcHref] || '#'; });
+        }
+        function updateRecruitUI() {
+            const on = isRecruitTarget();
+            if (on) fillRecruitFields();
+            ['recruit-banner', 'guest-recruit-hint', 'recruit-bottom'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.toggle('hidden', !on);
+            });
+            const oldBox = document.getElementById('nonmember-info-box');
+            if (oldBox) oldBox.classList.toggle('hidden', on);
+        }
+        function openRecruitModal(doneMsg) {
+            fillRecruitFields();
+            const done = document.getElementById('recruit-modal-done');
+            if (doneMsg) {
+                document.getElementById('recruit-modal-done-text').textContent = doneMsg;
+                done.classList.remove('hidden');
+            } else {
+                done.classList.add('hidden');
+            }
+            document.getElementById('recruit-modal').classList.remove('hidden');
+        }
+        function closeRecruitModal() { document.getElementById('recruit-modal').classList.add('hidden'); }
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRecruitModal(); });
+
         async function applyGuest() {
             const m = currentMatch();
             if (!m) return;
@@ -1616,11 +1724,15 @@
             const { error } = await supabaseClient.from('match_votes').insert([row]);
             if (error) { alert('신청 실패: ' + error.message); return; }
 
-            alert(
-                staff
-                    ? `[${type}] ${name} 님이 대기자 명단에 1차 등록되었습니다. [참석시키기] 버튼으로 참석 명단에 옮겨주세요.`
-                    : `[${type}] ${name} 님의 신청이 접수되었습니다!`
-            );
+            if (!staff && isRecruitTarget()) {
+                openRecruitModal(`✅ [${type}] ${name} 님의 신청이 접수되었습니다!`);
+            } else {
+                alert(
+                    staff
+                        ? `[${type}] ${name} 님이 대기자 명단에 1차 등록되었습니다. [참석시키기] 버튼으로 참석 명단에 옮겨주세요.`
+                        : `[${type}] ${name} 님의 신청이 접수되었습니다!`
+                );
+            }
             document.getElementById('guest-name').value = '';
             document.getElementById('guest-birth').value = '';
             document.getElementById('guest-phone').value = '';

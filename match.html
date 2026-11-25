@@ -32,12 +32,6 @@
         .tf-logout:hover { background: #e11d48; }
         .tf-primary { background: #059669; color: #fff; box-shadow: 0 4px 6px -1px rgba(0,0,0,.35); }
         .tf-primary:hover { background: #10b981; }
-        /* ----- 공통 상단 헤더 (3개 페이지 동일) : 제목 한 줄 고정, 버튼은 한 덩어리로 우측 정렬, 공간 부족 시 버튼 묶음이 통째로 아래줄로 ----- */
-        .tf-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem 1rem; }
-        .tf-header-title { flex-shrink: 0; max-width: 100%; }
-        .tf-header-title h1 { white-space: nowrap; }
-        .tf-header-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; margin-left: auto; max-width: 100%; }
-        @media (max-width: 480px) { .tf-header-title h1 { font-size: 1.25rem; line-height: 1.75rem; } }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen font-sans">
@@ -51,12 +45,12 @@
     <div class="max-w-4xl mx-auto p-4 space-y-6">
 
         <!-- 헤더 섹션 -->
-        <header class="tf-header bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-xl">
-            <div class="tf-header-title">
+        <header class="flex flex-col md:flex-row justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-xl gap-4">
+            <div>
                 <h1 class="text-2xl font-black text-emerald-400">⚽ TenFC Match Hub</h1>
                 <p class="text-xs text-slate-400">접속자: <span class="tf-user text-emerald-400 font-bold">비회원 (방문자)</span></p>
             </div>
-            <div class="tf-header-actions">
+            <div class="flex gap-2 flex-wrap justify-center md:justify-end">
                 <span class="tf-nav-slot contents"></span>
                 <button onclick="openLoginModal()" id="btn-login" class="tf-btn tf-login">🔑 로그인</button>
                 <button onclick="logoutUser()" id="btn-logout" class="tf-btn tf-logout hidden">🚪 로그아웃</button>
@@ -243,7 +237,7 @@
                     <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
                         <p class="text-xs font-bold text-white">① 팀을 짤 일정 선택</p>
                         <div class="flex flex-col md:flex-row gap-2 md:items-center">
-                            <select id="team-match-select" class="flex-1 bg-slate-900 border border-slate-800 p-2.5 rounded-lg text-xs text-white"></select>
+                            <select id="team-match-select" onchange="try { sessionStorage.setItem('tenfc_team_match', this.value); } catch (e) {}" class="flex-1 bg-slate-900 border border-slate-800 p-2.5 rounded-lg text-xs text-white"></select>
                             <label class="flex items-center gap-1.5 text-xs text-slate-300 whitespace-nowrap">
                                 <input type="checkbox" id="team-include-waiting" checked onchange="populateTeamMatchSelect()"> 대기자(용병/지인 등)도 포함
                             </label>
@@ -779,12 +773,25 @@
             try {
                 await fetchMembers();
                 await fetchMatches();
+                await restoreTeamTabAfterReload();
             } finally {
                 document.getElementById('loading-overlay').classList.add('hidden');
             }
             setInterval(tick, 1000);
         });
 
+        // 새로고침 전에 팀짜기 탭이었다면 그대로 복원 (같은 브라우저 탭 안에서만)
+        async function restoreTeamTabAfterReload() {
+            try {
+                if (sessionStorage.getItem('tenfc_match_tab') !== 'admin') return;
+                if (!isThreeAdminUser()) return;
+                switchTab('admin');
+                const sel = document.getElementById('team-match-select');
+                const saved = sessionStorage.getItem('tenfc_team_match');
+                if (sel && saved && Array.from(sel.options).some(o => o.value === saved)) sel.value = saved;
+                if (sel && sel.value) await runTeamFromMatch({ silent: true });
+            } catch (e) { console.error('팀짜기 화면 복원 실패:', e); }
+        }
         function kstDateStr(dateLike) {
             return new Date(new Date(dateLike).getTime() + 9 * 3600 * 1000).toISOString().split('T')[0];
         }
@@ -915,6 +922,7 @@
 
         function switchTab(tab) {
             if (tab === 'calendar') {
+                try { sessionStorage.setItem('tenfc_match_tab', 'calendar'); } catch (e) {}
                 document.getElementById('tab-calendar').classList.remove('hidden');
                 document.getElementById('tab-admin').classList.add('hidden');
                 document.getElementById('btn-calendar').className = 'px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs transition shadow-md';
@@ -926,6 +934,7 @@
                     alert('⚠️ 관리자 팀짜기 메뉴는 주관리자만 접근할 수 있습니다.');
                     return;
                 }
+                try { sessionStorage.setItem('tenfc_match_tab', 'admin'); } catch (e) {}
                 populateTeamMatchSelect();
                 document.getElementById('tab-calendar').classList.add('hidden');
                 document.getElementById('tab-admin').classList.remove('hidden');
@@ -1832,7 +1841,7 @@
                     parts.push(esc(staff ? rawPhone : getMaskedPhone(rawPhone)));
                 }
             }
-            if (isGuestish && v.guest_skill) parts.push(`실력:${esc(v.guest_skill || '중')}`);
+            if (isGuestish && v.guest_skill && v.guest_type !== '정회원') parts.push(`실력:${esc(v.guest_skill || '중')}`);
             const detail = parts.length ? ` <span class="text-[10px] text-amber-400">(${parts.join(', ')})</span>` : '';
 
             const tentative = opts.tentative ? ` <span class="text-[10px] font-bold text-amber-400">${opts.declined ? '(불참·미정)' : '(미정)'}</span>` : '';
@@ -2114,7 +2123,8 @@ ${shareUrl}
             buildTeams(people);
         }
 
-        async function runTeamFromMatch() {
+        async function runTeamFromMatch(opts) {
+            opts = (opts && typeof opts === 'object' && !(opts instanceof Event)) ? opts : {};
             const id = parseInt(selVal('team-match-select'), 10);
             const m = matchesList.find(x => x.id === id);
             if (!m) { alert('팀을 짤 일정을 선택해주세요.'); return; }
@@ -2146,7 +2156,7 @@ ${shareUrl}
                 if (addedCnt || removedCnt) {
                     const labelEl = document.getElementById('team-source-label');
                     labelEl.innerText = `${teamSource.label} · ⚠️ 명단 변동(추가 ${addedCnt}명, 제외 ${removedCnt}명) → "🔄 명단 변동 반영" 버튼으로 반영하세요`;
-                    alert(`${latest.step_order}차 (${latest.author_name}) 제안을 불러왔습니다.\n현재 일정 명단과 비교하면 추가 ${addedCnt}명, 제외 ${removedCnt}명 차이가 있습니다.\n"🔄 명단 변동 반영" 버튼으로 기존 편성은 유지하고 변동분만 반영할 수 있습니다.`);
+                    if (!opts.silent) alert(`${latest.step_order}차 (${latest.author_name}) 제안을 불러왔습니다.\n현재 일정 명단과 비교하면 추가 ${addedCnt}명, 제외 ${removedCnt}명 차이가 있습니다.\n"🔄 명단 변동 반영" 버튼으로 기존 편성은 유지하고 변동분만 반영할 수 있습니다.`);
                 }
                 return;
             }
@@ -3071,7 +3081,9 @@ ${shareUrl}
                 { key: 'team2', label: '⚽ 2팀', color: 'text-indigo-400' },
                 { key: 'team3', label: '⚽ 3팀', color: 'text-amber-400' }
             ].map(td => {
-                const arr = Array.isArray(tJson[td.key]) ? tJson[td.key] : [];
+                const rawArr = Array.isArray(tJson[td.key]) ? tJson[td.key] : [];
+                // 팀장(첫 번째)은 맨 위 고정, 그 아래는 평점 높은 순
+                const arr = rawArr.length ? [rawArr[0], ...rawArr.slice(1).sort((a, b) => scoreOf(b) - scoreOf(a))] : [];
                 const avg = arr.length ? (arr.reduce((acc, v) => acc + scoreOf(v), 0) / arr.length).toFixed(2) : '0.00';
                 return `
                     <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-2">

@@ -1367,8 +1367,8 @@
                 acqList.forEach(m => {
                     let displayName = m.name;
                     if (!displayName.includes('지인')) {
-                        const ref = m.feedback ? m.feedback.replace(/지인$/, '').trim() : '';
-                        displayName = ref ? `${m.name}(${ref} 지인)` : `${m.name}(지인)`;
+                        const kakaoLabel = (m.kakaoId && m.kakaoId.trim()) ? m.kakaoId.trim() : '지인';
+                        displayName = `${m.name}(${kakaoLabel})`;
                     }
                     textOutput += formatLine(m, displayName);
                 });

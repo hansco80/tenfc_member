@@ -90,7 +90,10 @@
     <!-- 새 투표 만들기 모달 -->
     <div id="create-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-slate-900 w-full max-w-lg p-6 rounded-2xl border border-slate-800 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
-            <h3 id="c-modal-title" class="text-lg font-bold text-white">🗳️ 새 투표 만들기</h3>
+            <div class="flex flex-wrap justify-between items-center gap-2">
+                <h3 id="c-modal-title" class="text-lg font-bold text-white">🗳️ 새 투표 만들기</h3>
+                <button type="button" id="btn-sample" onclick="loadSampleTemplate()" class="text-[11px] text-sky-400 hover:underline">📋 플랩 운동 설문 예시 불러오기</button>
+            </div>
             <div class="space-y-3 text-xs">
                 <div>
                     <label class="block text-slate-400 mb-1">투표 제목 <span class="text-rose-400">*</span></label>
@@ -102,26 +105,17 @@
                 </div>
                 <div>
                     <div class="flex justify-between items-center mb-1">
-                        <label class="block text-slate-400">선택 항목 <span class="text-rose-400">*</span> <span id="c-opt-hint" class="text-slate-500">(2~10개)</span></label>
-                        <button type="button" id="btn-add-option" onclick="addOptionField()" class="text-[11px] text-sky-400 hover:underline">+ 항목 추가</button>
+                        <label class="block text-slate-400">질문 <span class="text-rose-400">*</span> <span id="c-q-hint" class="text-slate-500"></span></label>
+                        <button type="button" id="btn-add-question" onclick="addQuestionBlock()" class="text-[11px] text-sky-400 hover:underline">+ 질문 추가</button>
                     </div>
-                    <div id="c-options" class="space-y-1.5"></div>
+                    <div id="c-questions" class="space-y-3"></div>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-slate-400 mb-1">투표 방식</label>
-                        <select id="c-anon" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white">
-                            <option value="0">실명 투표 (누가 투표했는지 공개)</option>
-                            <option value="1">익명 투표 (누구인지 숨김)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-slate-400 mb-1">선택 방식</label>
-                        <select id="c-multi" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white">
-                            <option value="0">단일 선택 (1개만)</option>
-                            <option value="1">복수 선택 (여러 개 가능)</option>
-                        </select>
-                    </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">투표 방식</label>
+                    <select id="c-anon" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white">
+                        <option value="0">실명 투표 (누가 투표했는지 공개)</option>
+                        <option value="1">익명 투표 (누구인지 숨김)</option>
+                    </select>
                 </div>
                 <div>
                     <label class="block text-slate-400 mb-1">결과 공개 시점</label>
@@ -252,8 +246,10 @@
         let currentPollId = null;
         let listTab = 'open';
         let chartType = 'bar';
-        let chart = null;
-        let selected = new Set();
+        let charts = [];
+        let selected = {};      // { 질문키: Set(선택한 option id) }
+        let otherText = {};     // { option id: 기타 의견 }
+        let questionsByPoll = {};
         let submitting = false;
         let lastClosedState = null;
         let editingPollId = null;
@@ -303,7 +299,7 @@
         function showGate() {
             currentPollId = null;
             document.title = 'TenFC 투표';
-            if (chart) { chart.destroy(); chart = null; }
+            destroyCharts();
             document.getElementById('view-list').classList.add('hidden');
             document.getElementById('view-detail').classList.add('hidden');
             document.getElementById('view-gate').classList.remove('hidden');
@@ -399,8 +395,11 @@
             polls = pData || [];
             optionsByPoll = {};
             votesByPoll = {};
+            questionsByPoll = {};
             if (polls.length) {
                 const ids = polls.map(p => p.id);
+                const { data: qData } = await supabaseClient.from('poll_questions').select('*').in('poll_id', ids).order('sort_order', { ascending: true });
+                (qData || []).forEach(q => { (questionsByPoll[q.poll_id] = questionsByPoll[q.poll_id] || []).push(q); });
                 const { data: oData } = await supabaseClient.from('poll_options').select('*').in('poll_id', ids).order('sort_order', { ascending: true });
                 (oData || []).forEach(o => { (optionsByPoll[o.poll_id] = optionsByPoll[o.poll_id] || []).push(o); });
                 const { data: vData } = await supabaseClient.from('poll_votes').select('*').in('poll_id', ids);
@@ -449,7 +448,7 @@
                 <div onclick="showDetail(${p.id}, true)" class="bg-slate-950 border border-slate-800 hover:border-emerald-500 rounded-xl p-4 cursor-pointer transition space-y-2">
                     <div class="flex flex-wrap gap-1.5 text-[10px] font-bold">
                         <span class="px-2 py-0.5 rounded ${p.is_anonymous ? 'bg-violet-500/20 text-violet-300' : 'bg-sky-500/20 text-sky-300'}">${p.is_anonymous ? '익명' : '실명'}</span>
-                        ${p.allow_multiple ? '<span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">복수선택</span>' : ''}
+                        ${(questionsByPoll[p.id] || []).length > 1 ? `<span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">질문 ${questionsByPoll[p.id].length}개</span>` : (p.allow_multiple ? '<span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">복수선택</span>' : '')}
                         ${isClosed(p) ? '<span class="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300">마감</span>' : '<span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">진행중</span>'}
                         ${mine ? '<span class="px-2 py-0.5 rounded bg-emerald-600 text-white">✓ 참여함</span>' : ''}
                     </div>
@@ -464,7 +463,7 @@
             document.title = 'TenFC 투표';
             document.getElementById('view-detail').classList.add('hidden');
             document.getElementById('view-list').classList.remove('hidden');
-            if (chart) { chart.destroy(); chart = null; }
+            destroyCharts();
             if (push) history.pushState({}, '', window.location.pathname);
             renderList();
         }
@@ -476,10 +475,18 @@
             lastClosedState = isClosed(p);
             document.title = `🗳️ ${p.title}`;
             if (push) history.pushState({}, '', `?id=${id}`);
-            selected = new Set();
+            selected = {};
+            otherText = {};
+            const qs = getQuestions(p);
+            qs.forEach(q => { selected[qKey(q)] = new Set(); });
             if (currentUser) {
                 const key = await voterKey(p, currentUser.name);
-                (votesByPoll[id] || []).filter(v => v.voter === key).forEach(v => selected.add(v.option_id));
+                (votesByPoll[id] || []).filter(v => v.voter === key).forEach(v => {
+                    const q = qs.find(x => (x.id ?? null) === (v.question_id ?? null));
+                    if (!q) return;
+                    selected[qKey(q)].add(v.option_id);
+                    if (v.other_text) otherText[v.option_id] = v.other_text;
+                });
             }
             document.getElementById('view-list').classList.add('hidden');
             document.getElementById('view-detail').classList.remove('hidden');
@@ -492,11 +499,83 @@
             return p.show_results === 'always' || isClosed(p);
         }
 
+        function qKey(q) { return q.id == null ? 'legacy' : String(q.id); }
+        function getQuestions(p) {
+            const qs = questionsByPoll[p.id];
+            if (qs && qs.length) return qs;
+            // 질문 기능 이전에 만든 투표 = 질문 1개짜리로 취급
+            return [{ id: null, poll_id: p.id, title: p.title, allow_multiple: !!p.allow_multiple, sort_order: 0 }];
+        }
+        function optionsOf(p, q) { return (optionsByPoll[p.id] || []).filter(o => (o.question_id ?? null) === (q.id ?? null)); }
+        function votesOf(p, q) { return (votesByPoll[p.id] || []).filter(v => (v.question_id ?? null) === (q.id ?? null)); }
+        function destroyCharts() { charts.forEach(c => c.destroy()); charts = []; }
+
+        function questionVoteHtml(p, q, i, multiQ) {
+            const qk = qKey(q);
+            const set = selected[qk] || new Set();
+            const header = multiQ ? `
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="px-2 py-0.5 rounded bg-emerald-600 text-white font-bold text-[11px]">Q${i + 1}</span>
+                    <h4 class="font-bold text-white text-sm">${esc(q.title)}</h4>
+                    <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold">${q.allow_multiple ? '복수 선택' : '단일 선택'}</span>
+                </div>` : '';
+            const body = optionsOf(p, q).map(o => {
+                const on = set.has(o.id);
+                const btn = `<button type="button" onclick="toggleOption('${qk}', ${o.id})" class="w-full text-left p-3 rounded-xl border text-sm flex items-center gap-3 transition ${on ? 'border-emerald-400 bg-emerald-500/15 text-white' : 'border-slate-800 bg-slate-950 text-slate-300 hover:border-slate-600'}">
+                    <i class="fa-${on ? 'solid' : 'regular'} ${q.allow_multiple ? (on ? 'fa-square-check' : 'fa-square') : (on ? 'fa-circle-dot' : 'fa-circle')} ${on ? 'text-emerald-400' : 'text-slate-500'}"></i>
+                    <span>${esc(o.label)}</span></button>`;
+                const other = (o.is_other && on) ? `<input type="text" maxlength="200" value="${esc(otherText[o.id] || '')}" oninput="setOtherText(${o.id}, this.value)" placeholder="의견을 입력해 주세요 (선택)" class="w-full mt-1.5 bg-slate-950 border border-slate-700 focus:border-emerald-500 outline-none p-2.5 rounded-lg text-white text-sm">` : '';
+                return `<div>${btn}${other}</div>`;
+            }).join('');
+            return `
+                <div class="${multiQ ? 'bg-slate-950/50 border border-slate-800 rounded-xl p-3' : ''} space-y-2">
+                    ${header}
+                    <div class="space-y-2">${body}</div>
+                    <p class="text-[11px] text-slate-500">${q.allow_multiple ? '여러 개를 선택할 수 있습니다.' : '하나만 선택할 수 있습니다.'}</p>
+                </div>`;
+        }
+
+        function questionResultHtml(p, q, i, multiQ) {
+            const qTotal = new Set(votesOf(p, q).map(v => v.voter)).size;
+            const header = multiQ ? `
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="px-2 py-0.5 rounded bg-emerald-600 text-white font-bold text-[11px]">Q${i + 1}</span>
+                    <h4 class="font-bold text-white text-sm">${esc(q.title)}</h4>
+                    <span class="text-[11px] text-slate-400">응답 ${qTotal}명</span>
+                </div>` : '';
+            const wrap = multiQ ? 'bg-slate-950/50 border border-slate-800 rounded-xl p-3' : '';
+            if (!qTotal) return `<div class="${wrap} space-y-2">${header}<p class="text-xs text-slate-400 text-center py-3">아직 응답이 없습니다.</p></div>`;
+            const stats = optionStats(p, q);
+            const h = chartType === 'bar' ? Math.max(150, stats.length * 44) : 280;
+            return `
+                <div class="${wrap} space-y-3">
+                    ${header}
+                    <div style="height:${h}px;min-height:${h}px;position:relative"><canvas id="poll-chart-${i}" style="display:block;width:100%;height:100%"></canvas></div>
+                    <div class="space-y-2">
+                        ${stats.map((s, k) => {
+                            const opinions = s.isOther ? s.others.filter(x => !p.is_anonymous || x.text) : [];
+                            return `
+                            <div class="bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs">
+                                <div class="flex justify-between items-center gap-2">
+                                    <span class="font-bold text-white"><span class="inline-block w-2.5 h-2.5 rounded-full mr-1.5" style="background:${PALETTE[k % PALETTE.length]}"></span>${esc(s.label)}</span>
+                                    <span class="text-slate-300 whitespace-nowrap">${s.count}표 · ${s.pct}%</span>
+                                </div>
+                                <div class="h-1.5 bg-slate-800 rounded mt-2"><div class="h-1.5 rounded" style="width:${s.pct}%;background:${PALETTE[k % PALETTE.length]}"></div></div>
+                                ${s.isOther && opinions.length ? `<details class="mt-2"><summary class="text-[11px] text-sky-300">기타 의견 보기 (${opinions.length}) <i class="fa-solid fa-chevron-down chev"></i></summary>
+                                    <ul class="mt-1 space-y-1 text-slate-300">${opinions.map(x => `<li>${p.is_anonymous ? '' : `<span class="text-sky-300">${esc(x.voter)}</span> · `}${x.text ? esc(x.text) : '<span class="text-slate-500">(의견 없음)</span>'}</li>`).join('')}</ul></details>`
+                                : (!p.is_anonymous && s.voters.length ? `<details class="mt-2"><summary class="text-[11px] text-sky-300">투표한 사람 보기 (${s.voters.length}명) <i class="fa-solid fa-chevron-down chev"></i></summary><p class="mt-1 text-slate-300 leading-relaxed">${s.voters.map(esc).join(', ')}</p></details>` : '')}
+                            </div>`;
+                        }).join('')}
+                    </div>
+                </div>`;
+        }
+
         function renderDetail() {
-            if (chart) { chart.destroy(); chart = null; }
+            destroyCharts();
             const p = getPoll(currentPollId);
             if (!p) return;
-            const opts = optionsByPoll[p.id] || [];
+            const qs = getQuestions(p);
+            const multiQ = qs.length > 1;
             const closed = isClosed(p);
             const total = participants(p.id).size;
             const isAdminUser = isCreator();
@@ -512,16 +591,9 @@
                 voteHtml = '<p class="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">정회원만 투표할 수 있습니다.</p>';
             } else {
                 voteHtml = `
-                    <div class="space-y-2">
-                        ${opts.map(o => {
-                            const on = selected.has(o.id);
-                            return `<button type="button" onclick="toggleOption(${o.id})" class="w-full text-left p-3 rounded-xl border text-sm flex items-center gap-3 transition ${on ? 'border-emerald-400 bg-emerald-500/15 text-white' : 'border-slate-800 bg-slate-950 text-slate-300 hover:border-slate-600'}">
-                                <i class="fa-${on ? 'solid' : 'regular'} ${p.allow_multiple ? (on ? 'fa-square-check' : 'fa-square') : (on ? 'fa-circle-dot' : 'fa-circle')} ${on ? 'text-emerald-400' : 'text-slate-500'}"></i>
-                                <span>${esc(o.label)}</span></button>`;
-                        }).join('')}
-                    </div>
+                    <div class="space-y-4">${qs.map((q, i) => questionVoteHtml(p, q, i, multiQ)).join('')}</div>
                     <button onclick="submitVote()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-sm transition">${myVotedPolls.has(p.id) ? '투표 변경하기' : '투표하기'}</button>
-                    <p class="text-[11px] text-slate-500">${p.allow_multiple ? '여러 개를 선택할 수 있습니다. ' : '하나만 선택할 수 있습니다. '}마감 전까지 언제든 변경할 수 있습니다.</p>`;
+                    <p class="text-[11px] text-slate-500">${multiQ ? '모든 질문에 답한 뒤 한 번에 제출합니다. ' : ''}마감 전까지 언제든 변경할 수 있습니다.</p>`;
             }
 
             const showRes = currentUser && canSeeResults(p) && total > 0;
@@ -533,25 +605,12 @@
             } else if (total === 0) {
                 resultHtml = '<p class="text-xs text-slate-400 text-center py-4">아직 투표한 사람이 없습니다.</p>';
             } else {
-                const stats = optionStats(p);
-                const h = chartType === 'bar' ? Math.max(180, stats.length * 44) : 280;
                 resultHtml = `
                     <div class="flex gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800 w-fit mb-3">
                         <button onclick="setChartType('bar')" class="px-3 py-1 rounded text-xs font-bold ${chartType === 'bar' ? 'bg-emerald-600 text-white' : 'text-slate-300'}">📊 막대</button>
                         <button onclick="setChartType('pie')" class="px-3 py-1 rounded text-xs font-bold ${chartType === 'pie' ? 'bg-emerald-600 text-white' : 'text-slate-300'}">🥧 원</button>
                     </div>
-                    <div style="height:${h}px;min-height:${h}px;position:relative"><canvas id="poll-chart" style="display:block;width:100%;height:100%"></canvas></div>
-                    <div class="mt-4 space-y-2">
-                        ${stats.map((s, i) => `
-                            <div class="bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs">
-                                <div class="flex justify-between items-center gap-2">
-                                    <span class="font-bold text-white"><span class="inline-block w-2.5 h-2.5 rounded-full mr-1.5" style="background:${PALETTE[i % PALETTE.length]}"></span>${esc(s.label)}</span>
-                                    <span class="text-slate-300">${s.count}표 · ${s.pct}%</span>
-                                </div>
-                                <div class="h-1.5 bg-slate-800 rounded mt-2"><div class="h-1.5 rounded" style="width:${s.pct}%;background:${PALETTE[i % PALETTE.length]}"></div></div>
-                                ${!p.is_anonymous && s.voters.length ? `<details class="mt-2"><summary class="text-[11px] text-sky-300">투표한 사람 보기 (${s.voters.length}명) <i class="fa-solid fa-chevron-down chev"></i></summary><p class="mt-1 text-slate-300 leading-relaxed">${s.voters.map(esc).join(', ')}</p></details>` : ''}
-                            </div>`).join('')}
-                    </div>`;
+                    <div class="space-y-4">${qs.map((q, i) => questionResultHtml(p, q, i, multiQ)).join('')}</div>`;
             }
 
             const adminHtml = isAdminUser ? `
@@ -566,7 +625,7 @@
                 <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-xl space-y-4">
                     <div class="flex flex-wrap gap-1.5 text-[10px] font-bold">
                         <span class="px-2 py-0.5 rounded ${p.is_anonymous ? 'bg-violet-500/20 text-violet-300' : 'bg-sky-500/20 text-sky-300'}">${p.is_anonymous ? '익명 투표' : '실명 투표'}</span>
-                        <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">${p.allow_multiple ? '복수 선택' : '단일 선택'}</span>
+                        <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">${multiQ ? `질문 ${qs.length}개` : (qs[0].allow_multiple ? '복수 선택' : '단일 선택')}</span>
                         <span class="px-2 py-0.5 rounded bg-slate-700 text-slate-200">결과: ${p.show_results === 'always' ? '실시간 공개' : '마감 후 공개'}</span>
                         ${closed ? '<span class="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300">마감</span>' : '<span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">진행중</span>'}
                     </div>
@@ -612,19 +671,20 @@
             }
         }
 
-        function optionStats(p) {
-            const opts = optionsByPoll[p.id] || [];
-            const votes = votesByPoll[p.id] || [];
-            const total = participants(p.id).size;
-            return opts.map(o => {
+        function optionStats(p, q) {
+            const votes = votesOf(p, q);
+            const total = new Set(votes.map(v => v.voter)).size;
+            return optionsOf(p, q).map(o => {
                 const vs = votes.filter(v => v.option_id === o.id);
-                const count = Number(vs.length) || 0;
+                const count = vs.length;
                 return {
                     id: o.id,
                     label: o.label,
+                    isOther: !!o.is_other,
                     count,
                     pct: total ? Math.round(count / total * 100) : 0,
-                    voters: vs.map(v => v.voter)
+                    voters: vs.map(v => v.voter),
+                    others: o.is_other ? vs.map(v => ({ voter: v.voter, text: v.other_text || '' })) : []
                 };
             });
         }
@@ -632,69 +692,81 @@
         function setChartType(t) { chartType = t; renderDetail(); }
 
         function drawChart(p) {
-            const el = document.getElementById('poll-chart');
-            if (!el || typeof Chart === 'undefined') return;
-            if (chart) { chart.destroy(); chart = null; }
-            const stats = optionStats(p);
-            const labels = stats.map(s => s.label);
-            const data = stats.map(s => Number(s.count) || 0);
-            const colors = stats.map((s, i) => PALETTE[i % PALETTE.length]);
-            if (chartType === 'bar') {
-                chart = new Chart(el, {
-                    type: 'bar',
-                    data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 6 }] },
-                    options: {
-                        indexAxis: 'y',
-                        maintainAspectRatio: false,
-                        animation: false,
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            x: { beginAtZero: true, ticks: { precision: 0, color: '#94a3b8' }, grid: { color: '#1e293b' } },
-                            y: { ticks: { color: '#e2e8f0' }, grid: { display: false } }
+            if (typeof Chart === 'undefined') return;
+            destroyCharts();
+            getQuestions(p).forEach((q, i) => {
+                const el = document.getElementById('poll-chart-' + i);
+                if (!el) return;
+                const stats = optionStats(p, q);
+                const labels = stats.map(s => s.label);
+                const data = stats.map(s => Number(s.count) || 0);
+                const colors = stats.map((s, k) => PALETTE[k % PALETTE.length]);
+                if (chartType === 'bar') {
+                    charts.push(new Chart(el, {
+                        type: 'bar',
+                        data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 6 }] },
+                        options: {
+                            indexAxis: 'y',
+                            maintainAspectRatio: false,
+                            animation: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                x: { beginAtZero: true, ticks: { precision: 0, color: '#94a3b8' }, grid: { color: '#1e293b' } },
+                                y: { ticks: { color: '#e2e8f0' }, grid: { display: false } }
+                            }
                         }
-                    }
-                });
-            } else {
-                chart = new Chart(el, {
-                    type: 'pie',
-                    data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: '#0f172a', borderWidth: 2 }] },
-                    options: {
-                        maintainAspectRatio: false,
-                        animation: false,
-                        plugins: {
-                            legend: { position: 'bottom', labels: { color: '#e2e8f0' } },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(ctx) {
-                                        const val = Number(ctx.parsed) || 0;
-                                        const sum = (ctx.dataset.data || []).reduce((a, b) => a + (Number(b) || 0), 0);
-                                        const pct = sum ? ((val / sum) * 100).toFixed(1) : 0;
-                                        return ` ${ctx.label}: ${val}표 (${pct}%)`;
+                    }));
+                } else {
+                    charts.push(new Chart(el, {
+                        type: 'pie',
+                        data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: '#0f172a', borderWidth: 2 }] },
+                        options: {
+                            maintainAspectRatio: false,
+                            animation: false,
+                            plugins: {
+                                legend: { position: 'bottom', labels: { color: '#e2e8f0' } },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(ctx) {
+                                            const val = Number(ctx.parsed) || 0;
+                                            const sum = (ctx.dataset.data || []).reduce((a, b) => a + (Number(b) || 0), 0);
+                                            const pct = sum ? ((val / sum) * 100).toFixed(1) : 0;
+                                            return ` ${ctx.label}: ${val}표 (${pct}%)`;
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                });
-            }
+                    }));
+                }
+            });
         }
 
-        function toggleOption(optId) {
+        function toggleOption(qk, optId) {
             const p = getPoll(currentPollId);
             if (!p || isClosed(p)) return;
-            if (p.allow_multiple) {
-                if (selected.has(optId)) selected.delete(optId); else selected.add(optId);
+            const q = getQuestions(p).find(x => qKey(x) === qk);
+            if (!q) return;
+            const set = selected[qk] || (selected[qk] = new Set());
+            if (q.allow_multiple) {
+                if (set.has(optId)) set.delete(optId); else set.add(optId);
             } else {
-                selected = new Set([optId]);
+                selected[qk] = new Set([optId]);
             }
             renderDetail();
         }
+        function setOtherText(optId, text) { otherText[optId] = text; }
 
         async function submitVote() {
             const p = getPoll(currentPollId);
             if (!p || submitting) return;
             if (!canVote()) { alert('정회원 로그인 후 투표할 수 있습니다.'); return; }
-            if (selected.size === 0) { alert('항목을 선택해주세요.'); return; }
+            const qs = getQuestions(p);
+            const multiQ = qs.length > 1;
+            for (let i = 0; i < qs.length; i++) {
+                const set = selected[qKey(qs[i])];
+                if (!set || set.size === 0) { alert(multiQ ? `Q${i + 1}. 항목을 선택해주세요.` : '항목을 선택해주세요.'); return; }
+            }
 
             const { data: fresh } = await supabaseClient.from('polls').select('*').eq('id', p.id).maybeSingle();
             if (fresh) Object.assign(p, fresh);
@@ -705,7 +777,20 @@
                 const key = await voterKey(p, currentUser.name);
                 const { error: dErr } = await supabaseClient.from('poll_votes').delete().eq('poll_id', p.id).eq('voter', key);
                 if (dErr) { alert('투표 저장 실패: ' + dErr.message); return; }
-                const rows = Array.from(selected).map(optId => ({ poll_id: p.id, option_id: optId, voter: key }));
+                const rows = [];
+                qs.forEach(q => {
+                    const opts = optionsOf(p, q);
+                    selected[qKey(q)].forEach(optId => {
+                        const row = { poll_id: p.id, option_id: optId, voter: key };
+                        if (q.id != null) row.question_id = q.id;
+                        const o = opts.find(x => x.id === optId);
+                        if (o && o.is_other) {
+                            const t = (otherText[optId] || '').trim();
+                            if (t) row.other_text = t;
+                        }
+                        rows.push(row);
+                    });
+                });
                 const { error } = await supabaseClient.from('poll_votes').insert(rows);
                 if (error) { alert('투표 저장 실패: ' + error.message); return; }
                 await reloadPollVotes(p.id);
@@ -734,6 +819,7 @@
             if (!confirm(`'${p.title}' 투표와 모든 투표 기록이 삭제됩니다. 정말 삭제할까요?`)) return;
             await supabaseClient.from('poll_votes').delete().eq('poll_id', p.id);
             await supabaseClient.from('poll_options').delete().eq('poll_id', p.id);
+            await supabaseClient.from('poll_questions').delete().eq('poll_id', p.id);
             const { error } = await supabaseClient.from('polls').delete().eq('id', p.id);
             if (error) { alert('삭제 실패: ' + error.message); return; }
             await fetchPolls();
@@ -806,19 +892,76 @@
             document.getElementById('c-deadline-wrap').classList.toggle('pointer-events-none', document.getElementById('c-nodeadline').checked);
         }
 
+        const MAX_Q = 10, MAX_OPT = 10;
+        const SAMPLE_POLL = {
+            title: '플랩 정기 운동 설문 (주 1회 고정 운영 시)',
+            desc: '플랩 운동을 주 1회 고정으로 운영한다고 가정하고, 참여 가능 횟수와 선호하는 구장·시간대를 조사합니다.\n응답 결과는 고정 운동의 구장과 시간대를 정할 때 참고합니다.\n시간대는 가능한 곳을 모두 골라 주세요. (복수 선택)',
+            questions: [
+                { title: '주 1회 고정 운동이라면, 한 달에 몇 번 정도 참여할 수 있나요?', multi: false, other: false,
+                  options: ['상황 봐서 참여할 수 있을 것 같아요', '월 1~2회', '월 3~4회 (거의 매주 참여)'] },
+                { title: '고정 운동 시 선호하는 구장은 어디인가요?', multi: false, other: true,
+                  options: ['강남대 레드 구장 (5vs5)', '파라구장 (6vs6) · 코스트코 부근', '참스포츠 (6vs6) · 오케이실내구장 부근, 코스트코 가기 전'] },
+                { title: '고정 운동 시 선호하는 시간대는 언제인가요?', multi: true, other: true,
+                  options: ['금요일 19:00', '금요일 21:00', '토요일 09:00', '토요일 11:00', '토요일 19:00', '토요일 21:00'] }
+            ]
+        };
+
         function optionRowHtml(val) {
             return `<div class="flex gap-1.5 c-opt-row"><input type="text" maxlength="80" value="${esc(val || '')}" placeholder="항목 입력" class="c-opt flex-1 bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white">
                 <button type="button" onclick="removeOptionField(this)" class="px-2.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 border border-slate-700"><i class="fa-solid fa-xmark"></i></button></div>`;
         }
-        function addOptionField(val) {
-            const box = document.getElementById('c-options');
-            if (box.children.length >= 10) { alert('항목은 최대 10개까지 추가할 수 있습니다.'); return; }
-            box.insertAdjacentHTML('beforeend', optionRowHtml(val));
+        function questionBlockHtml(q) {
+            q = q || {};
+            const opts = q.options && q.options.length ? q.options : ['', ''];
+            return `<div class="c-q bg-slate-950/60 border border-slate-800 rounded-xl p-3 space-y-2">
+                <div class="flex items-center gap-2">
+                    <span class="c-q-no px-2 py-0.5 rounded bg-emerald-600 text-white font-bold text-[11px]">Q1</span>
+                    <input type="text" maxlength="120" value="${esc(q.title || '')}" placeholder="질문 입력" class="c-q-title flex-1 min-w-0 bg-slate-950 border border-slate-800 p-2 rounded-lg text-white">
+                    <button type="button" onclick="removeQuestionBlock(this)" title="질문 삭제" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 border border-slate-700"><i class="fa-solid fa-trash-can"></i></button>
+                </div>
+                <select class="c-q-multi w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-white">
+                    <option value="0">단일 선택 (1개만)</option>
+                    <option value="1" ${q.multi ? 'selected' : ''}>복수 선택 (여러 개 가능)</option>
+                </select>
+                <div class="c-q-opts space-y-1.5">${opts.map(v => optionRowHtml(v)).join('')}</div>
+                <div class="flex flex-wrap justify-between items-center gap-2">
+                    <button type="button" onclick="addOptionField(this)" class="text-[11px] text-sky-400 hover:underline">+ 항목 추가</button>
+                    <label class="flex items-center gap-1 text-[11px] text-slate-300"><input type="checkbox" class="c-q-other" ${q.other ? 'checked' : ''}> '기타 (의견 입력)' 항목 추가</label>
+                </div>
+            </div>`;
+        }
+        function renumberQuestions() {
+            document.querySelectorAll('#c-questions .c-q-no').forEach((el, i) => { el.innerText = 'Q' + (i + 1); });
+        }
+        function addQuestionBlock(q) {
+            const box = document.getElementById('c-questions');
+            if (box.querySelectorAll('.c-q').length >= MAX_Q) { alert(`질문은 최대 ${MAX_Q}개까지 추가할 수 있습니다.`); return; }
+            box.insertAdjacentHTML('beforeend', questionBlockHtml(q));
+            renumberQuestions();
+        }
+        function removeQuestionBlock(btn) {
+            const box = document.getElementById('c-questions');
+            if (box.querySelectorAll('.c-q').length <= 1) { alert('질문은 최소 1개가 필요합니다.'); return; }
+            btn.closest('.c-q').remove();
+            renumberQuestions();
+        }
+        function addOptionField(btn) {
+            const box = btn.closest('.c-q').querySelector('.c-q-opts');
+            if (box.children.length >= MAX_OPT) { alert(`항목은 질문마다 최대 ${MAX_OPT}개까지 추가할 수 있습니다. ('기타' 제외)`); return; }
+            box.insertAdjacentHTML('beforeend', optionRowHtml(''));
         }
         function removeOptionField(btn) {
-            const box = document.getElementById('c-options');
-            if (box.children.length <= 2) { alert('항목은 최소 2개가 필요합니다.'); return; }
+            const box = btn.closest('.c-q-opts');
+            if (box.children.length <= 2) { alert('항목은 질문마다 최소 2개가 필요합니다.'); return; }
             btn.closest('.c-opt-row').remove();
+        }
+        function loadSampleTemplate() {
+            if (editingPollId) return;
+            if (document.getElementById('c-title').value.trim() && !confirm('입력한 제목·질문이 예시 내용으로 바뀝니다. 계속할까요?')) return;
+            document.getElementById('c-title').value = SAMPLE_POLL.title;
+            document.getElementById('c-desc').value = SAMPLE_POLL.desc;
+            document.getElementById('c-questions').innerHTML = SAMPLE_POLL.questions.map(q => questionBlockHtml(q)).join('');
+            renumberQuestions();
         }
 
         function openCreateModal() {
@@ -826,18 +969,18 @@
             editingPollId = null;
             document.getElementById('c-modal-title').innerText = '🗳️ 새 투표 만들기';
             document.getElementById('btn-save-poll').innerText = '투표 등록';
-            document.getElementById('btn-add-option').classList.remove('hidden');
-            document.getElementById('c-opt-hint').innerText = '(2~10개)';
+            document.getElementById('btn-add-question').classList.remove('hidden');
+            document.getElementById('btn-sample').classList.remove('hidden');
+            document.getElementById('c-q-hint').innerText = `(질문 최대 ${MAX_Q}개 · 질문마다 항목 2~${MAX_OPT}개)`;
             document.getElementById('c-anon').disabled = false;
-            document.getElementById('c-multi').disabled = false;
             document.getElementById('c-title').value = '';
             document.getElementById('c-desc').value = '';
             document.getElementById('c-anon').value = '0';
-            document.getElementById('c-multi').value = '0';
             document.getElementById('c-show').value = 'always';
             document.getElementById('c-nodeadline').checked = false;
             toggleNoDeadline();
-            document.getElementById('c-options').innerHTML = optionRowHtml('') + optionRowHtml('');
+            document.getElementById('c-questions').innerHTML = questionBlockHtml();
+            renumberQuestions();
             const d = new Date();
             d.setDate(d.getDate() + 3);
             d.setHours(22, 0, 0, 0);
@@ -855,13 +998,16 @@
             document.getElementById('c-desc').value = p.description || '';
             document.getElementById('c-show').value = p.show_results || 'always';
             document.getElementById('c-anon').value = p.is_anonymous ? '1' : '0';
-            document.getElementById('c-multi').value = p.allow_multiple ? '1' : '0';
             document.getElementById('c-anon').disabled = true;
-            document.getElementById('c-multi').disabled = true;
-            document.getElementById('btn-add-option').classList.add('hidden');
-            document.getElementById('c-opt-hint').innerText = '(투표 시작 후에는 수정할 수 없습니다)';
-            document.getElementById('c-options').innerHTML = (optionsByPoll[p.id] || []).map(o =>
-                `<input type="text" value="${esc(o.label)}" disabled class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-slate-500">`).join('');
+            document.getElementById('btn-add-question').classList.add('hidden');
+            document.getElementById('btn-sample').classList.add('hidden');
+            document.getElementById('c-q-hint').innerText = '(투표 시작 후에는 수정할 수 없습니다)';
+            const qs = getQuestions(p);
+            document.getElementById('c-questions').innerHTML = qs.map((q, i) => `
+                <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-3 space-y-1.5 opacity-70">
+                    <p class="text-slate-300 font-bold">${qs.length > 1 ? `Q${i + 1}. ` : ''}${esc(q.title)} <span class="text-slate-500 font-normal">(${q.allow_multiple ? '복수 선택' : '단일 선택'})</span></p>
+                    ${optionsOf(p, q).map(o => `<div class="text-slate-500 border border-slate-800 rounded-lg p-2">${esc(o.label)}${o.is_other ? ' (의견 입력)' : ''}</div>`).join('')}
+                </div>`).join('');
             const hasDl = !!p.deadline;
             document.getElementById('c-nodeadline').checked = !hasDl;
             setDeadlineSelects(hasDl ? new Date(p.deadline) : (() => { const d = new Date(); d.setDate(d.getDate() + 3); d.setHours(22, 0, 0, 0); return d; })());
@@ -893,15 +1039,37 @@
             alert('투표가 수정되었습니다.');
         }
 
+        async function rollbackPoll(pollId) {
+            await supabaseClient.from('poll_options').delete().eq('poll_id', pollId);
+            await supabaseClient.from('poll_questions').delete().eq('poll_id', pollId);
+            await supabaseClient.from('polls').delete().eq('id', pollId);
+        }
+
         async function savePoll() {
             if (!isCreator()) { alert('⚠️ 투표 만들기는 운영진만 가능합니다.'); return; }
             if (editingPollId) { await saveEditedPoll(); return; }
             const title = document.getElementById('c-title').value.trim();
             const desc = document.getElementById('c-desc').value.trim();
-            const labels = Array.from(document.querySelectorAll('.c-opt')).map(i => i.value.trim()).filter(Boolean);
             if (!title) { alert('투표 제목을 입력해주세요.'); return; }
-            if (labels.length < 2) { alert('선택 항목을 2개 이상 입력해주세요.'); return; }
-            if (new Set(labels).size !== labels.length) { alert('중복된 항목이 있습니다.'); return; }
+
+            const blocks = Array.from(document.querySelectorAll('#c-questions .c-q'));
+            if (!blocks.length) { alert('질문을 1개 이상 추가해주세요.'); return; }
+            const questions = [];
+            for (let i = 0; i < blocks.length; i++) {
+                const b = blocks[i];
+                const no = blocks.length > 1 ? `Q${i + 1}. ` : '';
+                const qTitle = b.querySelector('.c-q-title').value.trim();
+                if (blocks.length > 1 && !qTitle) { alert(`${no}질문 내용을 입력해주세요.`); return; }
+                const labels = Array.from(b.querySelectorAll('.c-opt')).map(x => x.value.trim()).filter(Boolean);
+                if (labels.length < 2) { alert(`${no}선택 항목을 2개 이상 입력해주세요.`); return; }
+                if (new Set(labels).size !== labels.length) { alert(`${no}중복된 항목이 있습니다.`); return; }
+                questions.push({
+                    title: qTitle || title,
+                    multi: b.querySelector('.c-q-multi').value === '1',
+                    other: b.querySelector('.c-q-other').checked,
+                    labels
+                });
+            }
             const noDeadline = document.getElementById('c-nodeadline').checked;
             let deadline = null;
             if (!noDeadline) {
@@ -912,20 +1080,39 @@
 
             const btn = document.getElementById('btn-save-poll');
             btn.disabled = true;
+            let pollId = null;
             try {
                 const { data, error } = await supabaseClient.from('polls').insert([{
                     title, description: desc,
                     is_anonymous: selVal('c-anon') === '1',
-                    allow_multiple: selVal('c-multi') === '1',
+                    allow_multiple: questions.some(q => q.multi),
                     show_results: selVal('c-show'),
                     deadline, status: 'open',
                     created_by: currentUser.name
                 }]).select();
                 if (error || !data || !data[0]) { alert('투표 등록 실패' + (error ? ': ' + error.message : '')); return; }
-                const pollId = data[0].id;
-                const { error: oErr } = await supabaseClient.from('poll_options').insert(labels.map((label, i) => ({ poll_id: pollId, label, sort_order: i })));
+                pollId = data[0].id;
+
+                const { data: qData, error: qErr } = await supabaseClient.from('poll_questions').insert(
+                    questions.map((q, i) => ({ poll_id: pollId, title: q.title, allow_multiple: q.multi, sort_order: i }))
+                ).select();
+                if (qErr || !qData || qData.length !== questions.length) {
+                    await rollbackPoll(pollId); pollId = null;
+                    alert('질문 저장 실패' + (qErr ? ': ' + qErr.message : '') + '\n(poll_questions 테이블 생성 SQL을 먼저 실행했는지 확인해주세요.)');
+                    return;
+                }
+                const idByOrder = {};
+                qData.forEach(r => { idByOrder[r.sort_order] = r.id; });
+
+                const optRows = [];
+                let n = 0;
+                questions.forEach((q, i) => {
+                    q.labels.forEach(label => optRows.push({ poll_id: pollId, question_id: idByOrder[i], label, sort_order: n++, is_other: false }));
+                    if (q.other) optRows.push({ poll_id: pollId, question_id: idByOrder[i], label: '기타', sort_order: n++, is_other: true });
+                });
+                const { error: oErr } = await supabaseClient.from('poll_options').insert(optRows);
                 if (oErr) {
-                    await supabaseClient.from('polls').delete().eq('id', pollId);
+                    await rollbackPoll(pollId); pollId = null;
                     alert('항목 저장 실패: ' + oErr.message);
                     return;
                 }

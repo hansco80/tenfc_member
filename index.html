@@ -579,6 +579,7 @@
                         fullPhone: m.full_phone || "",
                         kakaoId: m.kakao_id || "",
                         photo: m.photo || "",
+                        hasPhoto: includePhoto ? !!(m.photo && String(m.photo).trim() !== "") : undefined,
                         birth: m.birth || "",
                         address: m.address || "",
                         position: m.position || "",
@@ -592,6 +593,7 @@
                         loginCount: m.login_count || 0,
                         lastLoginAt: m.last_login_at || null
                     }));
+                    if (!includePhoto) await loadPhotoFlags();
                     await loadTeamSettings();
                     recomputeTeamSummary();
                     return true;
@@ -601,6 +603,27 @@
                 console.error("데이터 로딩 실패:", err);
                 return false;
             }
+        }
+
+        // 사진 데이터는 받지 않고, 사진이 등록된 회원 id만 가볍게 조회
+        async function loadPhotoFlags() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('members')
+                    .select('id')
+                    .not('photo', 'is', null)
+                    .neq('photo', '');
+                if (error || !data) return;
+                const ids = new Set(data.map(r => r.id));
+                membersData.forEach(m => { m.hasPhoto = ids.has(m.id); });
+            } catch (e) {}
+        }
+
+        // 조회 실패 등으로 여부를 모르면(undefined) 기존처럼 아이콘 표시
+        function memberHasPhoto(m) {
+            if (!m) return false;
+            if (m.photo && String(m.photo).trim() !== "") return true;
+            return m.hasPhoto !== false;
         }
 
         async function ensureMemberPhoto(member) {
@@ -614,6 +637,7 @@
                     .maybeSingle();
                 if (!error && data && data.photo) {
                     member.photo = data.photo;
+                    member.hasPhoto = true;
                 }
             } catch (e) {}
             return member.photo || "";
@@ -962,7 +986,9 @@
                 return `
                     <tr class="hover:bg-slate-700/35 transition">
                         <td class="p-2.5 font-bold text-white whitespace-nowrap">
-                            <span onclick="openPhotoPreview('${m.name}')" class="text-white font-bold cursor-pointer hover:text-emerald-400 transition" title="클릭하여 프로필 사진 조회">🖼️ ${m.name}</span> ${roleBadge}
+                            ${memberHasPhoto(m)
+                                ? `<span onclick="openPhotoPreview('${m.name}')" class="text-white font-bold cursor-pointer hover:text-emerald-400 transition" title="클릭하여 프로필 사진 조회">🖼️ ${m.name}</span>`
+                                : `<span class="text-white font-bold">${m.name}</span>`} ${roleBadge}
                         </td>
                         <td class="p-2.5 text-slate-300 whitespace-nowrap">${formatShortBirthAge(m.birth)}</td>
                         <td class="p-2.5 text-slate-300 whitespace-nowrap">${m.attendedMatches}회 / ${teamTotalMatches}회 <span class="text-indigo-400 font-bold">(${attRate}%)</span></td>
@@ -1105,7 +1131,7 @@
 
                 rowHtml += `
                     <td class="p-3 font-bold text-white whitespace-nowrap">
-                        <button type="button" onclick="openPhotoPreview('${m.name}')" class="mr-1 text-slate-400 hover:text-emerald-400" title="프로필 사진 보기">🖼️</button>
+                        ${memberHasPhoto(m) ? `<button type="button" onclick="openPhotoPreview('${m.name}')" class="mr-1 text-slate-400 hover:text-emerald-400" title="프로필 사진 보기">🖼️</button>` : ''}
                         ${nameCellContent}${roleBadge}
                     </td>
                     <td class="p-3 text-slate-300 whitespace-nowrap">${calculateInternationalAge(m.birth)}</td>
@@ -1265,6 +1291,7 @@
                 fullPhone: newMemberRow.full_phone,
                 kakaoId: newMemberRow.kakao_id,
                 photo: initialPhoto,
+                hasPhoto: !!initialPhoto,
                 birth: newMemberRow.birth,
                 address: newMemberRow.address,
                 position: newMemberRow.position,
@@ -1522,6 +1549,7 @@
                 role: updatedFields.role,
                 isWithdrawn: updatedFields.is_withdrawn,
                 photo: updatedFields.photo,
+                hasPhoto: !!updatedFields.photo,
                 fullPhone: updatedFields.full_phone,
                 kakaoId: updatedFields.kakao_id,
                 feedback: updatedFields.feedback,

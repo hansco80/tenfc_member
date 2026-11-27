@@ -120,7 +120,8 @@
                 <div>
                     <label class="block text-slate-400 mb-1">결과 공개 시점</label>
                     <select id="c-show" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white">
-                        <option value="always">투표하면 바로 공개 (실시간 결과)</option>
+                        <option value="after_vote">투표 완료 후 공개 (투표한 사람만 결과 확인)</option>
+                        <option value="always">항상 공개 (투표 전에도 실시간 결과)</option>
                         <option value="after_close">마감 후에 공개</option>
                     </select>
                 </div>
@@ -496,7 +497,9 @@
 
         function canSeeResults(p) {
             if (!currentUser) return false;
-            return p.show_results === 'always' || isClosed(p);
+            if (p.show_results === 'always' || isClosed(p)) return true;
+            if (p.show_results === 'after_vote') return myVotedPolls.has(p.id);
+            return false;
         }
 
         function qKey(q) { return q.id == null ? 'legacy' : String(q.id); }
@@ -601,7 +604,7 @@
             if (!currentUser) {
                 resultHtml = '<p class="text-xs text-slate-400 text-center py-4">로그인하면 투표 결과를 볼 수 있습니다.</p>';
             } else if (!canSeeResults(p)) {
-                resultHtml = '<p class="text-xs text-slate-400 text-center py-4">🔒 결과는 투표가 마감된 후에 공개됩니다.</p>';
+                resultHtml = `<p class="text-xs text-slate-400 text-center py-4">🔒 ${p.show_results === 'after_vote' ? '투표를 완료하면 결과를 볼 수 있습니다.' : '결과는 투표가 마감된 후에 공개됩니다.'}</p>`;
             } else if (total === 0) {
                 resultHtml = '<p class="text-xs text-slate-400 text-center py-4">아직 투표한 사람이 없습니다.</p>';
             } else {
@@ -626,7 +629,7 @@
                     <div class="flex flex-wrap gap-1.5 text-[10px] font-bold">
                         <span class="px-2 py-0.5 rounded ${p.is_anonymous ? 'bg-violet-500/20 text-violet-300' : 'bg-sky-500/20 text-sky-300'}">${p.is_anonymous ? '익명 투표' : '실명 투표'}</span>
                         <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">${multiQ ? `질문 ${qs.length}개` : (qs[0].allow_multiple ? '복수 선택' : '단일 선택')}</span>
-                        <span class="px-2 py-0.5 rounded bg-slate-700 text-slate-200">결과: ${p.show_results === 'always' ? '실시간 공개' : '마감 후 공개'}</span>
+                        <span class="px-2 py-0.5 rounded bg-slate-700 text-slate-200">결과: ${p.show_results === 'always' ? '항상 공개' : (p.show_results === 'after_vote' ? '투표 후 공개' : '마감 후 공개')}</span>
                         ${closed ? '<span class="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300">마감</span>' : '<span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">진행중</span>'}
                     </div>
                     <h2 class="text-xl font-bold text-white">${esc(p.title)}</h2>
@@ -976,7 +979,7 @@
             document.getElementById('c-title').value = '';
             document.getElementById('c-desc').value = '';
             document.getElementById('c-anon').value = '0';
-            document.getElementById('c-show').value = 'always';
+            document.getElementById('c-show').value = 'after_vote';
             document.getElementById('c-nodeadline').checked = false;
             toggleNoDeadline();
             document.getElementById('c-questions').innerHTML = questionBlockHtml();
